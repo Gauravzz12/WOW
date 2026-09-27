@@ -30,10 +30,10 @@ export default async function CategoryPage({ params }: { params: { slug: string 
     .limit(1)
     .single()
 
-  // 3. Get Queue (Upcoming messages)
+  // 3. Get Queue (Upcoming messages — ids/dates only, text stays masked)
   const { data: queue } = await supabase
     .from('messages')
-    .select('id, content, created_at')
+    .select('id, created_at')
     .eq('category_id', category.id)
     .eq('status', 'QUEUED')
     .order('created_at', { ascending: true })
@@ -70,7 +70,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
           ) : (
             <div className="bg-background-elevated border border-primary/10 rounded-xl p-8 text-center text-secondary">
               <p>No active message in {category.name} right now.</p>
-              <Link href="/compose" className="inline-block mt-4 text-primary underline hover:text-primary/80">Be the first to speak.</Link>
+              <Link href="/create" className="inline-block mt-4 text-primary underline hover:text-primary/80">Be the first to speak.</Link>
             </div>
           )}
         </section>
@@ -90,9 +90,9 @@ export default async function CategoryPage({ params }: { params: { slug: string 
                     {idx + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-primary truncate">
-                      {/* The user specifically wanted to not show upcoming message content, so we redact it. */}
-                      {msg.content.replace(/./g, '•')}
+                    <p className="text-primary truncate select-none" aria-label="Message hidden until live">
+                      {/* Fixed-length mask: never leak exact length or line structure. */}
+                      {"•".repeat(24)}
                     </p>
                     <p suppressHydrationWarning className="text-xs text-secondary">Waiting since {new Date(msg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</p>
                   </div>
@@ -102,7 +102,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
           ) : (
             <div className="text-center text-secondary py-8">
               <p>The queue is completely empty.</p>
-              <Link href="/compose" className="inline-block mt-2 text-primary underline hover:text-primary/80">Claim the next spot instantly.</Link>
+              <Link href="/create" className="inline-block mt-2 text-primary underline hover:text-primary/80">Claim the next spot instantly.</Link>
             </div>
           )}
         </section>

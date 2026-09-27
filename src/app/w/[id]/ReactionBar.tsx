@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import posthog from 'posthog-js'
 import { getDeviceId, getStoredReactions, setStoredReaction, removeStoredReaction, syncStoredReactions } from '@/lib/deviceId'
+import { addReaction as serverAddReaction, removeReaction as serverRemoveReaction } from './reactions'
 
 const REACTION_TYPES = [
   { id: 'LOVE', emoji: '❤️', label: 'Love' },
@@ -19,7 +20,12 @@ export function ReactionBar({ messageId }: { messageId: string }) {
   // Initialized empty so server HTML matches first client render.
   // Device reactions are client-only (localStorage) and load in the effect below.
   const [myReactions, setMyReactions] = useState<Record<string, string>>({})
-  const isReacting = useRef<boolean>(false)
+  // Per-type in-flight lock: rapid LOVE → CELEBRATE no longer drops the
+  // second intent the way a single global boolean did.
+  const reactingTypes = useRef<Set<string>>(new Set())
+  // Suppresses the resurrection race: a realtime refetch that lands before our
+  // DELETE commits would otherwise re-add the just-removed reaction.
+  const recentlyRemoved = useRef<Record<string, number>>({})
   const supabase = createClient()
 
   // Sync state if messageId changes (client-only: localStorage is unavailable on server)
@@ -43,6 +49,9 @@ export function ReactionBar({ messageId }: { messageId: string }) {
         for (const r of (data as any[])) {
           newCounts[r.reaction_type] = (newCounts[r.reaction_type] || 0) + 1
           if (r.device_id && r.device_id === deviceId) {
+            // Skip rows we just deleted but haven't seen committed yet.
+            const removedAt = recentlyRemoved.current[r.reaction_type] || 0
+            if (Date.now() - removedAt < 4000) continue
             deviceReactions[r.reaction_type] = r.id
           }
         }
@@ -82,10 +91,9 @@ export function ReactionBar({ messageId }: { messageId: string }) {
   }, [messageId, supabase])
 
   const addReaction = async (type: string) => {
-    if (isReacting.current) return
-    isReacting.current = true
+    if (reactingTypes.current.has(type)) return
+    reactingTypes.current.add(type)
 
-    const deviceId = getDeviceId()
     const existingId = myReactions[type]
 
     try {
@@ -103,11 +111,22 @@ export function ReactionBar({ messageId }: { messageId: string }) {
           ...prev,
           [type]: Math.max(0, (prev[type] || 0) - 1)
         }))
+        recentlyRemoved.current[type] = Date.now()
 
-        if (existingId) {
-          await supabase.from('reactions').delete().eq('id', existingId)
-        } else {
-          await supabase.from('reactions').delete().eq('message_id', messageId).eq('device_id', deviceId).eq('reaction_type', type)
+        // Device-gated server delete: only our own device's row can be removed.
+        const res = await serverRemoveReaction(messageId, type)
+        if ((res as any).error) {
+          // Revert on error
+          delete recentlyRemoved.current[type]
+          setMyReactions(prev => {
+            const next = { ...prev, [type]: existingId }
+            setStoredReaction(messageId, type, existingId)
+            return next
+          })
+          setCounts(prev => ({
+            ...prev,
+            [type]: (prev[type] || 0) + 1
+          }))
         }
       }
       // 2. Add reaction of this type (1 per device per type, up to 5 total)
@@ -122,25 +141,18 @@ export function ReactionBar({ messageId }: { messageId: string }) {
           [type]: (prev[type] || 0) + 1
         }))
 
-        posthog.capture('reaction_added', {
+        try { posthog.capture('reaction_added', {
           message_id: messageId,
           reaction_type: type
-        })
+        }) } catch {}
 
-        const { data, error } = await supabase
-          .from('reactions')
-          .insert({
-            message_id: messageId,
-            reaction_type: type,
-            device_id: deviceId
-          })
-          .select('id')
-          .single()
+        // Device-gated server insert (deduped by unique index per device+type).
+        const res = await serverAddReaction(messageId, type)
 
-        if (!error && data) {
+        if (!(res as any).error && (res as any).id) {
           setMyReactions(prev => {
-            const next = { ...prev, [type]: data.id }
-            setStoredReaction(messageId, type, data.id)
+            const next = { ...prev, [type]: (res as any).id }
+            setStoredReaction(messageId, type, (res as any).id)
             return next
           })
         } else {
@@ -158,7 +170,7 @@ export function ReactionBar({ messageId }: { messageId: string }) {
         }
       }
     } finally {
-      isReacting.current = false
+      reactingTypes.current.delete(type)
     }
   }
 

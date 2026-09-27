@@ -54,8 +54,18 @@ export async function updateCategoryDuration(categoryId: string, formData: FormD
   const baseDuration = Number(formData.get('base_duration'))
   const maxDuration = Number(formData.get('max_duration'))
 
-  if (!baseDuration || !maxDuration) {
-    return { error: 'Invalid durations' }
+  // Sane bounds (seconds): durations drive every expiry calculation, so
+  // garbage here breaks the whole broadcast schedule.
+  if (
+    !Number.isFinite(baseDuration) ||
+    !Number.isFinite(maxDuration) ||
+    baseDuration < 60 ||
+    baseDuration > 86400 ||
+    maxDuration < 60 ||
+    maxDuration > 86400 ||
+    maxDuration < baseDuration
+  ) {
+    return { error: 'Invalid durations (must be 60–86400s, max ≥ base).' }
   }
 
   const { error } = await supabaseAdmin

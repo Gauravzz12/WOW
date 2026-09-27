@@ -2,6 +2,13 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { sanitizeHtmlText } from '@/lib/sanitize'
+import {
+  BASE_NORMAL_MINS,
+  MAX_NORMAL_MINS,
+  calculateNormalMinBid,
+  calculateSpecialPrice,
+} from '@/lib/constants/pricing'
+import { STANDARD_TEMPLATES } from '@/lib/constants/templates'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,11 +26,12 @@ export async function createMessage(data: {
   isReservedSlot?: boolean
   styleConfig?: string
 }) {
-  // Find category by slug
+  // Find category by slug (active only — inactive slugs are rejected)
   const { data: category, error: catError } = await supabaseAdmin
     .from('categories')
     .select('id')
     .eq('slug', data.categorySlug)
+    .eq('status', 'ACTIVE')
     .single()
 
   if (catError || !category) {
@@ -111,9 +119,43 @@ export async function createMessage(data: {
     }
   }
 
-  // Sanitize reminder email if present
+  // Reminder email is private PII: stored in its own column (never selected
+  // by anon-facing queries) instead of the publicly-readable style_config.
+  let reminderEmail: string | null = null
   if (parsedStyle.reminderEmail && typeof parsedStyle.reminderEmail === 'string') {
-    parsedStyle.reminderEmail = parsedStyle.reminderEmail.trim().slice(0, 100)
+    reminderEmail = parsedStyle.reminderEmail.trim().slice(0, 100) || null
+  }
+  delete (parsedStyle as any).reminderEmail
+
+  // Template allowlist: only classic styles are offered in the UI. VIP and
+  // unknown ids are forced back to the default so premium styling can't be
+  // claimed at normal price via direct action calls.
+  const templateId = STANDARD_TEMPLATES.some(t => t.id === data.templateId)
+    ? data.templateId
+    : 'a'
+
+  // Server-side pricing: never trust the client bid. Normal messages are
+  // floored to the duration-based minimum; reserved messages are priced
+  // exactly from the selected slot count (and must carry selected slots).
+  const isReserved = data.isReservedSlot || false
+  let bidAmount: number
+  if (isReserved) {
+    const selectedSlots = Array.isArray(parsedStyle.selectedSlots)
+      ? parsedStyle.selectedSlots
+      : []
+    if (selectedSlots.length === 0) {
+      return { error: 'Select at least one time slot for Special messages.' }
+    }
+    bidAmount = calculateSpecialPrice(Math.min(selectedSlots.length, 3)).finalPrice
+  } else {
+    const durationSecs = Number(parsedStyle.durationSecs) || BASE_NORMAL_MINS * 60
+    const durationMins = Math.max(
+      BASE_NORMAL_MINS,
+      Math.min(MAX_NORMAL_MINS, Math.round(durationSecs / 60))
+    )
+    const minBid = calculateNormalMinBid(durationMins)
+    const candidate = Number(data.bidAmount)
+    bidAmount = !isNaN(candidate) && candidate > minBid ? candidate : minBid
   }
 
   // Insert message
@@ -121,14 +163,15 @@ export async function createMessage(data: {
     .from('messages')
     .insert({
       category_id: category.id,
-      template_id: data.templateId,
+      template_id: templateId,
       content: trimmedContent,
       signature: signature,
       recipient: recipient,
       status: 'PENDING_PAYMENT',
-      bid_amount: data.bidAmount || 15,
-      is_reserved_slot: data.isReservedSlot || false,
+      bid_amount: bidAmount,
+      is_reserved_slot: isReserved,
       style_config: parsedStyle,
+      reminder_email: reminderEmail,
     })
     .select('id')
     .single()

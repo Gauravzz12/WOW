@@ -72,8 +72,11 @@ export default function CreateMessage() {
 
   useEffect(() => {
     if (prefillParam && !messageText) {
-      setMessageHtml(`<p>${prefillParam}</p>`);
-      setMessageText(prefillParam);
+      // Strip any markup: prefill lands in dangerouslySetInnerHTML preview,
+      // so raw ?prefill=<img onerror=...> must never reach the DOM.
+      const safePrefill = prefillParam.replace(/<[^>]*>/g, '');
+      setMessageHtml(`<p>${safePrefill}</p>`);
+      setMessageText(safePrefill);
     }
   }, [prefillParam, messageText]);
 
@@ -208,7 +211,7 @@ export default function CreateMessage() {
   // Minimum bid is derived from 1 hour base + 10-minute extensions (+$5/10m)
   const minBid = calculateNormalMinBid(normalDuration);
 
-  const selectedTemplate = ALL_TEMPLATES.find(t => t.id === template) || ALL_TEMPLATES[0];
+  const selectedTemplate = ALL_TEMPLATES.find(t => t.id === template) || STANDARD_TEMPLATES[0];
   const cardStyles = resolveCardStyles({
     bg: selectedTemplate.bg,
     textColor: selectedTemplate.textColor,

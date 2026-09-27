@@ -191,6 +191,17 @@ export async function POST(req: Request) {
       currency: session.currency || 'usd',
       status: 'SUCCESS',
     })
+
+    // Sponsor edit token for the real-gateway path. A webhook has no browser
+    // context, so the token cannot be cookie-set here: when wiring the
+    // Checkout Session creation, pass the issued token back via the success
+    // URL (e.g. ?st=...) and set the cookie from a server component/action.
+    if (isSponsorMode) {
+      try {
+        const { issueSponsorEditToken } = await import('@/lib/sponsorToken')
+        await issueSponsorEditToken(messageId)
+      } catch {}
+    }
   }
 
   return NextResponse.json({ received: true })

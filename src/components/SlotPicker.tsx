@@ -282,7 +282,9 @@ export function SlotPicker({ onSelect, selectedSlotIds = [], initialDate, initia
           {slots.map(slot => {
             const isBooked = slot.status === 'BOOKED'
             const isSelected = selectedSlots.some(s => s.id === slot.id)
-            const isPast = new Date(slot.scheduled_start).getTime() <= Date.now()
+            // A slot is past only once fully elapsed — in-progress slots with
+            // remaining airtime stay bookable.
+            const isPast = new Date(slot.scheduled_end).getTime() <= Date.now()
             const disabled = isBooked || isPast
             const orderIndex = sortedSelected.findIndex(s => s.id === slot.id)
 

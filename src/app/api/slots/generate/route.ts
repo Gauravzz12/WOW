@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getFixedSlotsForUtcDate, SPECIAL_SLOT_PRICE } from '@/lib/constants/pricing'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,30 +9,27 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Generates fixed 3-hour slots for the next 15 days if they don't exist yet.
+// Generates fixed 3-hour slots for the next 15 UTC days if they don't exist.
+// Uses the same UTC-day generator as the picker/pricing helpers so slot
+// boundaries always align (a previous version used server-local setHours,
+// producing misaligned slots on non-UTC hosts).
 export async function POST() {
   const now = new Date()
-  now.setSeconds(0, 0)
-  now.setMinutes(0)
+  const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
 
   const slotsToInsert: { scheduled_start: string; scheduled_end: string; bid_amount: number; status: string }[] = []
 
   for (let day = 0; day < 15; day++) {
-    for (let hour = 0; hour < 24; hour += 3) {
-      const slotStart = new Date(now)
-      slotStart.setDate(slotStart.getDate() + day)
-      slotStart.setHours(hour, 0, 0, 0)
-
-      // Skip slots in the past
-      if (slotStart <= new Date()) continue
-
-      const slotEnd = new Date(slotStart)
-      slotEnd.setHours(slotEnd.getHours() + 3)
-
+    const date = new Date(todayUtc)
+    date.setUTCDate(date.getUTCDate() + day)
+    for (const s of getFixedSlotsForUtcDate(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())) {
+      const slotStart = new Date(s.scheduled_start)
+      // Skip slots already in the past
+      if (slotStart <= now) continue
       slotsToInsert.push({
-        scheduled_start: slotStart.toISOString(),
-        scheduled_end: slotEnd.toISOString(),
-        bid_amount: 30,
+        scheduled_start: s.scheduled_start,
+        scheduled_end: s.scheduled_end,
+        bid_amount: SPECIAL_SLOT_PRICE,
         status: 'AVAILABLE'
       })
     }

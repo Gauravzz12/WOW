@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { LiveFeed } from './LiveFeed'
 import { SponsoredGrid } from './SponsoredGrid'
@@ -10,6 +10,7 @@ import { LeftSidebar } from './LeftSidebar'
 import { createClient } from '@/lib/supabase/client'
 import { Menu, List } from 'lucide-react'
 import Link from 'next/link'
+import { getMessageDurationSecs, isMessageExpired } from '@/lib/messageExpiry'
 import { getCategoryStyles } from '@/lib/utils/colors'
 
 type TabType = 'NORMAL' | 'SPECIAL' | 'SPONSORED'
@@ -57,6 +58,19 @@ export function MainFeedContainer({
   // Stabilize supabase instance — avoids infinite effect re-runs
   const supabase = useMemo(() => createClient(), [])
 
+  // Throttle queue-advance triggers: expiry timers, realtime refetch, and
+  // background sync can otherwise fire overlapping POSTs every second and
+  // thundering-herd the endpoint across N clients.
+  const lastAdvanceAt = useRef(0)
+  const postAdvanceThrottled = () => {
+    const now = Date.now()
+    if (now - lastAdvanceAt.current < 5000) return Promise.resolve(null)
+    lastAdvanceAt.current = now
+    return fetch('/api/queue/advance', { method: 'POST' })
+      .then(r => r.json())
+      .catch(() => null)
+  }
+
   // Clean up ?tab= from URL so a page refresh doesn't re-apply the tab
   useEffect(() => {
     const tab = searchParams?.get('tab')
@@ -81,28 +95,19 @@ export function MainFeedContainer({
       let sMsg: any = null
 
       if (actives) {
-        const isNotExpired = (msg: any) => {
-          const cat = Array.isArray(msg.category) ? msg.category[0] : msg.category
-          const config = typeof msg.style_config === 'string' ? JSON.parse(msg.style_config || '{}') : (msg.style_config || {})
-          // Consistent thresholds: normal = bid >= 2, sponsored = bid < 2
-          const duration = config.durationSecs || cat?.base_duration || (msg.is_reserved_slot ? 10800 : msg.bid_amount < 2 ? 1800 : 3600)
-          const endTime = msg.is_reserved_slot && msg.scheduled_end
-            ? new Date(msg.scheduled_end).getTime()
-            : (msg.actual_start ? new Date(msg.actual_start).getTime() + duration * 1000 : Date.now() + 1000)
-          return Date.now() <= endTime
-        }
+        const nowMs = Date.now()
+        const isNotExpired = (msg: any) => !isMessageExpired(msg, nowMs)
 
         // Consistent threshold: >= 2 everywhere (matches client queue fetch)
-        const nMsg = actives.find(m => !m.is_reserved_slot && m.bid_amount >= 2 && isNotExpired(m)) 
+        const nMsg = actives.find(m => !m.is_reserved_slot && m.bid_amount >= 2 && isNotExpired(m))
         activeNormal = nMsg
         sMsg = actives.find(m => m.is_reserved_slot && isNotExpired(m))
-        const spMsgs = actives.filter(m => !m.is_reserved_slot && m.bid_amount < 2 && isNotExpired(m)).slice(0, 20)
+        const spMsgs = actives.filter(m => !m.is_reserved_slot && m.bid_amount < 2 && isNotExpired(m)).slice(0, 10)
 
         // Always explicitly set — prevents stale messages staying on screen
         setNormalMsg(nMsg ? (() => {
           const cat = Array.isArray(nMsg.category) ? nMsg.category[0] : nMsg.category
-          const config = typeof nMsg.style_config === 'string' ? JSON.parse(nMsg.style_config || '{}') : (nMsg.style_config || {})
-          return { ...nMsg, category: cat, durationSecs: config.durationSecs || cat?.base_duration || 3600 }
+          return { ...nMsg, category: cat, durationSecs: getMessageDurationSecs({ ...nMsg, category: cat }) }
         })() : null)
 
         setSpecialMsg(sMsg ? (() => {
@@ -116,8 +121,7 @@ export function MainFeedContainer({
 
         setSponsoredMsgs(spMsgs.length > 0 ? spMsgs.map(m => {
           const cat = Array.isArray(m.category) ? m.category[0] : m.category
-          const config = typeof m.style_config === 'string' ? JSON.parse(m.style_config || '{}') : (m.style_config || {})
-          return { ...m, category: cat, durationSecs: config.durationSecs || 1800 }
+          return { ...m, category: cat, durationSecs: getMessageDurationSecs({ ...m, category: cat }) }
         }) : [])
       } else {
         setNormalMsg(null)
@@ -128,7 +132,7 @@ export function MainFeedContainer({
       // 2. Fetch queues
       const { data: nQueue } = await supabase
         .from('messages')
-        .select('id, content, created_at, bid_amount, template_id, style_config, category:categories(name, slug, base_duration)')
+        .select('id, created_at, bid_amount, template_id, style_config, category:categories(name, slug, base_duration)')
         .eq('status', 'QUEUED')
         .eq('is_reserved_slot', false)
         .gte('bid_amount', 2) // Normal
@@ -140,7 +144,7 @@ export function MainFeedContainer({
 
       const { data: sQueue } = await supabase
         .from('messages')
-        .select('id, content, created_at, scheduled_start, scheduled_end, bid_amount, template_id, style_config, category:categories(name, slug, base_duration)')
+        .select('id, created_at, scheduled_start, scheduled_end, bid_amount, template_id, style_config, category:categories(name, slug, base_duration)')
         .eq('status', 'QUEUED')
         .eq('is_reserved_slot', true)
         .order('created_at', { ascending: true })
@@ -178,8 +182,7 @@ export function MainFeedContainer({
 
       if (needsNormalAdvance || needsSpecialAdvance) {
         try {
-          const res = await fetch('/api/queue/advance', { method: 'POST' })
-          const resJson = await res.json()
+          const resJson = await postAdvanceThrottled()
           if (resJson?.promoted?.length > 0) {
             // Re-fetch immediately so the newly promoted message is placed on the stage
             const { data: freshActives } = await supabase
@@ -239,14 +242,10 @@ export function MainFeedContainer({
     const expirationInterval = setInterval(() => {
       const now = Date.now()
 
+      // Unified expiry math — no local 60s fallback (that nulled actives early).
       const isExpired = (msg: any) => {
         if (!msg) return false
-        if (msg.is_reserved_slot && msg.scheduled_end) {
-          return now >= new Date(msg.scheduled_end).getTime()
-        }
-        if (!msg.actual_start) return false
-        const endTime = new Date(msg.actual_start).getTime() + (msg.durationSecs || 60) * 1000
-        return now >= endTime
+        return isMessageExpired(msg, now)
       }
 
       let shouldAdvance = false
@@ -270,20 +269,29 @@ export function MainFeedContainer({
       setSponsoredMsgs((prev: any[]) => {
         if (!prev || prev.length === 0) return prev
         const remaining = prev.filter(m => !isExpired(m))
+        // Sponsored expiry also needs a server sweep (marks COMPLETED), so
+        // trigger an advance instead of stalling until an unrelated event.
+        if (remaining.length !== prev.length) shouldAdvance = true
         return remaining.length === prev.length ? prev : remaining
       })
 
-      // Check if a queued VIP slot's scheduled time has arrived
+      // Check if a queued VIP slot's scheduled time has arrived (and not yet ended).
+      // Without the end check, an expired-but-still-queued VIP re-triggers an
+      // advance POST on every 1s tick forever.
       setSpecialQueue((currentQueue: any[]) => {
-        if (!shouldAdvance && currentQueue?.some(m => m.scheduled_start && new Date(m.scheduled_start).getTime() <= now)) {
+        if (!shouldAdvance && currentQueue?.some(m => {
+          if (!m.scheduled_start) return false
+          const startTs = new Date(m.scheduled_start).getTime()
+          const endTs = m.scheduled_end ? new Date(m.scheduled_end).getTime() : startTs + 10800000
+          return startTs <= now && endTs > now
+        })) {
           shouldAdvance = true
         }
         return currentQueue
       })
 
       if (shouldAdvance) {
-        fetch('/api/queue/advance', { method: 'POST' })
-          .then(r => r.json())
+        postAdvanceThrottled()
           .then((resJson) => {
             if (resJson?.promoted?.length > 0) {
               fetchQueuesAndActive()

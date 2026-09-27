@@ -6,6 +6,7 @@ import { MainFeedContainer } from '@/components/MainFeedContainer'
 import { Suspense } from 'react'
 import { runQueueAdvance } from '@/lib/queueAdvance'
 import { toLockedSponsoredCard } from '@/lib/masking'
+import { getMessageDurationSecs, isMessageExpired } from '@/lib/messageExpiry'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,7 +38,7 @@ export default async function Home() {
     supabase.from('categories').select('id, slug, name').order('name'),
     supabase
       .from('messages')
-      .select('id, content, created_at, bid_amount, category:categories(name, slug)')
+      .select('id, created_at, bid_amount, category:categories(name, slug)')
       .eq('status', 'QUEUED')
       .eq('is_reserved_slot', false)
       .gte('bid_amount', 2)
@@ -46,7 +47,7 @@ export default async function Home() {
       .limit(5),
     supabase
       .from('messages')
-      .select('id, content, created_at, scheduled_start, scheduled_end, bid_amount, category:categories(name, slug)')
+      .select('id, created_at, scheduled_start, scheduled_end, bid_amount, category:categories(name, slug)')
       .eq('status', 'QUEUED')
       .eq('is_reserved_slot', true)
       .order('created_at', { ascending: true })
@@ -93,33 +94,24 @@ export default async function Home() {
   let initialSponsoredMsgs: any[] = []
 
   if (activeMessages) {
-    const isNotExpired = (msg: any) => {
-      const cat = Array.isArray(msg.category) ? msg.category[0] : msg.category
-      const config = typeof msg.style_config === 'string' ? JSON.parse(msg.style_config || '{}') : (msg.style_config || {})
-      // Consistent threshold: normal = bid >= 2, sponsored = bid < 2
-      const duration = config.durationSecs || cat?.base_duration || (msg.is_reserved_slot ? 10800 : msg.bid_amount < 2 ? 1800 : 3600)
-      const endTime = msg.is_reserved_slot && msg.scheduled_end
-        ? new Date(msg.scheduled_end).getTime()
-        : (msg.actual_start ? new Date(msg.actual_start).getTime() + duration * 1000 : Date.now() + 1000)
-      return Date.now() <= endTime
-    }
+    const nowMs = Date.now()
+    const isNotExpired = (msg: any) => !isMessageExpired(msg, nowMs)
 
     const nMsg = activeMessages.find(m => !m.is_reserved_slot && m.bid_amount >= 2 && isNotExpired(m))
     const sMsg = activeMessages.find(m => m.is_reserved_slot && isNotExpired(m))
-    const spMsgs = activeMessages.filter(m => !m.is_reserved_slot && m.bid_amount < 2 && isNotExpired(m)).slice(0, 20)
+    const spMsgs = activeMessages.filter(m => !m.is_reserved_slot && m.bid_amount < 2 && isNotExpired(m)).slice(0, 10)
 
-    const processMsg = (msg: any, defaultDuration: number) => {
+    const processMsg = (msg: any) => {
       const cat = Array.isArray(msg.category) ? msg.category[0] : msg.category
-      const config = typeof msg.style_config === 'string' ? JSON.parse(msg.style_config || '{}') : (msg.style_config || {})
       const durationSecs = msg.is_reserved_slot && msg.scheduled_end && msg.scheduled_start
         ? Math.max(0, Math.floor((new Date(msg.scheduled_end).getTime() - new Date(msg.scheduled_start).getTime()) / 1000))
-        : (config.durationSecs || cat?.base_duration || defaultDuration)
+        : getMessageDurationSecs(msg)
       return { ...msg, category: cat, durationSecs }
     }
 
-    if (nMsg) initialNormalMsg = processMsg(nMsg, 3600)
-    if (sMsg) initialSpecialMsg = processMsg(sMsg, 10800)
-    if (spMsgs.length > 0) initialSponsoredMsgs = spMsgs.map(m => processMsg(m, 1800))
+    if (nMsg) initialNormalMsg = processMsg(nMsg)
+    if (sMsg) initialSpecialMsg = processMsg(sMsg)
+    if (spMsgs.length > 0) initialSponsoredMsgs = spMsgs.map(m => processMsg(m))
   }
 
   return (

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
@@ -30,6 +30,27 @@ import { InlineInteractions } from './InlineInteractions'
 export interface VipSpecialViewProps {
   activeSpecialMsg: any | null
   upcomingVipQueue: any[]
+}
+
+// A booking matches a slot card only when it falls inside that card's exact
+// UTC day window — hour-only matching wrongly blocked the same slot number on
+// all 15 browsable days.
+function isBookedOnDay(
+  queue: any[],
+  def: { startHour: number; endHour: number },
+  day: Date
+): boolean {
+  const windowStart = Date.UTC(
+    day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), def.startHour, 0, 0, 0
+  )
+  const windowEnd = Date.UTC(
+    day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), def.endHour, 0, 0, 0
+  )
+  return queue.some(item => {
+    if (!item.scheduled_start) return false
+    const t = new Date(item.scheduled_start).getTime()
+    return t >= windowStart && t < windowEnd
+  })
 }
 
 // Simple, marketing-friendly labels for each 3-hour slot
@@ -111,6 +132,8 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [copiedLink, setCopiedLink] = useState(false)
   const [activeTabMode, setActiveTabMode] = useState<'ASTROLABE' | 'TIMELINE'>('ASTROLABE')
+  // Fires the expiry advance exactly once per active message (not every 1s tick).
+  const advanceFiredForRef = useRef<string | null>(null)
 
   // Interactive preview state
   const [simulatorOpen, setSimulatorOpen] = useState(false)
@@ -151,7 +174,11 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
         const rem = Math.max(0, Math.floor((endMs - Date.now()) / 1000))
         setTimeLeft(rem)
         if (rem === 0) {
-          fetch('/api/queue/advance', { method: 'POST' }).catch(() => {})
+          const msgId = activeSpecialMsg.id || 'unknown'
+          if (advanceFiredForRef.current !== msgId) {
+            advanceFiredForRef.current = msgId
+            fetch('/api/queue/advance', { method: 'POST' }).catch(() => {})
+          }
         }
       } else {
         // Calculate remaining seconds in current 3-hour sector
@@ -199,10 +226,19 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
   }, [selectedSlotNumber])
 
   const selectedSlotBookedItem = useMemo(() => {
+    const today = new Date()
     return upcomingVipQueue.find(item => {
       if (!item.scheduled_start) return false
-      const hour = new Date(item.scheduled_start).getUTCHours()
-      return hour >= selectedSlotDef.startHour && hour < selectedSlotDef.endHour
+      const t = new Date(item.scheduled_start).getTime()
+      const windowStart = Date.UTC(
+        today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(),
+        selectedSlotDef.startHour, 0, 0, 0
+      )
+      const windowEnd = Date.UTC(
+        today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(),
+        selectedSlotDef.endHour, 0, 0, 0
+      )
+      return t >= windowStart && t < windowEnd
     })
   }, [upcomingVipQueue, selectedSlotDef])
 
@@ -692,11 +728,7 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
                     const isSelected = selectedSlotNumber === def.slotNumber
                     const isLive = currentLiveSlotDef.slotNumber === def.slotNumber
                     
-                    const booked = upcomingVipQueue.some(item => {
-                      if (!item.scheduled_start) return false
-                      const h = new Date(item.scheduled_start).getUTCHours()
-                      return h >= def.startHour && h < def.endHour
-                    })
+                    const booked = isBookedOnDay(upcomingVipQueue, def, new Date())
 
                     return (
                       <g
@@ -862,8 +894,9 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
                 {selectedSlotBookedItem ? (
                   <div className="p-3 rounded-lg bg-background border border-primary/10 text-xs font-mono">
                     <span className="text-secondary block mb-1">Coming up:</span>
-                    <span className="font-serif italic text-primary text-sm">
-                      &ldquo;{selectedSlotBookedItem.content?.slice(0, 50)}...&rdquo;
+                    <span className="text-secondary/60 select-none" aria-label="Message hidden until live">
+                      {"•".repeat(24)}
+                      <span className="block text-[10px] mt-1">Revealed when live</span>
                     </span>
                   </div>
                 ) : (
@@ -886,10 +919,19 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             {FIXED_3H_SLOT_DEFINITIONS.map((def) => {
               const isLive = currentLiveSlotDef.slotNumber === def.slotNumber
+              const today = new Date()
+              const windowStart = Date.UTC(
+                today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(),
+                def.startHour, 0, 0, 0
+              )
+              const windowEnd = Date.UTC(
+                today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(),
+                def.endHour, 0, 0, 0
+              )
               const booked = upcomingVipQueue.find(item => {
                 if (!item.scheduled_start) return false
-                const h = new Date(item.scheduled_start).getUTCHours()
-                return h >= def.startHour && h < def.endHour
+                const t = new Date(item.scheduled_start).getTime()
+                return t >= windowStart && t < windowEnd
               })
 
               const meta = QUADRANT_METADATA.find(q => q.slot === def.slotNumber)
@@ -944,8 +986,8 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
 
                   <div className="mt-3 pt-2.5 border-t border-violet-500/15 flex items-center justify-between text-xs font-mono">
                     {booked ? (
-                      <span className="text-[10px] text-secondary font-serif italic truncate max-w-[170px]">
-                        &ldquo;{booked.content?.slice(0, 20)}...&rdquo;
+                      <span className="text-[10px] text-secondary/60 font-mono truncate max-w-[170px] select-none" aria-label="Message hidden until live">
+                        {"•".repeat(12)}
                       </span>
                     ) : (
                       <>

@@ -26,6 +26,10 @@ export function ShareMenu({
     : 'border-black/10 dark:border-white/15 hover:border-black/20 dark:hover:border-white/30 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-neutral-800 dark:text-neutral-200'
   )
 
+  const safeCapture = (event: string, props?: Record<string, unknown>) => {
+    try { posthog.capture(event, props) } catch {}
+  }
+
   const handleNativeShare = async () => {
     if (navigator.share) {
       try {
@@ -34,7 +38,7 @@ export function ShareMenu({
           text: text,
           url: url,
         })
-        posthog.capture('message_shared', { method: 'native' })
+        safeCapture('message_shared', { method: 'native' })
       } catch (err) {
         // user cancelled or failed
       }
@@ -46,20 +50,20 @@ export function ShareMenu({
   const copyToClipboard = async () => {
     await navigator.clipboard.writeText(url)
     setCopied(true)
-    posthog.capture('message_shared', { method: 'clipboard' })
+    safeCapture('message_shared', { method: 'clipboard' })
     setTimeout(() => setCopied(false), 2000)
     setIsOpen(false)
   }
 
   const shareTwitter = () => {
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank')
-    posthog.capture('message_shared', { method: 'twitter' })
+    safeCapture('message_shared', { method: 'twitter' })
     setIsOpen(false)
   }
 
   const shareFacebook = () => {
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank')
-    posthog.capture('message_shared', { method: 'facebook' })
+    safeCapture('message_shared', { method: 'facebook' })
     setIsOpen(false)
   }
 

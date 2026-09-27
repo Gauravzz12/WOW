@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Lock } from 'lucide-react'
@@ -7,6 +8,10 @@ import { CommentSection } from './CommentSection'
 import { ReactionBar } from './ReactionBar'
 import { MessageViewTracker } from './MessageViewTracker'
 import { SponsorShoutoutEditor } from './SponsorShoutoutEditor'
+import {
+  sponsorTokenCookieName,
+  verifySponsorEditToken,
+} from '@/lib/sponsorToken'
 import { ShareMenu } from '@/components/ShareMenu'
 import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { getSponsoredTeaser } from '@/lib/masking'
@@ -188,6 +193,17 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
   const shareText = `"${message.content}"\n\n${categoryName} on Words of the World`
   const shareUrl = `https://words.world/w/${message.id}`
   const isJustSponsored = searchParams?.justSponsored === '1'
+
+  // Shoutout editor is sponsor-only: verified via the edit token issued at
+  // sponsorship time. Everyone else sees the static attribution above.
+  const sponsorToken = cookies().get(sponsorTokenCookieName(message.id))?.value
+  const canEditShoutout =
+    !(message as any).is_reserved_slot &&
+    ((message as any).bid_amount ?? 0) < 2 &&
+    ((message as any).status === 'QUEUED' ||
+      (message as any).status === 'ACTIVE' ||
+      (message as any).status === 'COMPLETED') &&
+    (await verifySponsorEditToken(message.id, sponsorToken))
   
   const { borderClass: borderColor, accentClass: catTextColor, badgeClass } = getCategoryStyles(categorySlug)
   const { 
@@ -268,8 +284,8 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
             </div>
           )}
 
-          {/* Post-pay shoutout: sponsor decides on teaser, writes dedication after full reveal */}
-          {!(message as any).is_reserved_slot && ((message as any).bid_amount ?? 0) < 2 && ((message as any).status === 'QUEUED' || (message as any).status === 'ACTIVE' || (message as any).status === 'COMPLETED') && (
+          {/* Post-pay shoutout: sponsor-only editor (token-gated), writes dedication after full reveal */}
+          {canEditShoutout && (
             <div className="mb-8 max-w-xl mx-auto text-left">
               <SponsorShoutoutEditor
                 messageId={(message as any).id}

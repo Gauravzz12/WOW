@@ -1,8 +1,13 @@
 'use server'
 
+import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { calculateSpecialPrice, calculateNormalMinBid } from '@/lib/constants/pricing'
+import {
+  issueSponsorEditToken,
+  sponsorTokenCookieName,
+} from '@/lib/sponsorToken'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -282,6 +287,22 @@ export async function processPayment(
 
     revalidatePath('/')
     revalidatePath('/waiting-room')
+
+    // Sponsor edit token: lets this browser (and only it) edit the shoutout
+    // later. Raw token in an httpOnly cookie, hash stored server-side.
+    if (isSponsorMode) {
+      try {
+        const token = await issueSponsorEditToken(messageId)
+        cookies().set(sponsorTokenCookieName(messageId), token, {
+          path: '/',
+          maxAge: 30 * 24 * 60 * 60,
+          sameSite: 'lax',
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+        })
+      } catch {}
+    }
+
     return { success: true }
   }
 }

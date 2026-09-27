@@ -1,7 +1,12 @@
 'use server'
 
+import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
+import {
+  sponsorTokenCookieName,
+  verifySponsorEditToken,
+} from '@/lib/sponsorToken'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,15 +14,31 @@ const supabaseAdmin = createClient(
 )
 
 /**
- * Post-pay shoutout edit: sponsor pays on a locked teaser, then sees the full
- * message and can add/edit their 12-word dedication + name.
- * Anonymous model (like comments/reactions) — anyone can set it on a sponsored
- * (bid < 2, non-reserved, paid) message. Pre-pay value is optional and editable.
+ * Post-pay shoutout edit: the sponsor pays on a locked teaser, then sees the
+ * full message and can add/edit their 12-word dedication + name.
+ * Gated by a per-message edit token issued at sponsorship time (stored hashed
+ * server-side, raw value in the sponsor's httpOnly cookie). Without it, anyone
+ * could deface any message's attribution.
  */
 export async function updateSponsorShoutout(
   messageId: string,
   data: { sponsorName?: string; sponsorNote?: string }
 ) {
+  if (!messageId) {
+    return { error: 'Message not found.' }
+  }
+  if (
+    (data.sponsorName !== undefined && typeof data.sponsorName !== 'string') ||
+    (data.sponsorNote !== undefined && typeof data.sponsorNote !== 'string')
+  ) {
+    return { error: 'Invalid shoutout.' }
+  }
+
+  const token = cookies().get(sponsorTokenCookieName(messageId))?.value
+  if (!(await verifySponsorEditToken(messageId, token))) {
+    return { error: 'Only the sponsor of this message can edit this shoutout.' }
+  }
+
   const { data: msg, error: fetchError } = await supabaseAdmin
     .from('messages')
     .select('id, status, bid_amount, is_reserved_slot, style_config')

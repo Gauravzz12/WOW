@@ -164,7 +164,6 @@ export function QueueTabs({
                 globalQueue.map((msg, i) => {
                   const catName = getCategoryName(msg)
                   const isFirst = i === 0
-                  const snippet = msg.content ? msg.content.replace(/<[^>]*>/g, '').trim() : ''
 
                   return (
                     <div 
@@ -195,12 +194,11 @@ export function QueueTabs({
                         </div>
                       </div>
 
-                      {/* Content snippet */}
-                      {snippet && (
-                        <p className="text-xs text-primary/80 line-clamp-2 my-2 font-serif italic pl-1 border-l-2 border-primary/20">
-                          &ldquo;{snippet}&rdquo;
-                        </p>
-                      )}
+                      {/* Masked preview — upcoming text stays hidden until live */}
+                      <p className="text-xs text-secondary/60 my-2 font-mono pl-1 border-l-2 border-primary/20 select-none" aria-label="Message hidden until live">
+                        {"•".repeat(18)}
+                        <span className="block text-[10px] mt-0.5">Revealed when live</span>
+                      </p>
 
                       {/* Priority Bid */}
                       <div className="flex items-center justify-between mt-2 bg-background-elevated/70 dark:bg-black/30 px-3 py-2 rounded-xl border border-primary/10">
@@ -239,7 +237,6 @@ export function QueueTabs({
               {specialQueue.length > 0 ? (
                 specialQueue.map((msg) => {
                   const catName = getCategoryName(msg)
-                  const snippet = msg.content ? msg.content.replace(/<[^>]*>/g, '').trim() : ''
 
                   return (
                       <div 
@@ -255,11 +252,11 @@ export function QueueTabs({
                         </span>
                       </div>
 
-                      {snippet && (
-                        <p className="text-xs text-primary/80 line-clamp-2 my-2 font-serif italic pl-1 border-l-2 border-violet-500/30">
-                          &ldquo;{snippet}&rdquo;
-                        </p>
-                      )}
+                      {/* Masked preview — upcoming text stays hidden until live */}
+                      <p className="text-xs text-secondary/60 my-2 font-mono pl-1 border-l-2 border-violet-500/30 select-none" aria-label="Message hidden until live">
+                        {"•".repeat(18)}
+                        <span className="block text-[10px] mt-0.5">Revealed when live</span>
+                      </p>
 
                       <div className="mt-2 text-center bg-background-elevated/70 dark:bg-black/30 py-2.5 px-3 rounded-xl border border-violet-500/20 space-y-1">
                         <span className="text-[9px] text-violet-800 dark:text-violet-300/90 uppercase tracking-widest font-semibold block">
