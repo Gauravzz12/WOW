@@ -1,0 +1,260 @@
+import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { notFound } from 'next/navigation'
+import Link from 'next/link'
+import { ArrowLeft, Lock } from 'lucide-react'
+import { CommentSection } from './CommentSection'
+import { ReactionBar } from './ReactionBar'
+import { MessageViewTracker } from './MessageViewTracker'
+import { SponsorShoutoutEditor } from './SponsorShoutoutEditor'
+import { ShareMenu } from '@/components/ShareMenu'
+import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
+import { getSponsoredTeaser } from '@/lib/masking'
+
+export const dynamic = 'force-dynamic'
+
+export async function generateMetadata({ params }: { params: { id: string } }) {
+  const supabase = createClient()
+  const { data: message } = await supabase
+    .from('messages')
+    .select('content, status, category:categories(name)')
+    .eq('id', params.id)
+    .single()
+
+  if (!message) return { title: 'Not Found' }
+
+  // Paywall: PENDING_PAYMENT rows are invisible to anon RLS (null here).
+  // Even if visible, never put full unpaid content in metadata/crawlers.
+  if ((message as any).status === 'PENDING_PAYMENT') {
+    return {
+      title: 'Locked message — sponsor to reveal | Words.World',
+      description: 'This community message is waiting for sponsorship. Pay $1 to broadcast it.',
+    }
+  }
+
+  return {
+    title: `"${message.content}" on Words.World`,
+    description: `A ${(message.category as any)?.name || 'message'} broadcasted to the world.`,
+  }
+}
+
+export default async function MessageMemoryPage({ params, searchParams }: { params: { id: string }, searchParams?: { [key: string]: string | string[] | undefined } }) {
+  const supabase = createClient()
+
+  const { data: message, error } = await supabase
+    .from('messages')
+    .select(`
+      id,
+      content,
+      template_id,
+      status,
+      bid_amount,
+      is_reserved_slot,
+      created_at,
+      actual_start,
+      actual_end,
+      style_config,
+      category:categories(name, slug)
+    `)
+    .eq('id', params.id)
+    .single()
+
+  if (error || !message) {
+    // Anon RLS hides PENDING_PAYMENT (returns no row). Check via admin to render
+    // a locked paywall instead of leaking existence details, without exposing content.
+    try {
+      const admin = createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
+      const { data: locked } = await admin
+        .from('messages')
+        .select('id, status, created_at, category:categories(name, slug)')
+        .eq('id', params.id)
+        .single()
+      if (locked && (locked as any).status === 'PENDING_PAYMENT') {
+        const catName = (locked.category as any)?.name || 'MESSAGE'
+        return (
+          <div className="min-h-screen bg-background text-primary flex flex-col">
+            <header className="p-6">
+              <Link href="/waiting-room" className="inline-flex items-center text-secondary hover:text-primary transition-colors">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Waiting Room
+              </Link>
+            </header>
+            <main className="flex-1 max-w-2xl w-full mx-auto p-4 md:p-8">
+              <div className="bg-background-elevated border border-primary/10 rounded-2xl p-8 md:p-12 text-center shadow-lg">
+                <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
+                  <Lock size={20} />
+                </div>
+                <p className="text-xs uppercase tracking-widest text-secondary font-bold">{catName} • Locked</p>
+                <h1 className="text-2xl font-serif mt-2">This message is waiting for sponsorship</h1>
+                <p className="text-sm text-secondary mt-2">Pay $1 to broadcast the full message worldwide. The preview stays locked until then.</p>
+                <Link href={`/checkout/${locked.id}?mode=sponsor`} className="inline-block mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-sm font-bold transition-colors">
+                  Sponsor for $1 to reveal
+                </Link>
+              </div>
+            </main>
+          </div>
+        )
+      }
+    } catch {}
+    notFound()
+  }
+
+  // Defense-in-depth: even if RLS is bypassed, never render unpaid content here.
+  if ((message as any).status === 'PENDING_PAYMENT') {
+    const { teaser } = getSponsoredTeaser((message as any).content || '')
+    const categoryNameLocked = (message.category as any)?.name || 'MESSAGE'
+    return (
+      <div className="min-h-screen bg-background text-primary flex flex-col">
+        <header className="p-6">
+          <Link href="/waiting-room" className="inline-flex items-center text-secondary hover:text-primary transition-colors">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Waiting Room
+          </Link>
+        </header>
+        <main className="flex-1 max-w-2xl w-full mx-auto p-4 md:p-8">
+          <div className="bg-background-elevated border border-primary/10 rounded-2xl p-8 md:p-12 text-center shadow-lg">
+            <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
+              <Lock size={20} />
+            </div>
+            <p className="text-xs uppercase tracking-widest text-secondary font-bold">{categoryNameLocked} • Locked preview</p>
+            <p className="font-serif italic text-lg mt-3">&ldquo;{teaser}&hellip;&rdquo;</p>
+            <p className="text-sm text-secondary mt-2">Full message reveals after sponsorship.</p>
+            <Link href={`/checkout/${(message as any).id}?mode=sponsor`} className="inline-block mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-sm font-bold transition-colors">
+              Sponsor for $1 to reveal
+            </Link>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  const categoryName = (message.category as any)?.name || 'MESSAGE'
+  const categorySlug = (message.category as any)?.slug || 'general'
+  const shareText = `"${message.content}"\n\n${categoryName} on Words of the World`
+  const shareUrl = `https://words.world/w/${message.id}`
+  
+  const { borderClass: borderColor, accentClass: catTextColor, badgeClass } = getCategoryStyles(categorySlug)
+  const { 
+    bg, 
+    textColor, 
+    cardBorder, 
+    isVip, 
+    isDarkCard, 
+    inlineColor, 
+    sponsorStyle, 
+    sponsorLabelStyle, 
+    sponsorNameStyle, 
+    sponsorNoteStyle 
+  } = resolveCardStyles(message.style_config, message.template_id)
+
+  return (
+    <div className="min-h-screen bg-background text-primary flex flex-col">
+      <MessageViewTracker messageId={message.id} categoryName={(message.category as any)?.name} />
+      <header className="p-6">
+        <Link href="/" className="inline-flex items-center text-secondary hover:text-primary transition-colors">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to World
+        </Link>
+      </header>
+      
+      <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-8 space-y-12">
+        
+        {/* Message Presentation */}
+        <div className={`${bg || 'bg-background-elevated'} border ${cardBorder || message.style_config?.cardBorder || borderColor} rounded-2xl p-8 md:p-16 text-center shadow-lg relative overflow-hidden transition-colors`}>
+          {message.status === 'ACTIVE' && (
+            <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-600 text-xs font-bold uppercase tracking-widest rounded-full">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              Live Now
+            </div>
+          )}
+          
+          <div className="flex flex-col items-center gap-2 mb-8">
+            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border shadow-sm backdrop-blur-md ${isVip ? 'bg-amber-400/20 border-amber-400/40 text-amber-300' : badgeClass}`}>
+              {categoryName}
+            </span>
+
+            {message.style_config?.vipBadge && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-widest uppercase bg-amber-400/20 border border-amber-400/40 text-amber-300 shadow-md">
+                <span>{message.style_config.vipIcon || '✦'}</span>
+                <span>{message.style_config.vipBadge}</span>
+              </span>
+            )}
+          </div>
+          
+          <h1 className={`text-4xl md:text-6xl ${message.style_config?.font || 'font-serif italic'} leading-tight mb-8 ${textColor}`} style={{ color: inlineColor }}>
+            &quot;{message.content}&quot;
+          </h1>
+
+          {/* Brand Showcase Link if present */}
+          {message.style_config?.brandUrl && (
+            <div className="mb-8">
+              <a 
+                href={message.style_config.brandUrl.startsWith('http') ? message.style_config.brandUrl : `https://${message.style_config.brandUrl}`}
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-700 dark:text-cyan-300 text-sm font-semibold shadow-sm transition-all hover:scale-105"
+              >
+                <span>{message.style_config.brandName || 'Visit Showcase'}</span>
+                <span>↗</span>
+              </a>
+            </div>
+          )}
+
+          {/* Sponsor Attribution */}
+          {(message.style_config?.sponsorName || message.style_config?.sponsorNote) && (
+            <div className={`mb-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-2 rounded-2xl border text-xs shadow-sm backdrop-blur-md max-w-xl text-center ${sponsorStyle}`}>
+              <span className="text-amber-500 shrink-0">✨</span>
+              <span className={`${sponsorLabelStyle} text-[10px] uppercase font-bold tracking-wider shrink-0`}>Sponsored by</span>
+              <span className={`font-semibold shrink-0 ${sponsorNameStyle}`}>{message.style_config.sponsorName || 'Community Supporter'}</span>
+              {message.style_config.sponsorNote && (
+                <span className={`${sponsorNoteStyle} italic break-words`}>&mdash; &ldquo;{message.style_config.sponsorNote}&rdquo;</span>
+              )}
+            </div>
+          )}
+
+          {/* Post-pay shoutout: sponsor decides on teaser, writes dedication after full reveal */}
+          {!(message as any).is_reserved_slot && ((message as any).bid_amount ?? 0) < 2 && ((message as any).status === 'QUEUED' || (message as any).status === 'ACTIVE' || (message as any).status === 'COMPLETED') && (
+            <div className="mb-8 max-w-xl mx-auto text-left">
+              <SponsorShoutoutEditor
+                messageId={(message as any).id}
+                initialName={(message as any).style_config?.sponsorName || ''}
+                initialNote={(message as any).style_config?.sponsorNote || ''}
+                justSponsored={searchParams?.justSponsored === '1'}
+              />
+            </div>
+          )}
+          
+          <div className="text-sm text-secondary flex flex-col items-center gap-6">
+            <div>
+              {message.actual_start ? (
+                <p suppressHydrationWarning>Broadcasted on {new Date(message.actual_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</p>
+              ) : (
+                <p>Status: {message.status}</p>
+              )}
+            </div>
+            <ShareMenu url={shareUrl} text={shareText} isVip={isVip} isDark={isDarkCard} />
+          </div>
+        </div>
+
+        {/* Interaction Zone */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
+          {/* Reactions */}
+          <div className="md:col-span-5 space-y-6">
+            <h2 className="text-xl font-serif">Reactions</h2>
+            <ReactionBar messageId={message.id} />
+          </div>
+
+          {/* Comments */}
+          <div className="md:col-span-7 space-y-6">
+            <h2 className="text-xl font-serif">Comments</h2>
+            <CommentSection messageId={message.id} />
+          </div>
+        </div>
+
+      </main>
+    </div>
+  )
+}

@@ -1,113 +1,143 @@
-import Image from "next/image";
+import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+import Link from 'next/link'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import { MainFeedContainer } from '@/components/MainFeedContainer'
+import { Suspense } from 'react'
+import { runQueueAdvance } from '@/lib/queueAdvance'
+import { toLockedSponsoredCard } from '@/lib/masking'
 
-export default function Home() {
+export const dynamic = 'force-dynamic'
+
+export default async function Home() {
+  // Advance queue so expired messages are archived and due messages are promoted before initial load
+  await runQueueAdvance().catch((err) => {
+    console.error('[page] runQueueAdvance error:', err)
+  })
+
+  const supabase = createClient()
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  // Fetch all initial data in parallel to minimize Server Response Time (TTFB)
+  // NOTE paywall: anon RLS can no longer read PENDING_PAYMENT. Paid QUEUED sponsored
+  // (bid<2) remain readable with full content (safe — already paid). Unpaid rows are
+  // fetched via service-role and masked to teasers only — full text never leaves server.
+  const [
+    { data: categories },
+    { data: globalQueue },
+    { data: specialQueue },
+    { data: sponsoredPaidQueue },
+    { data: sponsoredPendingRaw },
+    { data: leaderboardQueue },
+    { data: activeMessages }
+  ] = await Promise.all([
+    supabase.from('categories').select('id, slug, name').order('name'),
+    supabase
+      .from('messages')
+      .select('id, content, created_at, bid_amount, category:categories(name, slug)')
+      .eq('status', 'QUEUED')
+      .eq('is_reserved_slot', false)
+      .gte('bid_amount', 2)
+      .order('bid_amount', { ascending: false })
+      .order('created_at', { ascending: true })
+      .limit(5),
+    supabase
+      .from('messages')
+      .select('id, content, created_at, scheduled_start, scheduled_end, bid_amount, category:categories(name, slug)')
+      .eq('status', 'QUEUED')
+      .eq('is_reserved_slot', true)
+      .order('created_at', { ascending: true })
+      .limit(5),
+    supabase
+      .from('messages')
+      .select('id, content, created_at, bid_amount, category:categories(name, slug)')
+      .eq('status', 'QUEUED')
+      .eq('is_reserved_slot', false)
+      .lt('bid_amount', 2)
+      .order('created_at', { ascending: true })
+      .limit(25),
+    supabaseAdmin
+      .from('messages')
+      .select('id, content, created_at, bid_amount, category:categories(name, slug)')
+      .eq('status', 'PENDING_PAYMENT')
+      .eq('is_reserved_slot', false)
+      .order('created_at', { ascending: true })
+      .limit(100),
+    supabase.rpc('get_leaderboard'),
+    supabase
+      .from('messages')
+      .select('id, content, actual_start, scheduled_start, scheduled_end, is_reserved_slot, style_config, bid_amount, template_id, category:categories(name, slug, base_duration)')
+      .eq('status', 'ACTIVE')
+      .order('actual_start', { ascending: false })
+      .limit(20)
+  ])
+
+  // Mask unpaid rows: drop `content`, keep teaser + length only.
+  const sponsoredPendingTeasers = (sponsoredPendingRaw || []).map((msg: any) =>
+    toLockedSponsoredCard({
+      id: msg.id,
+      content: msg.content || '',
+      bid_amount: msg.bid_amount,
+      created_at: msg.created_at,
+      category: msg.category,
+    })
+  )
+  // Homepage queue = paid QUEUED sponsored (full, safe) + locked pending teasers.
+  const sponsoredQueue = [...(sponsoredPaidQueue || []), ...sponsoredPendingTeasers]
+
+  let initialNormalMsg = null
+  let initialSpecialMsg = null
+  let initialSponsoredMsgs: any[] = []
+
+  if (activeMessages) {
+    const isNotExpired = (msg: any) => {
+      const cat = Array.isArray(msg.category) ? msg.category[0] : msg.category
+      const config = typeof msg.style_config === 'string' ? JSON.parse(msg.style_config || '{}') : (msg.style_config || {})
+      // Consistent threshold: normal = bid >= 2, sponsored = bid < 2
+      const duration = config.durationSecs || cat?.base_duration || (msg.is_reserved_slot ? 10800 : msg.bid_amount < 2 ? 1800 : 3600)
+      const endTime = msg.is_reserved_slot && msg.scheduled_end
+        ? new Date(msg.scheduled_end).getTime()
+        : (msg.actual_start ? new Date(msg.actual_start).getTime() + duration * 1000 : Date.now() + 1000)
+      return Date.now() <= endTime
+    }
+
+    const nMsg = activeMessages.find(m => !m.is_reserved_slot && m.bid_amount >= 2 && isNotExpired(m))
+    const sMsg = activeMessages.find(m => m.is_reserved_slot && isNotExpired(m))
+    const spMsgs = activeMessages.filter(m => !m.is_reserved_slot && m.bid_amount < 2 && isNotExpired(m)).slice(0, 20)
+
+    const processMsg = (msg: any, defaultDuration: number) => {
+      const cat = Array.isArray(msg.category) ? msg.category[0] : msg.category
+      const config = typeof msg.style_config === 'string' ? JSON.parse(msg.style_config || '{}') : (msg.style_config || {})
+      const durationSecs = msg.is_reserved_slot && msg.scheduled_end && msg.scheduled_start
+        ? Math.max(0, Math.floor((new Date(msg.scheduled_end).getTime() - new Date(msg.scheduled_start).getTime()) / 1000))
+        : (config.durationSecs || cat?.base_duration || defaultDuration)
+      return { ...msg, category: cat, durationSecs }
+    }
+
+    if (nMsg) initialNormalMsg = processMsg(nMsg, 3600)
+    if (sMsg) initialSpecialMsg = processMsg(sMsg, 10800)
+    if (spMsgs.length > 0) initialSponsoredMsgs = spMsgs.map(m => processMsg(m, 1800))
+  }
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+    <main className="min-h-screen bg-background text-primary flex flex-col md:flex-row overflow-hidden relative">
+      
+      {/* Left Sidebar is now managed by MainFeedContainer */}
 
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
+      <Suspense fallback={null}>
+        <MainFeedContainer 
+          initialNormalMsg={initialNormalMsg}
+          initialSpecialMsg={initialSpecialMsg}
+          initialSponsoredMsgs={initialSponsoredMsgs}
+          initialNormalQueue={globalQueue || []}
+          initialSpecialQueue={specialQueue || []}
+          initialSponsoredQueue={sponsoredQueue || []}
+          initialLeaderboardQueue={leaderboardQueue || []}
         />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
+      </Suspense>
     </main>
   );
 }

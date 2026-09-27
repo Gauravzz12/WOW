@@ -2,32 +2,121 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+@layer base {
+  :root {
+    --bg-default: 250 250 250;
+    --bg-muted: 244 244 245;
+    --bg-elevated: 255 255 255;
+    --text-primary: 9 9 9;
+    --text-secondary: 82 82 91;
+  }
+  
+  .dark {
+    --bg-default: 9 9 9;
+    --bg-muted: 17 17 17;
+    --bg-elevated: 24 24 24;
+    --text-primary: 250 250 250;
+    --text-secondary: 161 161 170;
+  }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+* {
+  caret-color: transparent;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  @apply bg-background text-primary antialiased;
+  cursor: default;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+/* General text retains the clean default arrow cursor instead of showing the I-beam typing cursor on hover, while remaining fully selectable and copyable */
+p, span, h1, h2, h3, h4, h5, h6, blockquote, div, section, article, time, li, td, th {
+  cursor: default;
+}
+
+/* Typing cursor and insertion caret ONLY at actual typing/input areas */
+input:not([type="button"]):not([type="submit"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+textarea,
+[contenteditable="true"],
+[contenteditable="true"] *,
+.ProseMirror,
+.ProseMirror *,
+.tiptap,
+.tiptap * {
+  cursor: text !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  caret-color: auto !important;
+}
+
+/* Interactive elements default to pointer cursor */
+button,
+a,
+[role="button"],
+label,
+select,
+summary {
+  cursor: pointer;
+}
+
+/* Preserve disabled state */
+button:disabled,
+input:disabled,
+textarea:disabled,
+[aria-disabled="true"],
+.cursor-not-allowed {
+  cursor: not-allowed !important;
+}
+
+/* Refined text selection highlight */
+::selection {
+  background-color: rgba(139, 92, 246, 0.25);
+  color: inherit;
+}
+
+.theme-transition,
+.theme-transition *,
+.theme-transition *:before,
+.theme-transition *:after {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke !important;
+  transition-duration: 500ms !important;
+  transition-timing-function: ease-in-out !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-background-elevated rounded-full;
+}
+
+/* Custom scrollbar utility */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128, 128, 128, 0.3) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply rounded-full;
+  background: rgba(128,128,128,0.25);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(128,128,128,0.5);
+}
+
+/* Fade-out mask at the bottom of scrollable containers */
+.mask-image-bottom {
+  -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
 }
