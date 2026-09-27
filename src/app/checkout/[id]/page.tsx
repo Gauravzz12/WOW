@@ -39,6 +39,31 @@ export default async function CheckoutPage({
   }
 
   const isSponsorMode = searchParams.mode === 'sponsor'
+
+  // VIP/Special (reserved) messages can never be sponsored — even via direct URL.
+  // Send sponsors back; owners check out without ?mode=sponsor.
+  if (isSponsorMode && (message as any).is_reserved_slot) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md mb-4">
+          <Link href="/" className="inline-flex items-center gap-2 text-secondary hover:text-primary text-sm transition-colors">
+            <ArrowLeft size={16} />
+            <span>Back to World</span>
+          </Link>
+        </div>
+        <div className="max-w-md w-full bg-background-elevated border border-primary/10 rounded-3xl p-8 shadow-2xl text-center">
+          <h1 className="text-2xl font-serif">Special messages can&apos;t be sponsored</h1>
+          <p className="text-sm text-secondary mt-2">
+            This is a ✦ Special (VIP) message with a reserved time slot. Sponsorship is only for normal community messages — the owner completes payment for specials.
+          </p>
+          <Link href={`/checkout/${message.id}`} className="inline-block mt-6 px-6 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-full text-sm font-bold transition-colors">
+            Go to owner checkout
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   const categoryName = (message.category as any)?.name || 'Message'
   // Paywall: never render full content. Sponsors see a short teaser + length only.
   // Full text unlocks after the $1 payment moves the row to QUEUED/ACTIVE.

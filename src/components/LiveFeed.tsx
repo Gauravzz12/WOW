@@ -307,7 +307,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
                 <div className={`mb-2 relative z-10 mx-auto flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-1.5 rounded-2xl border shadow-sm text-xs backdrop-blur-md max-w-xl text-center ${sponsorStyle}`}>
                   <span className="text-amber-500 shrink-0">✨</span>
                   <span className={`${sponsorLabelStyle} text-[10px] uppercase font-bold tracking-wider shrink-0`}>Sponsored by</span>
-                  <span className={`font-semibold shrink-0 ${sponsorNameStyle}`}>{message.style_config.sponsorName || 'Community Supporter'}</span>
+                  <span className={`font-semibold shrink-0 ${sponsorNameStyle}`}>{message.style_config.sponsorName || 'Community'}</span>
                   {message.style_config.sponsorNote && (
                     <span className={`${sponsorNoteStyle} italic break-words`}>&mdash; &ldquo;{message.style_config.sponsorNote}&rdquo;</span>
                   )}

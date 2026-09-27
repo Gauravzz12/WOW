@@ -25,7 +25,6 @@ import { SlotPicker, Slot } from '@/components/SlotPicker';
 
 import {
   ALL_TEMPLATES,
-  VIP_SPECIAL_TEMPLATES,
   STANDARD_TEMPLATES,
   CATEGORY_METADATA,
   Template
@@ -81,7 +80,6 @@ export default function CreateMessage() {
   useEffect(() => {
     if (tierParam === 'special' || slotParam) {
       setIsReserved(true);
-      setTemplate('v1');
     }
   }, [tierParam, slotParam]);
   const [stickers, setStickers] = useState<Sticker[]>([]);
@@ -347,9 +345,6 @@ export default function CreateMessage() {
                         type="button"
                         onClick={() => { 
                           setCategory(cat.slug); 
-                          // Set default template recommendation for this category
-                          const rec = VIP_SPECIAL_TEMPLATES.find(v => v.categoryFit?.includes(cat.slug));
-                          if (rec) setTemplate(rec.id);
                           handleNext(); 
                         }}
                         className={`group relative text-left p-4 rounded-2xl border transition-all duration-200 active:scale-[0.98] flex flex-col justify-between overflow-hidden ${
@@ -380,9 +375,9 @@ export default function CreateMessage() {
                           )}
                         </div>
 
-                        {cat.description && (
+                        {(cat.description || meta.tagline) && (
                           <p className="text-xs text-secondary line-clamp-2 leading-relaxed">
-                            {cat.description}
+                            {cat.description || meta.tagline}
                           </p>
                         )}
                       </button>
@@ -567,86 +562,16 @@ export default function CreateMessage() {
             </motion.div>
           )}
 
-          {/* STEP 3: TEMPLATES (VIP SPECIAL SLOTS & CLASSIC) */}
+          {/* STEP 3: TEMPLATES (CLASSIC) */}
           {step === 3 && (
             <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex flex-col h-full">
               <div className="mb-6">
                 <span className="text-xs uppercase tracking-widest font-bold text-secondary">Step 3 of 5</span>
                 <h2 className="text-2xl sm:text-3xl font-serif mt-1 mb-2">Select Your Visual Style</h2>
-                <p className="text-secondary text-sm">Pick a premium Special look or a classic style.</p>
+                <p className="text-secondary text-sm">Pick a classic style.</p>
               </div>
 
-              {/* ✦ SECTION 1: SPECIAL EXCLUSIVE TEMPLATES */}
-              <div className="mb-8 p-4 sm:p-5 rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 via-background-elevated/40 to-background-elevated/20 shadow-md">
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-amber-500 text-lg">✦</span>
-                    <div>
-                      <h3 className="text-sm font-bold uppercase tracking-wider text-amber-500">
-                        Special designs
-                      </h3>
-                      <p className="text-[11px] text-secondary">
-                        Made for birthdays, proposals & launches · 3 hours live, no bidding
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
-                    3 hours · $30
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {VIP_SPECIAL_TEMPLATES.map(t => {
-                    const isSelected = template === t.id;
-                    const isRec = t.categoryFit?.includes(category);
-                    const tStyles = resolveCardStyles({ bg: t.bg, textColor: t.textColor, cardBorder: t.cardBorder, isVip: true }, t.id);
-
-                    return (
-                      <button 
-                        key={t.id}
-                        type="button"
-                        onClick={() => handleSelectTemplate(t)}
-                        className={`group relative text-left p-4 rounded-2xl border transition-all duration-200 overflow-hidden ${tStyles.bg} ${
-                          isSelected 
-                            ? 'ring-2 ring-amber-400 border-amber-400 shadow-xl scale-[1.01]' 
-                            : 'border-white/10 hover:border-amber-400/40 shadow-sm'
-                        }`}
-                      >
-                        {isSelected && (
-                          <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-amber-400 text-black flex items-center justify-center shadow-md">
-                            <Check className="w-3 h-3 stroke-[3]" />
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-lg">{t.vipIcon}</span>
-                          <span className="text-xs font-bold uppercase tracking-wider text-amber-300">
-                            {t.vipBadge}
-                          </span>
-                        </div>
-
-                        <p 
-                          className={`text-xs sm:text-sm leading-relaxed line-clamp-3 mb-3 select-none ${t.font} ${tStyles.textColor}`}
-                          style={{ color: tStyles.inlineColor !== 'inherit' ? tStyles.inlineColor : undefined }}
-                        >
-                          &ldquo;{dummyMessage}&rdquo;
-                        </p>
-
-                        <div className="flex items-center justify-between pt-2 border-t border-white/10 text-[11px]">
-                          <span className="font-semibold text-white/90">{t.name}</span>
-                          {isRec && (
-                            <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-bold">
-                              ✦ Recommended
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* SECTION 2: CLASSIC EDITORIAL TEMPLATES */}
+              {/* CLASSIC EDITORIAL TEMPLATES */}
               <div className="mb-8">
                 <h3 className="text-xs uppercase tracking-widest font-bold text-secondary mb-3">
                   Classic Editorial Styles
@@ -933,7 +858,7 @@ export default function CreateMessage() {
                         <div className="mt-5 pt-4 border-t border-violet-500/20" onClick={(e) => e.stopPropagation()}>
                           <div className="mb-3">
                             <span className="text-xs font-bold text-violet-700 dark:text-violet-300 uppercase tracking-wider block">
-                              Pick your time (8 slots a day):
+                              Pick your time (8 slots a day, can span consecutive days):
                             </span>
                             <p className="text-[11px] text-secondary mt-0.5">
                               All times auto-show in your timezone.

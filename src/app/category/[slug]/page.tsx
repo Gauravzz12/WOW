@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Clock } from 'lucide-react'
+import { CATEGORY_METADATA } from '@/lib/constants/templates'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,7 +51,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-8 space-y-12">
         <div className="text-center space-y-4">
           <h1 className="text-4xl md:text-5xl font-serif">{category.name}</h1>
-          <p className="text-secondary text-lg">{category.description}</p>
+          <p className="text-secondary text-lg">{category.description || (CATEGORY_METADATA as any)[params.slug]?.tagline || ''}</p>
         </div>
 
         {/* Live Message Section */}

@@ -144,7 +144,7 @@ function SponsoredCard({ message }: { message: any }) {
               Sponsored by
             </span>
             <span className={`font-semibold truncate ${sponsorNameStyle}`}>
-              {message?.style_config?.sponsorName || 'Community Supporter'}
+              {message?.style_config?.sponsorName || 'Community'}
             </span>
           </div>
           {message?.style_config?.sponsorNote && (

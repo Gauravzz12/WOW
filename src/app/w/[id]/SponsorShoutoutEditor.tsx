@@ -32,7 +32,13 @@ export function SponsorShoutoutEditor({
       setError((res as any).error)
     } else {
       setSaved(true)
-      window.location.reload()
+      // After saving the shoutout, return to the Sponsored feed where the
+      // message is now live. Plain edits (not just-sponsored) stay in place.
+      if (justSponsored) {
+        window.location.href = '/?tab=SPONSORED'
+      } else {
+        window.location.reload()
+      }
     }
   }
 
@@ -47,7 +53,7 @@ export function SponsorShoutoutEditor({
       </div>
       {justSponsored && (
         <p className="text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 rounded-xl px-3 py-2">
-          Payment successful — full message revealed. Add or edit your dedication below, then join the comments.
+          Payment successful — full message revealed. Add or edit your dedication below.
         </p>
       )}
       <div>

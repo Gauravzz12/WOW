@@ -364,7 +364,8 @@ export function QueueTabs({
                         </span>
                       </div>
 
-                      {/* Instant Sponsor Action Button */}
+                      {/* Instant Sponsor Action Button — normal messages only, never VIP/Special */}
+                      {!msg.is_reserved_slot && (
                       <Link 
                         href={`/checkout/${msg.id}?mode=sponsor`}
                         className="mt-2.5 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors shadow-sm"
@@ -372,6 +373,7 @@ export function QueueTabs({
                         <HeartHandshake size={13} />
                         <span>Sponsor this for $1</span>
                       </Link>
+                      )}
                     </div>
                   )
                 })

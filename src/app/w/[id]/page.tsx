@@ -69,11 +69,37 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
       )
       const { data: locked } = await admin
         .from('messages')
-        .select('id, status, created_at, category:categories(name, slug)')
+        .select('id, status, is_reserved_slot, created_at, category:categories(name, slug)')
         .eq('id', params.id)
         .single()
       if (locked && (locked as any).status === 'PENDING_PAYMENT') {
         const catName = (locked.category as any)?.name || 'MESSAGE'
+        // VIP/Special (reserved) can never be sponsored for $1 — owner completes own checkout.
+        if ((locked as any).is_reserved_slot) {
+          return (
+            <div className="min-h-screen bg-background text-primary flex flex-col">
+              <header className="p-6">
+                <Link href="/" className="inline-flex items-center text-secondary hover:text-primary transition-colors">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to World
+                </Link>
+              </header>
+              <main className="flex-1 max-w-2xl w-full mx-auto p-4 md:p-8">
+                <div className="bg-background-elevated border border-primary/10 rounded-2xl p-8 md:p-12 text-center shadow-lg">
+                  <div className="w-12 h-12 rounded-full bg-violet-500/10 text-violet-500 flex items-center justify-center mx-auto mb-4 border border-violet-500/20">
+                    <Lock size={20} />
+                  </div>
+                  <p className="text-xs uppercase tracking-widest text-secondary font-bold">{catName} • Special • Locked</p>
+                  <h1 className="text-2xl font-serif mt-2">This special message is reserved</h1>
+                  <p className="text-sm text-secondary mt-2">Special (VIP) messages cannot be sponsored — the owner completes payment to broadcast.</p>
+                  <Link href={`/checkout/${locked.id}`} className="inline-block mt-6 px-6 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-full text-sm font-bold transition-colors">
+                    Complete payment to broadcast
+                  </Link>
+                </div>
+              </main>
+            </div>
+          )
+        }
         return (
           <div className="min-h-screen bg-background text-primary flex flex-col">
             <header className="p-6">
@@ -104,6 +130,32 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
 
   // Defense-in-depth: even if RLS is bypassed, never render unpaid content here.
   if ((message as any).status === 'PENDING_PAYMENT') {
+    // VIP/Special (reserved) can never be sponsored for $1.
+    if ((message as any).is_reserved_slot) {
+      return (
+        <div className="min-h-screen bg-background text-primary flex flex-col">
+          <header className="p-6">
+            <Link href="/" className="inline-flex items-center text-secondary hover:text-primary transition-colors">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to World
+            </Link>
+          </header>
+          <main className="flex-1 max-w-2xl w-full mx-auto p-4 md:p-8">
+            <div className="bg-background-elevated border border-primary/10 rounded-2xl p-8 md:p-12 text-center shadow-lg">
+              <div className="w-12 h-12 rounded-full bg-violet-500/10 text-violet-500 flex items-center justify-center mx-auto mb-4 border border-violet-500/20">
+                <Lock size={20} />
+              </div>
+              <p className="text-xs uppercase tracking-widest text-secondary font-bold">{(message.category as any)?.name || 'MESSAGE'} • Special • Locked</p>
+              <h1 className="text-2xl font-serif mt-2">This special message is reserved</h1>
+              <p className="text-sm text-secondary mt-2">Special (VIP) messages cannot be sponsored — the owner completes payment to broadcast.</p>
+              <Link href={`/checkout/${(message as any).id}`} className="inline-block mt-6 px-6 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-full text-sm font-bold transition-colors">
+                Complete payment to broadcast
+              </Link>
+            </div>
+          </main>
+        </div>
+      )
+    }
     const { teaser } = getSponsoredTeaser((message as any).content || '')
     const categoryNameLocked = (message.category as any)?.name || 'MESSAGE'
     return (
@@ -135,6 +187,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
   const categorySlug = (message.category as any)?.slug || 'general'
   const shareText = `"${message.content}"\n\n${categoryName} on Words of the World`
   const shareUrl = `https://words.world/w/${message.id}`
+  const isJustSponsored = searchParams?.justSponsored === '1'
   
   const { borderClass: borderColor, accentClass: catTextColor, badgeClass } = getCategoryStyles(categorySlug)
   const { 
@@ -208,7 +261,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
             <div className={`mb-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-2 rounded-2xl border text-xs shadow-sm backdrop-blur-md max-w-xl text-center ${sponsorStyle}`}>
               <span className="text-amber-500 shrink-0">✨</span>
               <span className={`${sponsorLabelStyle} text-[10px] uppercase font-bold tracking-wider shrink-0`}>Sponsored by</span>
-              <span className={`font-semibold shrink-0 ${sponsorNameStyle}`}>{message.style_config.sponsorName || 'Community Supporter'}</span>
+              <span className={`font-semibold shrink-0 ${sponsorNameStyle}`}>{message.style_config.sponsorName || 'Community'}</span>
               {message.style_config.sponsorNote && (
                 <span className={`${sponsorNoteStyle} italic break-words`}>&mdash; &ldquo;{message.style_config.sponsorNote}&rdquo;</span>
               )}
@@ -222,7 +275,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
                 messageId={(message as any).id}
                 initialName={(message as any).style_config?.sponsorName || ''}
                 initialNote={(message as any).style_config?.sponsorNote || ''}
-                justSponsored={searchParams?.justSponsored === '1'}
+                justSponsored={isJustSponsored}
               />
             </div>
           )}
@@ -239,7 +292,8 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
           </div>
         </div>
 
-        {/* Interaction Zone */}
+        {/* Interaction Zone — hidden right after sponsoring so Reactions/Comments don't auto-open */}
+        {!isJustSponsored && (
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
           {/* Reactions */}
           <div className="md:col-span-5 space-y-6">
@@ -253,6 +307,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
             <CommentSection messageId={message.id} />
           </div>
         </div>
+        )}
 
       </main>
     </div>

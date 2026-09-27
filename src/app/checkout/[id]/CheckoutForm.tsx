@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { processPayment } from './actions'
 import { SlotPicker, Slot } from '@/components/SlotPicker'
-import { Zap, AlertTriangle, CheckCircle2, Sparkles, HeartHandshake } from 'lucide-react'
+import { Zap, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { calculateSpecialPrice } from '@/lib/constants/pricing'
 
@@ -28,9 +28,6 @@ export function CheckoutForm({
   const [isEditingSlots, setIsEditingSlots] = useState(initialSlots.length === 0)
   const [currentBid, setCurrentBid] = useState(baseAmount)
   const [queueBids, setQueueBids] = useState<number[]>([])
-  const [sponsorName, setSponsorName] = useState('')
-  const [sponsorNote, setSponsorNote] = useState('')
-  const sponsorWords = sponsorNote.trim().length > 0 ? sponsorNote.trim().split(/\s+/).filter(Boolean).length : 0
   const router = useRouter()
   
   // Realtime queue monitoring on checkout to detect if someone outbid while checking out
@@ -83,12 +80,12 @@ export function CheckoutForm({
       isReservedSlot ? selectedSlots.map(s => s.id) : null, 
       total, 
       isSponsorMode,
-      isSponsorMode ? { sponsorName, sponsorNote } : undefined
+      undefined
     )
     
     if (result.success) {
       if (isSponsorMode) {
-        alert('Payment successful! Revealing the full message — you can add your shoutout and comments next.')
+        alert('Payment successful! Revealing the full message — you can add your shoutout next.')
         window.location.href = `/w/${messageId}?justSponsored=1`
         return
       }
@@ -110,84 +107,9 @@ export function CheckoutForm({
           <div className="p-3.5 bg-green-500/10 border border-green-500/25 rounded-2xl text-green-700 dark:text-green-400 text-xs font-medium text-center">
             You are paying for someone else&apos;s message. Thank you for broadcasting their voice!
           </div>
-
-          {/* Sponsor Tag & Small Note Field — optional pre-pay, editable after full reveal */}
-          <div className="p-4 bg-background rounded-2xl border border-primary/10 space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                <Sparkles size={13} className="text-amber-500" />
-                <span>Sponsor Shoutout (Optional)</span>
-              </label>
-              <span className="text-[10px] text-secondary font-mono">Editable after reveal</span>
-            </div>
-            <p className="text-[11px] text-secondary leading-relaxed">
-              You sponsor on a locked teaser. After $1 payment the full message is revealed and you can add or edit your dedication + join the comments on the message page.
-            </p>
-
-            <div className="space-y-2.5">
-              <div>
-                <label className="text-[11px] text-secondary block mb-1">Your Name / Organization</label>
-                <input
-                  type="text"
-                  value={sponsorName}
-                  onChange={(e) => setSponsorName(e.target.value.slice(0, 30))}
-                  placeholder="e.g. Sarah K. or Acme Labs"
-                  maxLength={30}
-                  className="w-full bg-background-elevated border border-primary/20 rounded-xl px-3 py-2 text-xs text-primary placeholder:text-secondary/50 focus:outline-none focus:border-green-500 transition-colors"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="text-[11px] text-secondary">Sponsor Message / Dedication</label>
-                  <span className={`text-[10px] font-mono ${
-                    sponsorWords >= 12 ? 'text-amber-500 font-bold' : 'text-secondary'
-                  }`}>
-                    {sponsorWords} / 12 words {sponsorWords >= 12 && '(max)'}
-                  </span>
-                </div>
-                <textarea
-                  rows={2}
-                  value={sponsorNote}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    const words = val.trim().split(/\s+/).filter(Boolean)
-                    if (words.length <= 12) {
-                      setSponsorNote(val)
-                    } else {
-                      setSponsorNote(words.slice(0, 12).join(' '))
-                    }
-                  }}
-                  placeholder="e.g. Keep inspiring the world and never stop believing in your brightest dreams! ✨"
-                  className="w-full bg-background-elevated border border-primary/20 rounded-xl px-3 py-2 text-xs text-primary placeholder:text-secondary/50 focus:outline-none focus:border-green-500 transition-colors resize-none leading-relaxed"
-                />
-                <p className="text-[10px] text-secondary/70 mt-1">
-                  12 words max — displayed completely on the sponsored card without truncation.
-                </p>
-              </div>
-            </div>
-
-            {/* Live Badge Preview */}
-            {(sponsorName || sponsorNote) && (
-              <div className="pt-2 border-t border-primary/10">
-                <span className="text-[10px] text-secondary uppercase font-semibold tracking-wider block mb-1.5">Card Preview:</span>
-                <div className="px-3 py-2 rounded-xl bg-background-elevated border border-primary/10 text-xs flex items-start gap-2.5 shadow-sm">
-                  <span className="text-amber-500 shrink-0 mt-0.5">✨</span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 text-[11px]">
-                      <span className="text-secondary uppercase text-[9px] font-bold tracking-wider shrink-0">Sponsored by</span>
-                      <span className="font-semibold text-primary truncate">{sponsorName || 'A Kind Supporter'}</span>
-                    </div>
-                    {sponsorNote && (
-                      <p className="text-[11px] text-secondary italic break-words leading-snug mt-1">
-                        &ldquo;{sponsorNote}&rdquo;
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <p className="text-[11px] text-secondary text-center leading-relaxed">
+            You&apos;ll add your sponsor shoutout after the message goes live.
+          </p>
         </div>
       )}
 
@@ -289,7 +211,7 @@ export function CheckoutForm({
             ) : (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-secondary">
-                  <p>Pick 1–3 slots in a row. Save 20% on 2+.</p>
+                  <p>Pick 1–3 slots in a row, across consecutive days too. Save 20% on 2+.</p>
                   {selectedSlots.length > 0 && (
                     <button
                       type="button"
