@@ -383,7 +383,6 @@ export function MainFeedContainer({
                 : 'text-secondary hover:text-violet-600 dark:hover:text-violet-300'
             }`}
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${activeTab === 'SPECIAL' ? 'bg-amber-300' : 'bg-current'}`} />
             <span>✦ Special</span>
           </button>
           <button 

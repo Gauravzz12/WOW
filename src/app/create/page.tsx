@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createMessage } from "./actions";
 import { createClient } from '@/lib/supabase/client'
+import { sanitizeHtmlText } from '@/lib/sanitize'
 import { getCategoryStyles, resolveCardStyles, resolveThemeSafeTextColor } from '@/lib/utils/colors'
 import { RichTextEditor } from '@/components/RichTextEditor'
 import { StickerPicker, Sticker } from '@/components/StickerPicker'
@@ -1017,7 +1018,7 @@ export default function CreateMessage() {
                         messageText.length > 300 ? 'text-base md:text-lg' : messageText.length > 150 ? 'text-lg md:text-xl' : 'text-xl md:text-2xl'
                       } ${selectedTemplate.font} ${cardStyles.textColor}`}
                       style={{ color: cardStyles.inlineColor !== 'inherit' ? cardStyles.inlineColor : undefined }}
-                      dangerouslySetInnerHTML={{ __html: messageHtml }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtmlText(messageHtml) }}
                     />
                   </div>
                 </div>

@@ -1,29 +1,56 @@
 /**
  * Pure TypeScript HTML Sanitizer
  * Strips all dangerous tags, scripts, event handlers, and styles.
- * Only allows safe text formatting tags: p, span, strong, b, em, i, s, strike, u, br.
+ *
+ * The allowlist mirrors exactly what RichTextEditor (Tiptap: StarterKit +
+ * TextStyle + Color + FontFamily + multicolor Highlight) can produce, so
+ * formatting visible in the compose preview survives to the live message:
+ * - tags: p, span, mark, strong, b, em, i, s, strike, u, br,
+ *         ul, ol, li, blockquote, code, pre
+ * - styles: color, background-color (3/4/6/8-digit hex, rgb/a, hsl/a, words),
+ *           font-family (editor values only), text-align
  */
 
 const ALLOWED_TAGS = new Set([
-  'p', 'span', 'strong', 'b', 'em', 'i', 's', 'strike', 'u', 'br'
+  'p', 'span', 'mark', 'strong', 'b', 'em', 'i', 's', 'strike', 'u', 'br',
+  'ul', 'ol', 'li', 'blockquote', 'code', 'pre',
 ])
 
-// Only allow safe CSS properties: color, background-color, text-align
+// Font stacks the editor itself offers (see RichTextEditor FONTS) plus plain
+// generic families for pasted content. Anything else is dropped.
+const ALLOWED_FONT_FAMILIES = new Set([
+  'var(--font-inter)',
+  'var(--font-cormorant)',
+  'monospace',
+  'serif',
+  'sans-serif',
+])
+
+const COLOR_RE = /^(?:#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})|rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)|hsla?\(\s*\d+(?:\.\d+)?\s*,\s*\d+(?:\.\d+)?%\s*,\s*\d+(?:\.\d+)?%(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)|[a-zA-Z]+)$/
+
+// Only allow safe CSS properties: color, background-color, font-family, text-align
 function sanitizeStyle(styleStr: string): string {
   if (!styleStr) return ''
   const declarations = styleStr.split(';')
   const safeDeclarations: string[] = []
 
   for (const decl of declarations) {
-    const [rawProp, rawVal] = decl.split(':')
-    if (!rawProp || !rawVal) continue
-    const prop = rawProp.trim().toLowerCase()
-    const val = rawVal.trim()
+    // Split on the FIRST colon only — values may legally contain colons.
+    const colonIdx = decl.indexOf(':')
+    if (colonIdx === -1) continue
+    const prop = decl.slice(0, colonIdx).trim().toLowerCase()
+    const val = decl.slice(colonIdx + 1).trim()
+    if (!prop || !val) continue
 
     if (prop === 'color' || prop === 'background-color') {
-      // Validate color is hex, rgb, rgba, hsl, or standard word
-      if (/^#(?:[0-9a-fA-F]{3}){1,2}$|^rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$|^[a-zA-Z]+$/.test(val)) {
+      if (COLOR_RE.test(val)) {
         safeDeclarations.push(`${prop}: ${val}`)
+      }
+    } else if (prop === 'font-family') {
+      // Strict allowlist: strip quotes for comparison, keep canonical value.
+      const normalized = val.replace(/["']/g, '').trim().toLowerCase()
+      if (ALLOWED_FONT_FAMILIES.has(normalized)) {
+        safeDeclarations.push(`${prop}: ${normalized}`)
       }
     } else if (prop === 'text-align') {
       if (/^(?:left|center|right|justify)$/.test(val)) {
@@ -71,7 +98,7 @@ export function sanitizeHtmlText(dirtyHtml: string): string {
 
     // Extract allowed attributes: class and style
     let cleanedAttrs = ''
-    
+
     // Check class attribute
     const classMatch = attrs.match(/\bclass\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
     if (classMatch) {

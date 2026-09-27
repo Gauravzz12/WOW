@@ -28,13 +28,17 @@ export default async function WaitingRoomPage() {
 
   // Fetch unpaid NORMAL messages only — VIP/Special (is_reserved_slot) can never
   // be sponsored for $1; the owner must complete their own $30+ checkout.
-  const { data: unpaidMessages } = await supabase
+  const { data: unpaidMessages, error: unpaidError } = await supabase
     .from('messages')
     .select('id, content, bid_amount, is_reserved_slot, created_at, category:categories(name, slug)')
     .eq('status', 'PENDING_PAYMENT')
     .eq('is_reserved_slot', false)
     .order('created_at', { ascending: false })
     .limit(100)
+
+  if (unpaidError) {
+    throw new Error(unpaidError.message)
+  }
 
   // Server-side masking: NEVER forward full `content` to the client.
   // Only teaser + length + masked placeholder are exposed — full text unlocks after payment.
