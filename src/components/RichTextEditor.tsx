@@ -12,9 +12,13 @@ import Picker from '@emoji-mart/react'
 import { Bold, Italic, Strikethrough, Palette, Highlighter, Smile, X } from 'lucide-react'
 
 const FONTS = [
-  { name: 'Sans', value: 'var(--font-inter)' },
-  { name: 'Serif', value: 'var(--font-cormorant)' },
-  { name: 'Mono', value: 'monospace' },
+  { name: 'Clean',       label: 'Aa',       value: 'var(--font-inter)',        hint: 'Inter — clean sans-serif' },
+  { name: 'Editorial',   label: 'Éd',       value: 'var(--font-cormorant)',    hint: 'Cormorant — editorial serif' },
+  { name: 'Classic',     label: 'Pl',       value: 'var(--font-playfair)',     hint: 'Playfair — classic serif' },
+  { name: 'Modern',      label: 'Ot',       value: 'var(--font-outfit)',       hint: 'Outfit — modern geometric' },
+  { name: 'Handwritten', label: 'Cv',       value: 'var(--font-caveat)',       hint: 'Caveat — handwritten' },
+  { name: 'Monumental',  label: 'Cz',       value: 'var(--font-cinzel)',       hint: 'Cinzel — monumental caps' },
+  { name: 'Mono',        label: '01',       value: 'var(--font-space-mono)',   hint: 'Space Mono — monospace' },
 ]
 
 const COLORS = [
@@ -139,7 +143,7 @@ export function RichTextEditor({
           
           <div className="w-px h-4 bg-primary/15 mx-1" />
           
-          <div className="flex gap-1">
+          <div className="flex gap-1 flex-wrap">
             {FONTS.map(font => {
               const isActive = editor.isActive('textStyle', { fontFamily: font.value })
               return (
@@ -153,15 +157,16 @@ export function RichTextEditor({
                       editor.chain().focus().setFontFamily(font.value).run()
                     }
                   }}
-                  className={`text-xs px-2.5 py-1 rounded-md font-medium transition-colors ${
-                    isActive 
-                      ? 'bg-primary text-background shadow-xs font-semibold' 
-                      : 'text-secondary hover:text-primary hover:bg-primary/10'
+                  className={`flex flex-col items-center justify-center w-10 h-10 rounded-xl border transition-all gap-0 ${
+                    isActive
+                      ? 'bg-primary text-background border-primary shadow-sm scale-105'
+                      : 'text-secondary hover:text-primary hover:bg-primary/10 border-transparent hover:border-primary/20'
                   }`}
                   style={{ fontFamily: font.value }}
-                  title={`Font: ${font.name}${isActive ? ' (Active - click to reset)' : ''}`}
+                  title={font.hint}
                 >
-                  {font.name}
+                  <span className="text-base leading-none font-semibold">{font.label}</span>
+                  <span className="text-[8px] leading-none mt-0.5 opacity-70 font-sans" style={{ fontFamily: 'var(--font-inter)' }}>{font.name}</span>
                 </button>
               )
             })}
