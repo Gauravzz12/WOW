@@ -12,13 +12,13 @@ import Picker from '@emoji-mart/react'
 import { Bold, Italic, Strikethrough, Palette, Highlighter, Smile, X } from 'lucide-react'
 
 const FONTS = [
-  { name: 'Clean',       label: 'Aa',       value: 'var(--font-inter)',        hint: 'Inter — clean sans-serif' },
-  { name: 'Editorial',   label: 'Éd',       value: 'var(--font-cormorant)',    hint: 'Cormorant — editorial serif' },
-  { name: 'Classic',     label: 'Pl',       value: 'var(--font-playfair)',     hint: 'Playfair — classic serif' },
-  { name: 'Modern',      label: 'Ot',       value: 'var(--font-outfit)',       hint: 'Outfit — modern geometric' },
-  { name: 'Handwritten', label: 'Cv',       value: 'var(--font-caveat)',       hint: 'Caveat — handwritten' },
-  { name: 'Monumental',  label: 'Cz',       value: 'var(--font-cinzel)',       hint: 'Cinzel — monumental caps' },
-  { name: 'Mono',        label: '01',       value: 'var(--font-space-mono)',   hint: 'Space Mono — monospace' },
+  { name: 'Clean',    label: 'Aa', value: 'var(--font-inter)',      hint: 'Inter — clean sans-serif' },
+  { name: 'Edit',     label: 'Éd', value: 'var(--font-cormorant)',   hint: 'Cormorant — editorial serif' },
+  { name: 'Classic',  label: 'Pl', value: 'var(--font-playfair)',    hint: 'Playfair — classic serif' },
+  { name: 'Modern',   label: 'Ot', value: 'var(--font-outfit)',      hint: 'Outfit — modern geometric' },
+  { name: 'Script',   label: 'Cv', value: 'var(--font-caveat)',      hint: 'Caveat — handwritten' },
+  { name: 'Caps',     label: 'Cz', value: 'var(--font-cinzel)',      hint: 'Cinzel — monumental caps' },
+  { name: 'Mono',     label: '01', value: 'var(--font-space-mono)',  hint: 'Space Mono — monospace' },
 ]
 
 const COLORS = [
@@ -157,7 +157,7 @@ export function RichTextEditor({
                       editor.chain().focus().setFontFamily(font.value).run()
                     }
                   }}
-                  className={`flex flex-col items-center justify-center w-10 h-10 rounded-xl border transition-all gap-0 ${
+                  className={`flex flex-col items-center justify-center px-2 py-1.5 min-w-[2.75rem] rounded-xl border transition-all ${
                     isActive
                       ? 'bg-primary text-background border-primary shadow-sm scale-105'
                       : 'text-secondary hover:text-primary hover:bg-primary/10 border-transparent hover:border-primary/20'
