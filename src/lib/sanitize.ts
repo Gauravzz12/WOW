@@ -21,6 +21,11 @@ const ALLOWED_TAGS = new Set([
 const ALLOWED_FONT_FAMILIES = new Set([
   'var(--font-inter)',
   'var(--font-cormorant)',
+  'var(--font-playfair)',
+  'var(--font-outfit)',
+  'var(--font-caveat)',
+  'var(--font-cinzel)',
+  'var(--font-space-mono)',
   'monospace',
   'serif',
   'sans-serif',
@@ -28,7 +33,7 @@ const ALLOWED_FONT_FAMILIES = new Set([
 
 const COLOR_RE = /^(?:#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})|rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)|hsla?\(\s*\d+(?:\.\d+)?\s*,\s*\d+(?:\.\d+)?%\s*,\s*\d+(?:\.\d+)?%(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)|[a-zA-Z]+)$/
 
-// Only allow safe CSS properties: color, background-color, font-family, text-align
+// Only allow safe CSS properties: color, background-color, font-family, font-size, text-align
 function sanitizeStyle(styleStr: string): string {
   if (!styleStr) return ''
   const declarations = styleStr.split(';')
@@ -50,6 +55,12 @@ function sanitizeStyle(styleStr: string): string {
       // Strict allowlist: strip quotes for comparison, keep canonical value.
       const normalized = val.replace(/["']/g, '').trim().toLowerCase()
       if (ALLOWED_FONT_FAMILIES.has(normalized)) {
+        safeDeclarations.push(`${prop}: ${normalized}`)
+      }
+    } else if (prop === 'font-size') {
+      // Allow sizes between 10px and 50px, or safe rem units (0.75rem to 3rem)
+      const normalized = val.replace(/["']/g, '').trim().toLowerCase()
+      if (/^(?:[1-4][0-9]|50)px$/.test(normalized) || /^(?:0\.[7-9]|[1-3](?:\.[0-9]+)?)rem$/.test(normalized)) {
         safeDeclarations.push(`${prop}: ${normalized}`)
       }
     } else if (prop === 'text-align') {

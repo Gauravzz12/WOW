@@ -2,14 +2,14 @@
 
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { TextStyle } from '@tiptap/extension-text-style'
+import { TextStyle, FontSize } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
 import { FontFamily } from '@tiptap/extension-font-family'
 import { Highlight } from '@tiptap/extension-highlight'
 import { useState, useEffect, useRef } from 'react'
 import data from '@emoji-mart/data'
 import Picker from '@emoji-mart/react'
-import { Bold, Italic, Strikethrough, Palette, Highlighter, Smile, X } from 'lucide-react'
+import { Bold, Italic, Strikethrough, Palette, Highlighter, Smile, X, Type, ChevronDown } from 'lucide-react'
 
 const FONTS = [
   { name: 'Clean',    label: 'Aa', value: 'var(--font-inter)',      hint: 'Inter — clean sans-serif' },
@@ -19,6 +19,27 @@ const FONTS = [
   { name: 'Script',   label: 'Cv', value: 'var(--font-caveat)',      hint: 'Caveat — handwritten' },
   { name: 'Caps',     label: 'Cz', value: 'var(--font-cinzel)',      hint: 'Cinzel — monumental caps' },
   { name: 'Mono',     label: '01', value: 'var(--font-space-mono)',  hint: 'Space Mono — monospace' },
+]
+
+const FONT_SIZES = [
+  { label: 'S',   name: 'Small',       value: '14px', hint: 'Small (14px) — subtext & notes' },
+  { label: 'M',   name: 'Normal',      value: '18px', hint: 'Normal (18px) — standard body' },
+  { label: 'L',   name: 'Large',       value: '24px', hint: 'Large (24px) — emphasis & quote' },
+  { label: 'XL',  name: 'Extra Large', value: '32px', hint: 'Extra Large (32px) — bold headline' },
+  { label: '2XL', name: 'Giant',       value: '40px', hint: 'Giant (40px) — big hero impact' },
+]
+
+const ALL_FONT_SIZES = [
+  { label: '12px', name: 'Micro',       value: '12px' },
+  { label: '14px', name: 'Small (S)',   value: '14px' },
+  { label: '16px', name: 'Compact',     value: '16px' },
+  { label: '18px', name: 'Normal (M)',  value: '18px' },
+  { label: '20px', name: 'Medium',      value: '20px' },
+  { label: '24px', name: 'Large (L)',   value: '24px' },
+  { label: '28px', name: 'Headline',    value: '28px' },
+  { label: '32px', name: 'Huge (XL)',   value: '32px' },
+  { label: '36px', name: 'Banner',      value: '36px' },
+  { label: '40px', name: 'Giant (2XL)', value: '40px' },
 ]
 
 const COLORS = [
@@ -43,12 +64,15 @@ export function RichTextEditor({
   maxWords?: number
 }) {
   const [showEmoji, setShowEmoji] = useState(false)
+  const [showSizeDropdown, setShowSizeDropdown] = useState(false)
   const emojiRef = useRef<HTMLDivElement>(null)
+  const sizeDropdownRef = useRef<HTMLDivElement>(null)
   
   const editor = useEditor({
     extensions: [
       StarterKit,
       TextStyle,
+      FontSize,
       Color,
       FontFamily,
       Highlight.configure({ multicolor: true }),
@@ -92,6 +116,25 @@ export function RichTextEditor({
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [showEmoji])
+
+  // Close size dropdown when clicking outside or pressing Escape
+  useEffect(() => {
+    if (!showSizeDropdown) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sizeDropdownRef.current && !sizeDropdownRef.current.contains(e.target as Node)) {
+        setShowSizeDropdown(false)
+      }
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowSizeDropdown(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showSizeDropdown])
 
   if (!editor) {
     return null
@@ -171,6 +214,101 @@ export function RichTextEditor({
               )
             })}
           </div>
+        </div>
+
+        <div className="w-px h-4 bg-primary/15" />
+
+        {/* Font Size Selector */}
+        <div className="relative flex items-center" ref={sizeDropdownRef}>
+          <div className="flex items-center gap-1 bg-background-elevated/40 border border-primary/15 rounded-xl p-1">
+            <div className="flex items-center gap-1 pl-1.5 pr-1 text-secondary select-none" title="Font Size">
+              <Type size={14} className="opacity-70 shrink-0" />
+              <span className="text-[11px] font-semibold hidden sm:inline">Size</span>
+            </div>
+
+            <div className="flex items-center gap-0.5">
+              {FONT_SIZES.map(size => {
+                const isActive = editor.isActive('textStyle', { fontSize: size.value })
+                return (
+                  <button
+                    key={size.name}
+                    type="button"
+                    onClick={() => {
+                      if (isActive) {
+                        editor.chain().focus().unsetFontSize().run()
+                      } else {
+                        editor.chain().focus().setFontSize(size.value).run()
+                      }
+                    }}
+                    className={`px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      isActive
+                        ? 'bg-primary text-background shadow-xs scale-105'
+                        : 'text-secondary hover:text-primary hover:bg-primary/10'
+                    }`}
+                    title={`${size.hint}${isActive ? ' (Active - click to reset)' : ''}`}
+                  >
+                    {size.label}
+                  </button>
+                )
+              })}
+
+              <button
+                type="button"
+                onClick={() => setShowSizeDropdown(!showSizeDropdown)}
+                className={`p-1 rounded-lg transition-colors text-secondary hover:text-primary hover:bg-primary/10 ${
+                  showSizeDropdown ? 'bg-primary/15 text-primary' : ''
+                }`}
+                title="All font sizes"
+              >
+                <ChevronDown size={13} className={`transition-transform duration-200 ${showSizeDropdown ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Size Dropdown Menu */}
+          {showSizeDropdown && (
+            <div className="absolute top-full left-0 mt-2 z-50 min-w-[11rem] bg-background-muted border border-background-elevated rounded-xl shadow-2xl p-1.5 backdrop-blur-md">
+              <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-secondary/70 border-b border-primary/10 mb-1">
+                Font Size
+              </div>
+              <div className="max-h-48 overflow-y-auto custom-scrollbar flex flex-col gap-0.5">
+                {ALL_FONT_SIZES.map(s => {
+                  const isActive = editor.isActive('textStyle', { fontSize: s.value })
+                  return (
+                    <button
+                      key={s.value}
+                      type="button"
+                      onClick={() => {
+                        editor.chain().focus().setFontSize(s.value).run()
+                        setShowSizeDropdown(false)
+                      }}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-left transition-colors ${
+                        isActive
+                          ? 'bg-primary text-background font-semibold'
+                          : 'text-secondary hover:text-primary hover:bg-primary/10'
+                      }`}
+                    >
+                      <span className="truncate">{s.name}</span>
+                      <span className="font-mono text-[11px] opacity-70 shrink-0 ml-2">{s.value}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="border-t border-primary/10 mt-1 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    editor.chain().focus().unsetFontSize().run()
+                    setShowSizeDropdown(false)
+                  }}
+                  className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] text-secondary hover:text-rose-500 rounded-lg transition-colors hover:bg-rose-500/10"
+                >
+                  <X size={12} />
+                  <span>Reset font size</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="w-px h-4 bg-primary/15" />
