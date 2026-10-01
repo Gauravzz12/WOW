@@ -26,6 +26,7 @@ import {
 } from '@/lib/constants/pricing'
 import { resolveCardStyles } from '@/lib/utils/colors'
 import { InlineInteractions } from './InlineInteractions'
+import { FullscreenMessage } from './MessageFullscreen'
 
 export interface VipSpecialViewProps {
   activeSpecialMsg: any | null
@@ -447,6 +448,21 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
               )}
             </div>
 
+            {/* Optional link — centered on its own line right after the message */}
+            {activeSpecialMsg.style_config?.brandUrl && (
+              <div className="relative z-10 mx-auto mb-6">
+                <a
+                  href={activeSpecialMsg.style_config.brandUrl.startsWith('http') ? activeSpecialMsg.style_config.brandUrl : `https://${activeSpecialMsg.style_config.brandUrl}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-700 dark:text-cyan-300 text-xs font-semibold shadow-sm transition-all hover:scale-105 active:scale-95"
+                >
+                  <span>{activeSpecialMsg.style_config.brandName || 'Open Link'}</span>
+                  <span className="text-[11px]">↗</span>
+                </a>
+              </div>
+            )}
+
             {/* Single footer: attribution left, copy-link right — one divider only */}
             <div className={`relative z-10 pt-5 border-t flex flex-wrap items-center justify-between gap-3 text-xs font-mono ${isDarkCard ? 'border-white/15 text-white/60' : 'border-violet-500/15 text-secondary'}`}>
               <div className="flex flex-wrap items-center gap-2">
@@ -464,6 +480,7 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
                 )}
               </div>
 
+              <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={handleCopyLink}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs transition-colors ${isDarkCard ? 'border-white/25 text-white/85 hover:bg-white/10 hover:text-white' : 'border-primary/20 hover:bg-primary/10 text-primary'}`}
@@ -471,6 +488,36 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
                 {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
                 <span>{copiedLink ? 'Link copied!' : 'Copy link'}</span>
               </button>
+
+              <FullscreenMessage
+                message={{
+                  content: activeSpecialMsg.content || '',
+                  html: activeSpecialMsg.style_config?.html,
+                  font: activeSpecialMsg.style_config?.font,
+                  categoryName: msgCategoryName,
+                  brandName: activeSpecialMsg.style_config?.brandName,
+                  brandUrl: activeSpecialMsg.style_config?.brandUrl,
+                  sponsorName: activeSpecialMsg.style_config?.sponsorName,
+                  sponsorNote: activeSpecialMsg.style_config?.sponsorNote,
+                  stickers: activeSpecialMsg.style_config?.stickers,
+                }}
+                appearance={{
+                  bg: msgBg,
+                  textColor,
+                  cardBorder: msgBorder || 'border-violet-500/30',
+                  inlineColor,
+                  isDarkCard,
+                  // Same geometry + display type as the monolith above.
+                  widthClass: 'max-w-4xl',
+                  aspectClass: '',
+                  paddingClass: 'px-6 py-9 sm:px-10 sm:py-12 md:px-14 md:py-14',
+                  bodyClassName: 'relative z-10 my-6 sm:my-8 text-center max-w-3xl mx-auto px-2 w-full flex-1 min-h-0 overflow-y-auto flex flex-col',
+                  bodyInnerClassName: 'm-auto w-full',
+                  htmlTextClass: `text-balance leading-[1.25] tracking-tight text-[2rem] sm:text-5xl md:text-6xl ${activeSpecialMsg.style_config?.font || 'font-serif'} ${textColor}`,
+                  plainTextClass: `text-balance font-serif leading-[1.25] tracking-tight text-[2rem] sm:text-5xl md:text-6xl ${textColor}`,
+                }}
+              />
+              </div>
             </div>
 
             {/* Reactions row — no second divider, actions live here */}

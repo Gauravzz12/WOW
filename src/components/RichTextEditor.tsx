@@ -65,7 +65,7 @@ export function RichTextEditor({
     if (!editor) return
     const currentHtml = editor.getHTML()
     if (value !== currentHtml && (value || currentHtml !== '<p></p>')) {
-      editor.commands.setContent(value || '', false)
+      editor.commands.setContent(value || '', { emitUpdate: false })
       editor.commands.focus('end')
     }
   }, [value, editor])
@@ -172,7 +172,7 @@ export function RichTextEditor({
 
         {/* Colors */}
         <div className="flex gap-2 items-center">
-          <Palette size={15} className="text-secondary shrink-0" title="Text Color" />
+          <Palette size={15} className="text-secondary shrink-0" />
           <div className="flex gap-1.5 items-center">
             {COLORS.map(color => {
               const isActive = editor.isActive('textStyle', { color })
@@ -210,7 +210,7 @@ export function RichTextEditor({
 
         {/* Highlights */}
         <div className="flex gap-2 items-center">
-          <Highlighter size={15} className="text-secondary shrink-0" title="Highlight Color" />
+          <Highlighter size={15} className="text-secondary shrink-0" />
           <div className="flex gap-1.5 items-center">
             {COLORS.slice(1).map(color => {
               const highlightColor = color + '40'

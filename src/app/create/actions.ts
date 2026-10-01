@@ -7,6 +7,8 @@ import {
   MAX_NORMAL_MINS,
   calculateNormalMinBid,
   calculateSpecialPrice,
+  SPONSORED_PRICE,
+  SPONSORED_DURATION_SECS,
 } from '@/lib/constants/pricing'
 import { STANDARD_TEMPLATES } from '@/lib/constants/templates'
 
@@ -24,6 +26,7 @@ export async function createMessage(data: {
   recipient: string
   bidAmount?: number
   isReservedSlot?: boolean
+  isSponsored?: boolean
   styleConfig?: string
 }) {
   // Find category by slug (active only — inactive slugs are rejected)
@@ -93,8 +96,10 @@ export async function createMessage(data: {
     parsedStyle.html = sanitizeHtmlText(parsedStyle.html)
   }
 
-  // Sanitize stickers array
-  if (Array.isArray(parsedStyle.stickers)) {
+  // Sanitize stickers array (dropped entirely for Sponsored messages)
+  if (parsedStyle.isSponsored) {
+    delete parsedStyle.stickers
+  } else if (Array.isArray(parsedStyle.stickers)) {
     parsedStyle.stickers = parsedStyle.stickers.slice(0, 10).map((s: any) => ({
       id: typeof s.id === 'string' ? s.id.slice(0, 50) : `stk_${Date.now()}`,
       emoji: typeof s.emoji === 'string' ? s.emoji.slice(0, 10) : undefined,
@@ -105,9 +110,9 @@ export async function createMessage(data: {
     })).filter((s: any) => Boolean(s.emoji || s.url))
   }
 
-  // Sanitize brand info if present
+  // Sanitize brand info if present (link label capped at 40 chars, matching the UI)
   if (parsedStyle.brandName && typeof parsedStyle.brandName === 'string') {
-    parsedStyle.brandName = parsedStyle.brandName.trim().slice(0, 50)
+    parsedStyle.brandName = parsedStyle.brandName.trim().slice(0, 40)
   }
   if (parsedStyle.brandUrl && typeof parsedStyle.brandUrl === 'string') {
     const trimmedUrl = parsedStyle.brandUrl.trim().slice(0, 200)
@@ -134,10 +139,12 @@ export async function createMessage(data: {
     ? data.templateId
     : 'a'
 
-  // Server-side pricing: never trust the client bid. Normal messages are
-  // floored to the duration-based minimum; reserved messages are priced
-  // exactly from the selected slot count (and must carry selected slots).
+  // Server-side pricing: never trust the client bid. Reserved messages are
+  // priced exactly from the selected slot count (and must carry selected
+  // slots); self-served Sponsored messages are a flat $1 for 30 minutes;
+  // normal messages are floored to the duration-based minimum.
   const isReserved = data.isReservedSlot || false
+  const isSponsored = !isReserved && (data.isSponsored === true || parsedStyle.isSponsored === true)
   let bidAmount: number
   if (isReserved) {
     const selectedSlots = Array.isArray(parsedStyle.selectedSlots)
@@ -147,6 +154,11 @@ export async function createMessage(data: {
       return { error: 'Select at least one time slot for Special messages.' }
     }
     bidAmount = calculateSpecialPrice(Math.min(selectedSlots.length, 3)).finalPrice
+  } else if (isSponsored) {
+    bidAmount = SPONSORED_PRICE
+    parsedStyle.isSponsored = true
+    parsedStyle.durationSecs = SPONSORED_DURATION_SECS
+    delete parsedStyle.stickers
   } else {
     const durationSecs = Number(parsedStyle.durationSecs) || BASE_NORMAL_MINS * 60
     const durationMins = Math.max(

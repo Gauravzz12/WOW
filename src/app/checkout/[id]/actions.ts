@@ -3,7 +3,7 @@
 import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
-import { calculateSpecialPrice, calculateNormalMinBid } from '@/lib/constants/pricing'
+import { calculateSpecialPrice, calculateNormalMinBid, SPONSORED_PRICE, SPONSORED_DURATION_SECS } from '@/lib/constants/pricing'
 import {
   issueSponsorEditToken,
   sponsorTokenCookieName,
@@ -190,6 +190,14 @@ export async function processPayment(
   } else {
     // --- STANDARD QUEUE PATH ---
     let officialTotal: number
+    // Self-served Sponsored tier has no pay-and-broadcast: these rows wait in
+    // the Waiting Room until someone sponsors them via ?mode=sponsor.
+    const isSponsoredTier =
+      !currentMsg.is_reserved_slot &&
+      (style as any)?.isSponsored === true
+    if (isSponsoredTier && !isSponsorMode) {
+      return { error: 'Sponsored messages cannot be paid for directly — they go live once someone sponsors them from the Waiting Room.' }
+    }
 
     if (isSponsorMode) {
       // Disallow sponsoring VIP reserved slot messages
@@ -197,9 +205,9 @@ export async function processPayment(
         return { error: 'Reserved slot messages cannot be sponsored through the community pool.' }
       }
       // Sponsor cost is strictly $1.00
-      officialTotal = 1.00
+      officialTotal = SPONSORED_PRICE
 
-      style.durationSecs = 1800 // Sponsored messages are always 30 min long
+      style.durationSecs = SPONSORED_DURATION_SECS // Sponsored messages are always 30 min long
       if (sponsorData?.sponsorName?.trim()) {
         style.sponsorName = sponsorData.sponsorName.trim().slice(0, 50)
       }
@@ -247,17 +255,20 @@ export async function processPayment(
     })
 
     // --- INSTANT ACTIVATION CHECK ---
+    // Sponsor mode activates into the sponsored grid (bid < 2, up to 10 at
+    // once); normal activates solo.
+    const isGridTier = isSponsorMode
     const { data: actives } = await supabaseAdmin
       .from('messages')
       .select('id')
       .eq('status', 'ACTIVE')
       .eq('is_reserved_slot', false)
-      .filter('bid_amount', isSponsorMode ? 'lt' : 'gte', 2)
+      .filter('bid_amount', isGridTier ? 'lt' : 'gte', 2)
 
-    const canActivate = isSponsorMode ? (!actives || actives.length < 10) : (!actives || actives.length === 0)
+    const canActivate = isGridTier ? (!actives || actives.length < 10) : (!actives || actives.length === 0)
 
     if (canActivate) {
-      if (isSponsorMode) {
+      if (isGridTier) {
         await supabaseAdmin
           .from('messages')
           .update({ status: 'ACTIVE', actual_start: new Date().toISOString() })

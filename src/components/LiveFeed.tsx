@@ -9,6 +9,7 @@ import { Heart, MessageCircle, Share2 } from 'lucide-react'
 import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { SpecialMomentOverlay } from './SpecialMomentOverlay'
 import { InlineInteractions } from './InlineInteractions'
+import { FullscreenMessage } from './MessageFullscreen'
 
 export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL' }: { initialMessage: any, compact?: boolean, activeTab?: 'NORMAL' | 'SPECIAL' | 'SPONSORED' }) {
   const message = initialMessage
@@ -246,6 +247,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
                   )}
                 </div>
 
+                <div className="flex items-center gap-2">
                 <div className={`flex items-center gap-2 px-3 py-1 rounded-full border shadow-sm backdrop-blur-md ${timerStyle}`}>
                   <span className="relative flex h-2 w-2">
                     <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-red-400`}></span>
@@ -254,6 +256,48 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
                   <span className="text-sm font-mono font-bold tracking-widest tabular-nums">
                     {formatTimer(timeLeft)}
                   </span>
+                </div>
+
+                <FullscreenMessage
+                  message={{
+                    content: message.content || '',
+                    html: message.style_config?.html,
+                    font: message.style_config?.font,
+                    categoryName,
+                    brandName: message.style_config?.brandName,
+                    brandUrl: message.style_config?.brandUrl,
+                    sponsorName: message.style_config?.sponsorName,
+                    sponsorNote: message.style_config?.sponsorNote,
+                    stickers: message.style_config?.stickers,
+                  }}
+                  appearance={{
+                    bg: bg || bgClass,
+                    textColor,
+                    cardBorder: cardBorder || message.style_config?.cardBorder || borderClass,
+                    inlineColor,
+                    isDarkCard,
+                    // Same geometry + type scale as the live card above.
+                    widthClass: compact ? 'max-w-xl' : 'max-w-4xl',
+                    aspectClass: compact ? 'aspect-[4/3]' : 'aspect-square md:aspect-video',
+                    paddingClass: compact ? 'p-4 md:p-6' : 'p-6 md:p-12',
+                    bodyClassName: 'relative z-10 flex-1 min-h-0 w-full overflow-y-auto overscroll-contain custom-scrollbar px-2 md:px-6 py-4 my-2 flex flex-col',
+                    bodyInnerClassName: 'my-auto w-full flex flex-col items-center justify-center',
+                    htmlTextClass: `max-w-none text-center leading-relaxed ${
+                      (message.content?.length || 0) > 350
+                        ? 'text-lg md:text-xl'
+                        : (message.content?.length || 0) > 180
+                        ? 'text-xl md:text-2xl'
+                        : 'text-2xl md:text-3xl'
+                    } ${compact ? '!text-base md:!text-lg' : ''} ${message.style_config?.font || ''} ${textColor}`,
+                    plainTextClass: `font-serif text-center leading-relaxed ${
+                      (message.content?.length || 0) > 350
+                        ? 'text-lg md:text-2xl'
+                        : (message.content?.length || 0) > 180
+                        ? 'text-xl md:text-3xl'
+                        : 'text-2xl md:text-4xl'
+                    } ${compact ? '!text-lg md:!text-xl' : ''} ${textColor}`,
+                  }}
+                />
                 </div>
               </div>
 
@@ -296,7 +340,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
                     onClick={(e) => e.stopPropagation()}
                     className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-700 dark:text-cyan-300 text-xs font-semibold shadow-sm transition-all hover:scale-105 active:scale-95"
                   >
-                    <span>{message.style_config.brandName || 'Visit Showcase'}</span>
+                    <span>{message.style_config.brandName || 'Open Link'}</span>
                     <span className="text-[11px]">↗</span>
                   </a>
                 </div>

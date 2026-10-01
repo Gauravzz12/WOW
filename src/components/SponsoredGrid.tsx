@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Clock, HeartHandshake, Sparkles, ChevronRight } from 'lucide-react'
 import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { InlineInteractions } from './InlineInteractions'
+import { FullscreenMessage } from './MessageFullscreen'
 
 function SponsoredCard({ message }: { message: any }) {
   const categoryName = message?.category?.name || 'MESSAGE'
@@ -93,6 +94,7 @@ function SponsoredCard({ message }: { message: any }) {
           )}
         </div>
 
+        <div className="flex items-center gap-1.5">
         <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border shadow-sm backdrop-blur-md ${timerStyle}`}>
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-blue-400" />
@@ -101,6 +103,36 @@ function SponsoredCard({ message }: { message: any }) {
           <span className="text-[11px] font-mono font-bold tracking-wider tabular-nums">
             {formatTimer(timeLeft)}
           </span>
+        </div>
+
+        <FullscreenMessage
+          message={{
+            content: (message?.content || '').replace(/<[^>]*>/g, '').trim() || message?.content || '',
+            html: message?.style_config?.html,
+            font: message?.style_config?.font,
+            categoryName,
+            brandName: message?.style_config?.brandName,
+            brandUrl: message?.style_config?.brandUrl,
+            sponsorName: message?.style_config?.sponsorName,
+            sponsorNote: message?.style_config?.sponsorNote,
+            stickers: message?.style_config?.stickers,
+          }}
+          appearance={{
+            bg: bg || bgClass,
+            textColor,
+            cardBorder: cardBorder || message?.style_config?.cardBorder || borderClass,
+            inlineColor,
+            isDarkCard,
+            // Same geometry + type scale as the grid tile above.
+            widthClass: 'max-w-2xl',
+            aspectClass: '',
+            paddingClass: 'p-5',
+            bodyClassName: 'relative z-10 flex-1 my-2 overflow-y-auto overscroll-contain custom-scrollbar pr-1 flex flex-col justify-center min-h-[90px]',
+            bodyInnerClassName: 'w-full',
+            htmlTextClass: `max-w-none text-center leading-relaxed text-base md:text-lg ${message?.style_config?.font || ''} ${textColor}`,
+            plainTextClass: `text-center leading-relaxed text-base md:text-lg ${message?.style_config?.font || 'font-serif italic'} ${textColor}`,
+          }}
+        />
         </div>
       </div>
 
@@ -129,7 +161,7 @@ function SponsoredCard({ message }: { message: any }) {
             onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-700 dark:text-cyan-300 text-[11px] font-semibold transition-all hover:scale-105 active:scale-95 shadow-xs"
           >
-            <span>{message.style_config.brandName || 'Visit Showcase'}</span>
+            <span>{message.style_config.brandName || 'Open Link'}</span>
             <span className="text-[10px]">↗</span>
           </a>
         </div>
@@ -207,10 +239,10 @@ export function SponsoredGrid({
             )}
           </div>
           <Link 
-            href="/waiting-room"
+            href="/create?tier=sponsored"
             className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-600 text-white hover:bg-blue-500 transition-colors text-xs font-semibold shadow-sm"
           >
-            <span>Sponsor +</span>
+            <span>Sponsored +</span>
           </Link>
         </div>
       </div>
@@ -229,11 +261,11 @@ export function SponsoredGrid({
           </div>
           <h3 className="text-lg font-serif tracking-wider text-primary mb-1.5">The Sponsored Stage is Quiet</h3>
           <p className="text-xs text-secondary max-w-sm leading-relaxed mb-6">
-            No sponsored messages are currently broadcasting. You can sponsor an authentic message from the community to light up the grid.
+            No sponsored messages are currently broadcasting. Post your own message for free — it goes live once someone sponsors it for $1.
           </p>
-          <Link href="/waiting-room">
+          <Link href="/create?tier=sponsored">
             <button className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1.5">
-              <span>View The Waiting Room</span>
+              <span>Post a Sponsored Message — Free</span>
               <ChevronRight size={14} />
             </button>
           </Link>

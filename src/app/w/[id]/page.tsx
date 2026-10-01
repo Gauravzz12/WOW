@@ -15,6 +15,7 @@ import {
 import { ShareMenu } from '@/components/ShareMenu'
 import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { getSponsoredTeaser } from '@/lib/masking'
+import { FullscreenMessage } from '@/components/MessageFullscreen'
 
 export const dynamic = 'force-dynamic'
 
@@ -266,7 +267,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-700 dark:text-cyan-300 text-sm font-semibold shadow-sm transition-all hover:scale-105"
               >
-                <span>{message.style_config.brandName || 'Visit Showcase'}</span>
+                <span>{message.style_config.brandName || 'Open Link'}</span>
                 <span>↗</span>
               </a>
             </div>
@@ -304,7 +305,40 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
                 <p>Status: {message.status}</p>
               )}
             </div>
-            <ShareMenu url={shareUrl} text={shareText} isVip={isVip} isDark={isDarkCard} />
+            <div className="flex items-center gap-3">
+              <ShareMenu url={shareUrl} text={shareText} isVip={isVip} isDark={isDarkCard} />
+              <FullscreenMessage
+                message={{
+                  content: message.content || '',
+                  html: undefined,
+                  font: (message as any).style_config?.font,
+                  categoryName,
+                  brandName: (message as any).style_config?.brandName,
+                  brandUrl: (message as any).style_config?.brandUrl,
+                  sponsorName: (message as any).style_config?.sponsorName,
+                  sponsorNote: (message as any).style_config?.sponsorNote,
+                  // Memory card renders plain content with no stickers —
+                  // mirror exactly that.
+                  stickers: undefined,
+                }}
+                appearance={{
+                  bg: bg || 'bg-background-elevated',
+                  textColor,
+                  cardBorder: cardBorder || (message as any).style_config?.cardBorder || borderColor,
+                  inlineColor,
+                  isDarkCard,
+                  // Same geometry + type scale as the memory card above
+                  // (which renders plain content only).
+                  widthClass: 'max-w-4xl',
+                  aspectClass: '',
+                  paddingClass: 'p-8 md:p-16',
+                  bodyClassName: 'relative z-10 flex-1 min-h-0 w-full overflow-y-auto overscroll-contain custom-scrollbar px-2 py-4 my-2 flex flex-col',
+                  bodyInnerClassName: 'my-auto w-full',
+                  htmlTextClass: undefined,
+                  plainTextClass: `text-center leading-relaxed text-4xl md:text-6xl ${(message as any).style_config?.font || 'font-serif italic'} ${textColor}`,
+                }}
+              />
+            </div>
           </div>
         </div>
 

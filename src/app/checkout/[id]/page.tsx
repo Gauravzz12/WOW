@@ -65,6 +65,13 @@ export default async function CheckoutPage({
   }
 
   const categoryName = (message.category as any)?.name || 'Message'
+  // Self-served Sponsored tier (first-party $1 grid message) is marked on the
+  // row itself. Legacy sponsor mode (paying for someone else's message) is the
+  // separate ?mode=sponsor path.
+  const rawStyle = typeof message.style_config === 'string'
+    ? (() => { try { return JSON.parse(message.style_config || '{}') } catch { return {} } })()
+    : (message.style_config || {})
+  const isSponsoredTier = (rawStyle as any)?.isSponsored === true && !(message as any).is_reserved_slot && !isSponsorMode
   // Paywall: never render full content. Sponsors see a short teaser + length only.
   // Full text unlocks after the $1 payment moves the row to QUEUED/ACTIVE.
   const plain = stripHtml(message.content || '')
@@ -163,6 +170,7 @@ export default async function CheckoutPage({
               baseAmount={message.bid_amount}
               isReservedSlot={message.is_reserved_slot}
               isSponsorMode={isSponsorMode}
+              isSponsoredTier={isSponsoredTier}
               initialSlotIds={initialSlotIds}
               initialSlots={initialSlots}
             />

@@ -126,9 +126,9 @@ export function SpecialMomentOverlay({ message, timeLeft }: SpecialMomentOverlay
                       href={message.style_config.brandUrl.startsWith('http') ? message.style_config.brandUrl : `https://${message.style_config.brandUrl}`}
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 text-xs font-bold shadow-md transition-all hover:scale-105"
+                      className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-700 dark:text-cyan-300 text-xs font-bold shadow-md transition-all hover:scale-105"
                     >
-                      <span>{message.style_config.brandName || 'Visit Showcase'}</span>
+                      <span>{message.style_config.brandName || 'Open Link'}</span>
                       <span className="text-xs">↗</span>
                     </a>
                   </div>

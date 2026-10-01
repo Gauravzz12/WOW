@@ -20,7 +20,9 @@ import {
   MAX_NORMAL_MINS,
   EXTENSION_STEP_MINS,
   SPECIAL_SLOT_PRICE,
-  calculateSpecialPrice
+  calculateSpecialPrice,
+  SPONSORED_PRICE,
+  SPONSORED_DURATION_SECS,
 } from '@/lib/constants/pricing';
 import { SlotPicker, Slot } from '@/components/SlotPicker';
 
@@ -67,7 +69,10 @@ export default function CreateMessage() {
   const prefillParam = searchParams?.get('prefill');
 
   const [bidAmount, setBidAmount] = useState(15);
-  const [isReserved, setIsReserved] = useState(false);
+  // Delivery tier: Normal (bid queue) · Special (reserved slots) · Sponsored ($1 grid)
+  const [tier, setTier] = useState<'normal' | 'special' | 'sponsored'>('normal');
+  const isReserved = tier === 'special';
+  const isSponsored = tier === 'sponsored';
   const [selectedSpecialSlots, setSelectedSpecialSlots] = useState<Slot[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -83,7 +88,9 @@ export default function CreateMessage() {
 
   useEffect(() => {
     if (tierParam === 'special' || slotParam) {
-      setIsReserved(true);
+      setTier('special');
+    } else if (tierParam === 'sponsored') {
+      setTier('sponsored');
     }
   }, [tierParam, slotParam]);
   const [stickers, setStickers] = useState<Sticker[]>([]);
@@ -227,7 +234,7 @@ export default function CreateMessage() {
     setTemplate(t.id);
     if (t.isVip) {
       // Suggest / unlock special slot automatically when picking a VIP template
-      setIsReserved(true);
+      setTier('special');
     }
   };
 
@@ -250,8 +257,9 @@ export default function CreateMessage() {
       identityType,
       customName,
       recipient,
-      bidAmount: isReserved ? specialPricing.finalPrice : Math.max(bidAmount, minBid),
+      bidAmount: isSponsored ? SPONSORED_PRICE : isReserved ? specialPricing.finalPrice : Math.max(bidAmount, minBid),
       isReservedSlot: isReserved,
+      isSponsored,
       styleConfig: JSON.stringify({ 
         html: messageHtml,
         bg: cardStyles.bg,
@@ -262,16 +270,20 @@ export default function CreateMessage() {
         vipIcon: selectedTemplate.vipIcon || undefined,
         cardBorder: cardStyles.cardBorder || undefined,
         accentGlow: selectedTemplate.accentGlow || undefined,
-        brandName: category === 'promotion' ? (brandName.trim() || undefined) : undefined,
-        brandUrl: category === 'promotion' ? (brandUrl.trim() || undefined) : undefined,
-        durationSecs: isReserved 
+        brandName: brandName.trim().slice(0, 40) || undefined,
+        brandUrl: brandUrl.trim() || undefined,
+        isSponsored: isSponsored || undefined,
+        durationSecs: isSponsored
+          ? SPONSORED_DURATION_SECS
+          : isReserved 
           ? (selectedSpecialSlots.length > 0 ? selectedSpecialSlots.length * 10800 : 10800) 
           : normalDuration * 60,
         slotCount: isReserved ? (selectedSpecialSlots.length || 1) : undefined,
         slotIds: isReserved && selectedSpecialSlots.length > 0 ? selectedSpecialSlots.map(s => s.id) : undefined,
         selectedSlots: isReserved && selectedSpecialSlots.length > 0 ? selectedSpecialSlots : undefined,
         reminderEmail: wantsReminder ? reminderEmail : undefined,
-        stickers: stickers.length > 0 ? stickers : undefined,
+        // Stickers are disabled for Sponsored messages — never persist any.
+        stickers: !isSponsored && stickers.length > 0 ? stickers : undefined,
       }),
     });
 
@@ -279,6 +291,11 @@ export default function CreateMessage() {
 
     if (result.error) {
       alert(result.error);
+    } else if (isSponsored) {
+      // Sponsored messages have no pay-and-broadcast: they sit in the Waiting
+      // Room (PENDING_PAYMENT) until someone else sponsors them for $1.
+      alert('Your message is now in the Waiting Room! It will broadcast worldwide once someone sponsors it for $1.')
+      router.push('/waiting-room');
     } else {
       const slotQuery = isReserved && selectedSpecialSlots.length > 0 
         ? `?slots=${selectedSpecialSlots.map(s => s.id).join(',')}` 
@@ -318,7 +335,7 @@ export default function CreateMessage() {
         </div>
       </header>
 
-      <div className="w-full max-w-2xl flex-1 flex flex-col p-6 z-10">
+      <div className={`w-full ${step === 5 ? 'max-w-4xl' : 'max-w-2xl'} flex-1 flex flex-col p-6 z-10`}>
         <AnimatePresence mode="wait">
           
           {/* STEP 1: CATEGORY SELECTION */}
@@ -490,7 +507,7 @@ export default function CreateMessage() {
                       <div className="pt-1 flex items-center gap-2 text-xs text-cyan-700 dark:text-cyan-300">
                         <span className="font-semibold">Interactive Button Preview:</span>
                         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-[11px] font-bold">
-                          {brandName || 'Official Website'} <ExternalLink size={10} />
+                          {brandName || 'Open Link'} <ExternalLink size={10} />
                         </span>
                       </div>
                     )}
@@ -511,6 +528,51 @@ export default function CreateMessage() {
                       placeholder={category === 'celebration' ? 'e.g. Maya (25th Birthday)' : 'e.g. Emma, Mom, The World'}
                       className="w-full bg-background-muted border border-background-elevated rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-secondary"
                     />
+                  </div>
+                )}
+
+                {/* Optional link — every category. Shown centered on its own
+                    line right after the message on the live card. */}
+                {category !== 'promotion' && (
+                  <div className="p-4 rounded-2xl border border-background-elevated bg-background-muted/40 space-y-3">
+                    <div className="flex items-center gap-2 text-secondary font-bold text-xs uppercase tracking-wider">
+                      <Globe size={14} />
+                      <span>Link (optional)</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-medium text-secondary block mb-1">Link label (max 40 chars)</label>
+                        <input 
+                          type="text" 
+                          value={brandName}
+                          onChange={e => setBrandName(e.target.value)}
+                          placeholder="e.g. Our photos, Donate here"
+                          maxLength={40}
+                          className="w-full bg-background border border-background-elevated rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-secondary"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-medium text-secondary block mb-1">Link URL</label>
+                        <input 
+                          type="url" 
+                          value={brandUrl}
+                          onChange={e => setBrandUrl(e.target.value)}
+                          placeholder="https://example.com/your-page"
+                          className="w-full bg-background border border-background-elevated rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-secondary"
+                        />
+                      </div>
+                    </div>
+
+                    {(brandName || brandUrl) && (
+                      <div className="pt-1 flex items-center gap-2 text-xs text-secondary">
+                        <span className="font-semibold">Button preview:</span>
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-700 dark:text-cyan-300 text-[11px] font-bold">
+                          {brandName || 'Open Link'} <ExternalLink size={10} />
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -671,14 +733,14 @@ export default function CreateMessage() {
               
               <div className="space-y-6 mb-8">
                 {/* Standard Queue Option */}
-                <label className={`block p-6 rounded-2xl border cursor-pointer transition-all ${!isReserved ? 'border-primary bg-background-elevated ring-1 ring-primary/30' : 'border-background-elevated hover:border-secondary/50'}`}>
+                <label className={`block p-6 rounded-2xl border cursor-pointer transition-all ${tier === 'normal' ? 'border-primary bg-background-elevated ring-1 ring-primary/30' : 'border-background-elevated hover:border-secondary/50'}`}>
                   <div className="flex items-start gap-4">
-                    <input type="radio" checked={!isReserved} onChange={() => setIsReserved(false)} className="mt-1 accent-primary w-4 h-4" />
+                    <input type="radio" checked={tier === 'normal'} onChange={() => setTier('normal')} className="mt-1 accent-primary w-4 h-4" />
                     <div className="flex-1">
                       <h3 className="text-lg font-medium">Standard Queue</h3>
                       <p className="text-sm text-secondary mt-1 mb-4">Enter the main queue. Bump up your priority by outbidding others.</p>
                       
-                      {!isReserved && (
+                      {tier === 'normal' && (
                         <div className="flex flex-col gap-4 bg-background p-4 rounded-xl border border-background-elevated">
                           <div className="flex flex-col gap-3">
                             <div className="flex justify-between items-center text-xs">
@@ -826,9 +888,9 @@ export default function CreateMessage() {
                 </label>
 
                 {/* ✦ Special option */}
-                <label className={`block p-6 rounded-2xl border cursor-pointer transition-all ${isReserved ? 'border-violet-500/60 bg-violet-500/[0.06] ring-2 ring-violet-500/25 shadow-sm' : 'border-background-elevated hover:border-violet-500/40'}`}>
+                <label className={`block p-6 rounded-2xl border cursor-pointer transition-all ${tier === 'special' ? 'border-violet-500/60 bg-violet-500/[0.06] ring-2 ring-violet-500/25 shadow-sm' : 'border-background-elevated hover:border-violet-500/40'}`}>
                   <div className="flex items-start gap-4">
-                    <input type="radio" checked={isReserved} onChange={() => setIsReserved(true)} className="mt-1 accent-violet-600 w-4 h-4" />
+                    <input type="radio" checked={tier === 'special'} onChange={() => setTier('special')} className="mt-1 accent-violet-600 w-4 h-4" />
                     <div className="w-full">
                       <div className="flex justify-between items-center w-full">
                         <div className="flex items-center gap-2">
@@ -858,7 +920,7 @@ export default function CreateMessage() {
                         <span>Premium glow + share page forever</span>
                       </div>
 
-                      {isReserved && (
+                      {tier === 'special' && (
                         <div className="mt-5 pt-4 border-t border-violet-500/20" onClick={(e) => e.stopPropagation()}>
                           <div className="mb-3">
                             <span className="text-xs font-bold text-violet-700 dark:text-violet-300 uppercase tracking-wider block">
@@ -886,20 +948,49 @@ export default function CreateMessage() {
                     </div>
                   </div>
                 </label>
+
+                {/* ♥ Sponsored option — free post, waits for a $1 community sponsor */}
+                <label className={`block p-6 rounded-2xl border cursor-pointer transition-all ${tier === 'sponsored' ? 'border-blue-500/60 bg-blue-500/[0.06] ring-2 ring-blue-500/25 shadow-sm' : 'border-background-elevated hover:border-blue-500/40'}`}>
+                  <div className="flex items-start gap-4">
+                    <input type="radio" checked={tier === 'sponsored'} onChange={() => setTier('sponsored')} className="mt-1 accent-blue-600 w-4 h-4" />
+                    <div className="w-full">
+                      <div className="flex justify-between items-center w-full">
+                        <h3 className="text-lg font-medium text-blue-700 dark:text-blue-300">
+                          ♥ Sponsored — free, backed by the community
+                        </h3>
+                        <span className="text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-500/15 border border-blue-500/40 px-2.5 py-1 rounded-lg font-mono shadow-sm">
+                          Free to post
+                        </span>
+                      </div>
+
+                      <p className="text-sm text-secondary mt-1">
+                        Post for free into the Waiting Room. Your message broadcasts for 30 minutes once someone sponsors it for $1.
+                      </p>
+
+                      <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-blue-500/20 text-xs text-blue-700 dark:text-blue-300">
+                        <span className="font-semibold">✨ No pay-and-broadcast</span>
+                        <span>•</span>
+                        <span>Waits until sponsored</span>
+                        <span>•</span>
+                        <span>No stickers on sponsored cards</span>
+                      </div>
+                    </div>
+                  </div>
+                </label>
               </div>
 
-              {isReserved && selectedSpecialSlots.length === 0 && (
+              {tier === 'special' && selectedSpecialSlots.length === 0 && (
                 <div className="mb-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-800 dark:text-amber-300 text-xs text-center font-medium">
                   Please pick at least 1 time slot above before continuing.
                 </div>
               )}
 
               <button 
-                disabled={isReserved && selectedSpecialSlots.length === 0}
+                disabled={tier === 'special' && selectedSpecialSlots.length === 0}
                 onClick={handleNext}
                 className="w-full py-4 mt-auto bg-primary text-background rounded-full font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
               >
-                {isReserved && selectedSpecialSlots.length === 0 ? 'Select a Time Slot to Continue' : 'Preview Final Message'}
+                {tier === 'special' && selectedSpecialSlots.length === 0 ? 'Select a Time Slot to Continue' : tier === 'sponsored' ? 'Preview Sponsored Message' : 'Preview Final Message'}
               </button>
             </motion.div>
           )}
@@ -909,27 +1000,31 @@ export default function CreateMessage() {
             <motion.div key="step5" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center h-full pt-4">
               <div className="text-center mb-6">
                 <span className="text-xs uppercase tracking-widest font-bold text-secondary">Step 5 of 5</span>
-                <h2 className="text-2xl sm:text-3xl font-serif mt-1 mb-1">Preview &amp; Decorate</h2>
+                <h2 className="text-2xl sm:text-3xl font-serif mt-1 mb-1">{isSponsored ? 'Preview' : 'Preview & Decorate'}</h2>
                 <p className="text-secondary text-xs sm:text-sm">
-                  Drag stickers freely across the card to customize your stage layout.
+                  {isSponsored
+                    ? 'Your message will wait in the Waiting Room until someone sponsors it for $1.'
+                    : 'Drag stickers freely across the card to customize your stage layout.'}
                 </p>
               </div>
 
-              {/* Canvas instruction pill */}
-              <div className="w-full max-w-sm flex items-center justify-between mb-3 px-2 text-xs text-secondary">
+              {/* Canvas instruction pill — full card width like live */}
+              {!isSponsored && (
+              <div className="w-full flex items-center justify-between mb-3 px-2 text-xs text-secondary">
                 <span className="font-semibold text-primary">Live Card Canvas</span>
                 <span className="text-[11px] text-amber-500 dark:text-amber-400 font-semibold flex items-center gap-1">
                   <span>✦</span> Drag stickers to reposition
                 </span>
               </div>
+              )}
               
               <div 
                 ref={previewCardRef}
                 onClick={() => setSelectedStickerId(null)}
-                className={`w-full aspect-[4/5] max-w-sm border ${cardStyles.cardBorder || 'border-primary/20'} rounded-2xl flex flex-col p-8 relative overflow-hidden shadow-2xl backdrop-blur-md select-none ${cardStyles.bg}`}
+                className={`w-full max-w-4xl aspect-square md:aspect-video mx-auto border ${cardStyles.cardBorder || 'border-primary/20'} rounded-2xl flex flex-col p-6 md:p-12 relative overflow-hidden shadow-2xl backdrop-blur-md select-none ${cardStyles.bg}`}
               >
-                {/* Interactive Draggable & Stretchable Stickers */}
-                {stickers.map(sticker => {
+                {/* Interactive Draggable & Stretchable Stickers (disabled for Sponsored) */}
+                {!isSponsored && stickers.map(sticker => {
                   const isSelected = selectedStickerId === sticker.id;
                   return (
                     <div
@@ -997,8 +1092,8 @@ export default function CreateMessage() {
                   );
                 })}
 
-                {/* Header with Category Badge & VIP Badge */}
-                <div className="flex justify-between items-center mb-auto relative z-10 pointer-events-none">
+                {/* Header with Category Badge & VIP Badge — same row layout as live */}
+                <div className="flex justify-between items-center mb-2 relative z-10 pointer-events-none">
                   <span className={`text-xs uppercase tracking-widest font-bold px-3 py-1 rounded-full border shadow-xs ${badgeClass}`}>
                     {categoryMeta.icon} {selectedCategory.name}
                   </span>
@@ -1010,12 +1105,12 @@ export default function CreateMessage() {
                   )}
                 </div>
 
-                {/* Message Body */}
-                <div className="relative z-10 flex-1 min-h-0 w-full overflow-y-auto overscroll-contain custom-scrollbar px-2 py-4 my-4 flex flex-col pointer-events-none">
-                  <div className="my-auto w-full">
+                {/* Message Body — same geometry + type scale as live feed */}
+                <div className="relative z-10 flex-1 min-h-0 w-full overflow-y-auto overscroll-contain custom-scrollbar px-2 md:px-6 py-4 my-2 flex flex-col pointer-events-none">
+                  <div className="my-auto w-full flex flex-col items-center justify-center">
                     <div 
                       className={`max-w-none text-center leading-relaxed ${
-                        messageText.length > 300 ? 'text-base md:text-lg' : messageText.length > 150 ? 'text-lg md:text-xl' : 'text-xl md:text-2xl'
+                        messageText.length > 350 ? 'text-lg md:text-xl' : messageText.length > 180 ? 'text-xl md:text-2xl' : 'text-2xl md:text-3xl'
                       } ${selectedTemplate.font} ${cardStyles.textColor}`}
                       style={{ color: cardStyles.inlineColor !== 'inherit' ? cardStyles.inlineColor : undefined }}
                       dangerouslySetInnerHTML={{ __html: sanitizeHtmlText(messageHtml) }}
@@ -1025,9 +1120,9 @@ export default function CreateMessage() {
 
                 {/* Interactive Brand Link or Recipient */}
                 <div className="relative z-10 mt-auto text-center space-y-2 pointer-events-none">
-                  {category === 'promotion' && (brandName || brandUrl) && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 text-xs font-semibold pointer-events-auto">
-                      <span>{brandName || 'Official Website'}</span>
+                  {(brandName || brandUrl) && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-700 dark:text-cyan-300 text-xs font-semibold pointer-events-auto">
+                      <span>{brandName || 'Open Link'}</span>
                       <ExternalLink size={11} />
                     </div>
                   )}
@@ -1042,8 +1137,15 @@ export default function CreateMessage() {
                 </div>
               </div>
 
-              {/* ✦ Sticker Decoration Panel directly below Preview Card */}
-              <div className="w-full max-w-sm sm:max-w-md mt-6 p-4 sm:p-5 rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 via-background-elevated/40 to-background-elevated/20 shadow-md">
+              {/* ✦ Sticker Decoration Panel directly below Preview Card (not for Sponsored) */}
+              {isSponsored ? (
+                <div className="w-full mt-6 p-4 rounded-2xl border border-blue-500/25 bg-blue-500/5 text-center">
+                  <p className="text-xs text-secondary">
+                    Stickers aren&apos;t available on Sponsored messages — your card stays clean on the grid.
+                  </p>
+                </div>
+              ) : (
+              <div className="w-full mt-6 p-4 sm:p-5 rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 via-background-elevated/40 to-background-elevated/20 shadow-md">
                 <StickerPicker 
                   stickers={stickers} 
                   onChange={setStickers}
@@ -1051,8 +1153,9 @@ export default function CreateMessage() {
                   onSelectId={setSelectedStickerId}
                 />
               </div>
+              )}
 
-              <div className="w-full max-w-sm sm:max-w-md mt-8 grid grid-cols-2 gap-4">
+              <div className="w-full mt-8 grid grid-cols-2 gap-4">
                 <button 
                   onClick={handleBack}
                   className="w-full py-4 border border-background-elevated rounded-full font-medium hover:bg-background-muted transition-colors"
@@ -1064,7 +1167,7 @@ export default function CreateMessage() {
                   disabled={isSubmitting}
                   className="w-full py-4 bg-primary text-background rounded-full font-medium disabled:opacity-50 transition-opacity"
                 >
-                  {isSubmitting ? 'Submitting...' : 'Proceed to Checkout'}
+                  {isSubmitting ? 'Submitting...' : isSponsored ? 'Post to Waiting Room' : 'Proceed to Checkout'}
                 </button>
               </div>
             </motion.div>

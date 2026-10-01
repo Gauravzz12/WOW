@@ -1,8 +1,9 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import Link from 'next/link'
-import { ArrowLeft, Clock, Lock } from 'lucide-react'
+import { ArrowLeft, Lock } from 'lucide-react'
 import { getCategoryStyles } from '@/lib/utils/colors'
 import { toLockedSponsoredCard } from '@/lib/masking'
+import { WaitingRoomTimer } from '@/components/WaitingRoomTimer'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,7 +65,7 @@ export default async function WaitingRoomPage() {
             Back to World
           </Link>
           <h1 className="text-4xl font-serif">The Waiting Room</h1>
-          <p className="text-secondary mt-2">These messages are waiting to be heard. Pay their fee to broadcast them worldwide.</p>
+          <p className="text-secondary mt-2">These messages are waiting to be heard. Sponsor one for $1 to broadcast it worldwide — unpaid messages are removed after 12 hours.</p>
         </div>
         
         <div className="flex items-center gap-2 self-start md:self-auto px-3.5 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-xs font-mono text-blue-700 dark:text-blue-300 shadow-sm">
@@ -85,10 +86,7 @@ export default async function WaitingRoomPage() {
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border shadow-sm backdrop-blur-md ${badgeClass}`}>
                   {categoryName}
                 </span>
-                <div className="flex items-center gap-1 text-xs text-secondary bg-background px-2 py-1 rounded border border-primary/10">
-                  <Clock size={12} />
-                  <span>Waiting</span>
-                </div>
+                <WaitingRoomTimer createdAt={msg.created_at} />
               </div>
 
               {/* Locked teaser — full text reveals only after $1 sponsorship */}

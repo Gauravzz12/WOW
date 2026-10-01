@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { processPayment } from './actions'
 import { SlotPicker, Slot } from '@/components/SlotPicker'
 import { Zap, AlertTriangle, CheckCircle2 } from 'lucide-react'
@@ -13,6 +12,7 @@ export function CheckoutForm({
   baseAmount,
   isReservedSlot = false,
   isSponsorMode = false,
+  isSponsoredTier = false,
   initialSlotIds = [],
   initialSlots = []
 }: { 
@@ -20,6 +20,7 @@ export function CheckoutForm({
   baseAmount: number,
   isReservedSlot?: boolean,
   isSponsorMode?: boolean,
+  isSponsoredTier?: boolean,
   initialSlotIds?: string[],
   initialSlots?: Slot[]
 }) {
@@ -28,20 +29,23 @@ export function CheckoutForm({
   const [isEditingSlots, setIsEditingSlots] = useState(initialSlots.length === 0)
   const [currentBid, setCurrentBid] = useState(baseAmount)
   const [queueBids, setQueueBids] = useState<number[]>([])
-  const router = useRouter()
   
   // Realtime queue monitoring on checkout to detect if someone outbid while checking out
   useEffect(() => {
-    if (isReservedSlot || isSponsorMode) return
+    if (isReservedSlot || isSponsorMode || isSponsoredTier) return
 
     const supabase = createClient()
     const fetchBids = async () => {
+      // Exclude our own message: the moment payment succeeds it joins QUEUED
+      // itself, and counting it would raise a false "outbid" alert against
+      // our own bid (e.g. $15 <= $15).
       const { data } = await supabase
         .from('messages')
         .select('bid_amount')
         .eq('status', 'QUEUED')
         .eq('is_reserved_slot', false)
         .gte('bid_amount', 2)
+        .neq('id', messageId)
         .order('bid_amount', { ascending: false })
 
       if (data) {
@@ -60,14 +64,14 @@ export function CheckoutForm({
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [messageId, isReservedSlot, isSponsorMode])
+  }, [messageId, isReservedSlot, isSponsorMode, isSponsoredTier])
 
   const highestQueuedBid = queueBids.length > 0 ? queueBids[0] : 0
   const isOutbid = !isReservedSlot && !isSponsorMode && queueBids.length > 0 && currentBid <= highestQueuedBid
   const liveRank = queueBids.filter(b => b > currentBid).length + 1
 
   const specialPricing = calculateSpecialPrice(selectedSlots.length)
-  const total = isSponsorMode 
+  const total = isSponsorMode
     ? 1 
     : isReservedSlot 
     ? specialPricing.finalPrice 
@@ -102,6 +106,21 @@ export function CheckoutForm({
 
   return (
     <div className="space-y-6">
+      {isSponsoredTier ? (
+        <div className="space-y-4">
+          <div className="p-4 bg-blue-500/10 border border-blue-500/25 rounded-2xl text-blue-700 dark:text-blue-300 text-xs font-medium text-center leading-relaxed">
+            Sponsored messages have no pay-and-broadcast. This message is waiting in the Waiting Room and will go live for 30 minutes once someone sponsors it for $1.
+          </div>
+          <button
+            type="button"
+            onClick={() => { window.location.href = '/waiting-room' }}
+            className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-bold transition-colors"
+          >
+            View the Waiting Room
+          </button>
+        </div>
+      ) : (
+      <>
       {isSponsorMode && (
         <div className="space-y-4">
           <div className="p-3.5 bg-green-500/10 border border-green-500/25 rounded-2xl text-green-700 dark:text-green-400 text-xs font-medium text-center">
@@ -268,25 +287,13 @@ export function CheckoutForm({
             : `Pay $${total.toFixed(2)} & Broadcast`)}
       </button>
 
-      {/* "Let someone else pay" only applies to standard queue, not reserved slots */}
-      {!isSponsorMode && !isReservedSlot && (
-        <button 
-          onClick={() => {
-            alert('Your message has been sent to the Waiting Room! Someone else can choose to sponsor it for you.')
-            router.push('/')
-          }}
-          disabled={isProcessing}
-          className="w-full py-4 mt-2 bg-transparent text-secondary border border-secondary/30 rounded-full font-bold hover:bg-secondary/10 hover:text-primary transition-all"
-        >
-          Let someone else pay for me
-        </button>
-      )}
-
       {/* Transparent auction notice */}
       {!isReservedSlot && !isSponsorMode && (
         <p className="text-[11px] text-secondary/70 text-center leading-normal">
           Priority queue plays messages ordered by bid amount. If you need an immutable time that cannot be outbid, select <span className="text-violet-400 font-medium">Reserve a Time Slot</span>.
         </p>
+      )}
+      </>
       )}
     </div>
   )
