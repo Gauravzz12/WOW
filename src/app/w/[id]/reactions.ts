@@ -11,7 +11,7 @@ import { createClient } from '@supabase/supabase-js'
  * service role, so the open anon INSERT/DELETE RLS policies could be revoked.
  */
 
-export const REACTION_TYPES = ['LOVE', 'CELEBRATE', 'SUPPORT', 'FEEL_THIS', 'RESPECT'] as const
+const REACTION_TYPES = ['LOVE', 'CELEBRATE', 'SUPPORT', 'FEEL_THIS', 'RESPECT'] as const
 export type ReactionType = (typeof REACTION_TYPES)[number]
 
 const DEVICE_COOKIE = 'wow_device_id'
