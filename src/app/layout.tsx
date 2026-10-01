@@ -12,6 +12,7 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://words.world'),
   title: {
     default: "Words of the World",
     template: "%s | Words of the World"

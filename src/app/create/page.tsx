@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Check, Zap, CheckCircle2, Sparkles, ExternalLink, Globe, X } from "lucide-react";
 import Link from "next/link";
@@ -44,7 +44,7 @@ const CATEGORY_DUMMY_MESSAGES: Record<string, string> = {
   general: "Peace is greater than being right. Do not fear starting over.",
 }
 
-export default function CreateMessage() {
+function CreateMessageContent() {
   // Steps: 1=Category, 2=Write, 3=Template+Identity, 4=Bidding, 5=Preview
   const [step, setStep] = useState(1);
   const [categories, setCategories] = useState<any[]>([]);
@@ -1175,5 +1175,19 @@ export default function CreateMessage() {
         </AnimatePresence>
       </div>
     </main>
+  );
+}
+
+export default function CreateMessage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+        </div>
+      }
+    >
+      <CreateMessageContent />
+    </Suspense>
   );
 }
