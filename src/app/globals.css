@@ -163,17 +163,6 @@ textarea:disabled,
   }
 }
 
-/* ── Google Fonts ── */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Outfit:wght@300;400;600&family=Caveat:wght@400;600&family=Cinzel:wght@400;600&family=Space+Mono:wght@400;700&display=swap');
-
-:root {
-  --font-playfair: 'Playfair Display', Georgia, serif;
-  --font-outfit: 'Outfit', system-ui, sans-serif;
-  --font-caveat: 'Caveat', cursive;
-  --font-cinzel: 'Cinzel', 'Times New Roman', serif;
-  --font-mono: 'Space Mono', 'Courier New', monospace;
-}
-
 /* ── Color Invert Resilience ── */
 /* Light mode: white inline text → near-black so it stays readable */
 html:not(.dark) .message-html-content:not(.always-dark-card) [style*="color: #ffffff"],

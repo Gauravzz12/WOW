@@ -82,13 +82,13 @@ const config: Config = {
         }
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "sans-serif"],
-        serif: ["var(--font-cormorant)", "serif"],
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        serif: ["var(--font-cormorant)", "Georgia", "serif"],
         playfair: ["var(--font-playfair)", "Georgia", "serif"],
         outfit: ["var(--font-outfit)", "system-ui", "sans-serif"],
         caveat: ["var(--font-caveat)", "cursive"],
         cinzel: ["var(--font-cinzel)", "'Times New Roman'", "serif"],
-        mono: ["var(--font-mono)", "'Courier New'", "monospace"],
+        mono: ["var(--font-space-mono)", "'Courier New'", "monospace"],
       }
     },
   },

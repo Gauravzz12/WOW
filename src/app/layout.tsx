@@ -1,15 +1,49 @@
 import type { Metadata } from "next";
-import { Inter, Cormorant_Garamond } from "next/font/google";
+import {
+  Inter,
+  Cormorant_Garamond,
+  Playfair_Display,
+  Outfit,
+  Caveat,
+  Cinzel,
+  Space_Mono,
+} from "next/font/google";
 import "./globals.css";
 import { CSPostHogProvider, PostHogPageView } from "@/lib/posthog";
 import { Suspense } from 'react';
 import { ToastContainer } from '@/components/Toast';
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const cormorant = Cormorant_Garamond({ 
-  subsets: ["latin"], 
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-cormorant" 
+  variable: "--font-cormorant",
+});
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-playfair",
+});
+const outfit = Outfit({
+  subsets: ["latin"],
+  weight: ["300", "400", "600"],
+  variable: "--font-outfit",
+});
+const caveat = Caveat({
+  subsets: ["latin"],
+  weight: ["400", "600"],
+  variable: "--font-caveat",
+});
+const cinzel = Cinzel({
+  subsets: ["latin"],
+  weight: ["400", "600"],
+  variable: "--font-cinzel",
+});
+const spaceMono = Space_Mono({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-space-mono",
 });
 
 export const metadata: Metadata = {
@@ -59,7 +93,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.variable} ${cormorant.variable} font-sans`}>
+      <body className={`${inter.variable} ${cormorant.variable} ${playfair.variable} ${outfit.variable} ${caveat.variable} ${cinzel.variable} ${spaceMono.variable} font-sans`}>
         <CSPostHogProvider>
           <Suspense fallback={null}>
             <PostHogPageView />
