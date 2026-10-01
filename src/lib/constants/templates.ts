@@ -102,6 +102,61 @@ export const STANDARD_TEMPLATES: Template[] = [
   { id: "h", name: "Cinematic", bg: "bg-neutral-100 dark:bg-black", font: "font-serif uppercase tracking-[0.2em]", textColor: "text-[#171717] dark:text-[#f5f5f5]", cardBorder: "border-neutral-300 dark:border-neutral-800", dummyText: "BASED ON A TRUE STORY." },
   { id: "i", name: "Pastel", bg: "bg-[#FFF1F2] dark:bg-[#200D13]", font: "font-sans font-light", textColor: "text-[#4c0519] dark:text-[#fecdd3]", cardBorder: "border-rose-200 dark:border-rose-900/40", dummyText: "Soft as a cloud, sweet as a dream." },
   { id: "j", name: "Newspaper", bg: "bg-[#ECE6D8] dark:bg-[#151517]", font: "font-serif text-justify", textColor: "text-[#1a1a1a] dark:text-[#e5e5e5]", cardBorder: "border-neutral-400 dark:border-neutral-700", dummyText: "EXTRA EXTRA! READ ALL ABOUT IT!" },
+  // ── Creative Premium Templates ────────────────────────────────────────────
+  {
+    id: "k",
+    name: "✦ Aurora",
+    bg: "bg-[#0A0F1E] dark:bg-[#0A0F1E]",
+    font: "font-playfair italic",
+    textColor: "text-[#a5f3fc] dark:text-[#a5f3fc]",
+    cardBorder: "border-cyan-400/40 shadow-[0_0_60px_rgba(103,232,249,0.15)]",
+    dummyText: "Some nights, the sky writes poetry only the silent ones can read."
+  },
+  {
+    id: "l",
+    name: "⚡ Cyberpunk",
+    bg: "bg-[#0D0D0D] dark:bg-[#0D0D0D]",
+    font: "font-mono font-bold tracking-widest",
+    textColor: "text-[#39FF14] dark:text-[#39FF14]",
+    cardBorder: "border-[#39FF14]/50 shadow-[0_0_30px_rgba(57,255,20,0.2)]",
+    dummyText: "SYSTEM OVERRIDE: YOUR TRUTH IS NOW BROADCASTING."
+  },
+  {
+    id: "m",
+    name: "🌅 Sunset",
+    bg: "bg-[#1A0A00] dark:bg-[#1A0A00]",
+    font: "font-cinzel tracking-wide",
+    textColor: "text-[#FFA07A] dark:text-[#FFA07A]",
+    cardBorder: "border-orange-400/40 shadow-[0_0_40px_rgba(255,160,122,0.15)]",
+    dummyText: "Every sunset is a reminder that endings can be breathtakingly beautiful."
+  },
+  {
+    id: "n",
+    name: "🌌 Starlight",
+    bg: "bg-[#05071A] dark:bg-[#05071A]",
+    font: "font-outfit font-light tracking-wide",
+    textColor: "text-[#E8DAFF] dark:text-[#E8DAFF]",
+    cardBorder: "border-violet-400/30 shadow-[0_0_50px_rgba(167,139,250,0.12)]",
+    dummyText: "In the vast silence between stars, your name is what I hear."
+  },
+  {
+    id: "o",
+    name: "🍃 Wabi-Sabi",
+    bg: "bg-[#F5F0E8] dark:bg-[#1C1A15]",
+    font: "font-playfair",
+    textColor: "text-[#5C4A32] dark:text-[#D4B896]",
+    cardBorder: "border-amber-800/20 dark:border-amber-600/25",
+    dummyText: "There is profound beauty in impermanence — let it move you."
+  },
+  {
+    id: "p",
+    name: "💜 Amethyst",
+    bg: "bg-[#1A0A2E] dark:bg-[#1A0A2E]",
+    font: "font-caveat text-3xl",
+    textColor: "text-[#E9D5FF] dark:text-[#E9D5FF]",
+    cardBorder: "border-purple-400/40 shadow-[0_0_40px_rgba(168,85,247,0.2)]",
+    dummyText: "Written at 3am, meant for someone the universe hasn't let me meet yet."
+  },
 ]
 
 export const ALL_TEMPLATES: Template[] = [

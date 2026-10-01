@@ -34,7 +34,7 @@ class ToastEmitter {
 
   show(type: ToastType, message: string, options?: { title?: string; duration?: number }) {
     const id = Math.random().toString(36).substring(2, 9)
-    const duration = options?.duration ?? 4500
+    const duration = options?.duration ?? 2000
     const newToast: ToastItem = {
       id,
       type,
@@ -78,7 +78,7 @@ export function ToastContainer() {
   return (
     <div
       aria-live="polite"
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2.5 max-w-[92vw] sm:max-w-md w-full pointer-events-none"
+      className="fixed top-6 right-6 z-[500] flex flex-col items-end gap-2.5 w-[92vw] sm:w-auto sm:max-w-sm pointer-events-none"
     >
       <AnimatePresence mode="popLayout">
         {toasts.map(t => (
@@ -120,11 +120,11 @@ function ToastCard({ toastItem, onDismiss }: { toastItem: ToastItem; onDismiss: 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-      transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-      className={`pointer-events-auto flex items-start gap-3 w-full p-4 rounded-2xl bg-background-elevated/95 backdrop-blur-xl border ${borders[toastItem.type]} ${glows[toastItem.type]} shadow-2xl text-primary`}
+      initial={{ opacity: 0, x: 60, scale: 0.95 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 40, scale: 0.95 }}
+      transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+      className={`pointer-events-auto flex items-start gap-3 w-full min-w-[260px] p-4 rounded-2xl bg-background-elevated/95 backdrop-blur-xl border ${borders[toastItem.type]} ${glows[toastItem.type]} shadow-2xl text-primary`}
     >
       {icons[toastItem.type]}
       <div className="flex-1 min-w-0 pr-1">

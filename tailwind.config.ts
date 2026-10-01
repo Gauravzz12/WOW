@@ -55,6 +55,15 @@ const config: Config = {
     'bg-cyan-500/15', 'dark:bg-cyan-400/20', 'text-cyan-700', 'dark:text-cyan-300', 'border-cyan-500/30', 'dark:border-cyan-400/40',
     'bg-red-500/15', 'dark:bg-red-400/20', 'text-red-700', 'dark:text-red-300', 'border-red-500/30', 'dark:border-red-400/40',
     'bg-violet-500/15', 'dark:bg-violet-400/20', 'text-violet-700', 'dark:text-violet-300', 'border-violet-500/30', 'dark:border-violet-400/40',
+    // Creative premium template backgrounds, text, borders (k-p)
+    'bg-[#0A0F1E]', 'text-[#a5f3fc]', 'border-cyan-400/40',
+    'bg-[#0D0D0D]', 'text-[#39FF14]', 'border-[#39FF14]/50',
+    'bg-[#1A0A00]', 'text-[#FFA07A]', 'border-orange-400/40',
+    'bg-[#05071A]', 'text-[#E8DAFF]', 'border-violet-400/30',
+    'bg-[#F5F0E8]', 'dark:bg-[#1C1A15]', 'text-[#5C4A32]', 'dark:text-[#D4B896]', 'border-amber-800/20', 'dark:border-amber-600/25',
+    'bg-[#1A0A2E]', 'text-[#E9D5FF]', 'border-purple-400/40',
+    // Font utilities
+    'font-playfair', 'font-outfit', 'font-caveat', 'font-cinzel',
   ],
   theme: {
     extend: {
@@ -75,6 +84,11 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-inter)", "sans-serif"],
         serif: ["var(--font-cormorant)", "serif"],
+        playfair: ["var(--font-playfair)", "Georgia", "serif"],
+        outfit: ["var(--font-outfit)", "system-ui", "sans-serif"],
+        caveat: ["var(--font-caveat)", "cursive"],
+        cinzel: ["var(--font-cinzel)", "'Times New Roman'", "serif"],
+        mono: ["var(--font-mono)", "'Courier New'", "monospace"],
       }
     },
   },
