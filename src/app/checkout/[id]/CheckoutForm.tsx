@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { processPayment } from './actions'
 import { SlotPicker, Slot } from '@/components/SlotPicker'
 import { Zap, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { calculateSpecialPrice } from '@/lib/constants/pricing'
+import { toast } from '@/components/Toast'
 
 export function CheckoutForm({ 
   messageId, 
@@ -24,6 +26,7 @@ export function CheckoutForm({
   initialSlotIds?: string[],
   initialSlots?: Slot[]
 }) {
+  const router = useRouter()
   const [isProcessing, setIsProcessing] = useState(false)
   const [selectedSlots, setSelectedSlots] = useState<Slot[]>(initialSlots)
   const [isEditingSlots, setIsEditingSlots] = useState(initialSlots.length === 0)
@@ -89,17 +92,22 @@ export function CheckoutForm({
     
     if (result.success) {
       if (isSponsorMode) {
-        alert('Payment successful! Revealing the full message — you can add your shoutout next.')
-        window.location.href = `/w/${messageId}?justSponsored=1`
+        toast.success('Payment successful! Revealing the full message — you can add your shoutout next.', {
+          title: 'Sponsorship Confirmed'
+        })
+        router.push(`/w/${messageId}?justSponsored=1`)
         return
       }
       const tabParam = isReservedSlot ? 'SPECIAL' : 'NORMAL'
-      alert(isReservedSlot && selectedSlots.length > 0 
-        ? `Payment successful! Your special message is reserved for ${selectedSlots.length * 3} hours starting ${new Date(selectedSlots[0].scheduled_start).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}.`
-        : 'Payment successful! The message is now in the queue.')
-      window.location.href = `/?tab=${tabParam}`
+      toast.success(
+        isReservedSlot && selectedSlots.length > 0 
+          ? `Payment successful! Your special message is reserved for ${selectedSlots.length * 3} hours starting ${new Date(selectedSlots[0].scheduled_start).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}.`
+          : 'Payment successful! The message is now in the queue.',
+        { title: 'Payment Confirmed' }
+      )
+      router.push(`/?tab=${tabParam}`)
     } else {
-      alert(result.error || 'Payment failed.')
+      toast.error(result.error || 'Payment failed.', { title: 'Payment Failed' })
       setIsProcessing(false)
     }
   }

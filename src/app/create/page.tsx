@@ -12,6 +12,7 @@ import { getCategoryStyles, resolveCardStyles, resolveThemeSafeTextColor } from 
 import { RichTextEditor } from '@/components/RichTextEditor'
 import { StickerPicker, Sticker } from '@/components/StickerPicker'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { toast } from '@/components/Toast'
 
 import { 
   NORMAL_DURATION_OPTIONS, 
@@ -290,11 +291,13 @@ function CreateMessageContent() {
     setIsSubmitting(false);
 
     if (result.error) {
-      alert(result.error);
+      toast.error(result.error, { title: 'Submission Error' });
     } else if (isSponsored) {
       // Sponsored messages have no pay-and-broadcast: they sit in the Waiting
       // Room (PENDING_PAYMENT) until someone else sponsors them for $1.
-      alert('Your message is now in the Waiting Room! It will broadcast worldwide once someone sponsors it for $1.')
+      toast.success('Your message is now in the Waiting Room! It will broadcast worldwide once someone sponsors it for $1.', {
+        title: 'Message Queued'
+      });
       router.push('/waiting-room');
     } else {
       const slotQuery = isReserved && selectedSpecialSlots.length > 0 

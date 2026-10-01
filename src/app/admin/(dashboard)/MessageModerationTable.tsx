@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 
 import { AdminMessage, MessageType, getMessageTypeInfo } from './adminUtils'
+import { toast } from '@/components/Toast'
 export type { AdminMessage, MessageType }
 export { getMessageTypeInfo }
 
@@ -118,8 +119,9 @@ export function MessageModerationTable({ initialMessages }: { initialMessages: A
       if (res.success) {
         setMessages(prev => prev.map(m => m.id === messageId ? { ...m, status: 'REMOVED' } : m))
         setPendingRemoveId(null)
+        toast.success('Message removed successfully from the board.', { title: 'Message Moderated' })
       } else {
-        alert(res.error || 'Failed to remove message.')
+        toast.error(res.error || 'Failed to remove message.', { title: 'Moderation Error' })
       }
     })
   }

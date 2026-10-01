@@ -3,6 +3,7 @@ import { Inter, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
 import { CSPostHogProvider, PostHogPageView } from "@/lib/posthog";
 import { Suspense } from 'react';
+import { ToastContainer } from '@/components/Toast';
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const cormorant = Cormorant_Garamond({ 
@@ -64,6 +65,7 @@ export default function RootLayout({
             <PostHogPageView />
           </Suspense>
           {children}
+          <ToastContainer />
         </CSPostHogProvider>
       </body>
     </html>
