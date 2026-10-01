@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import { getCategoryStyles } from '@/lib/utils/colors'
 import { ShareMenu } from './ShareMenu'
 import { getDeviceId, getStoredReactions, setStoredReaction, removeStoredReaction, syncStoredReactions } from '@/lib/deviceId'
+import { addReaction as serverAddReaction, removeReaction as serverRemoveReaction } from '@/app/w/[id]/reactions'
+import { addComment as serverAddComment } from '@/app/w/[id]/comments'
 
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -155,7 +157,9 @@ export function InlineInteractions({
     const channel = supabase.channel(`interactions_${messageId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments', filter: `message_id=eq.${messageId}` }, (payload) => {
         const newComment = { id: payload.new.id, content: payload.new.content, created_at: payload.new.created_at }
-        setComments(prev => [newComment, ...prev].slice(0, 100))
+        // Dedupe: our own server-action insert already prepends the row below,
+        // and realtime may deliver the same row a moment later.
+        setComments(prev => prev.some(c => c.id === newComment.id) ? prev : [newComment, ...prev].slice(0, 100))
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reactions', filter: `message_id=eq.${messageId}` }, () => {
         fetchReactions()
@@ -199,7 +203,6 @@ export function InlineInteractions({
     if (isReacting.current) return
     isReacting.current = true
 
-    const deviceId = getDeviceId()
     const currentReactionType = Object.keys(myReactions)[0] || null
     const currentReactionId = currentReactionType ? myReactions[currentReactionType] : null
 
@@ -213,12 +216,20 @@ export function InlineInteractions({
           [type]: Math.max(0, (prev[type] || 0) - 1)
         }))
 
+        // Device-gated server delete (direct anon DELETE is revoked by RLS hardening).
         if (currentReactionId && currentReactionId !== 'temp') {
-          await supabase.from('reactions').delete().eq('id', currentReactionId)
-        } else {
-          await supabase.from('reactions').delete().eq('message_id', messageId).eq('device_id', deviceId)
+          const res = await serverRemoveReaction(messageId, type)
+          if ((res as any).error) {
+            // Revert on error
+            setMyReactions(currentReactionType ? { [currentReactionType]: currentReactionId } : {})
+            syncStoredReactions(messageId, currentReactionType ? { [currentReactionType]: currentReactionId } : {})
+            setReactionCounts(prev => ({
+              ...prev,
+              [type]: (prev[type] || 0) + 1
+            }))
+          }
         }
-      } 
+      }
       // 2. User selects a reaction -> Strictly 1 reaction per person, replaces previous reaction
       else {
         const oldType = currentReactionType
@@ -237,27 +248,17 @@ export function InlineInteractions({
           return next
         })
 
-        // Delete old reaction from DB if there was one
+        // Delete old reaction from DB if there was one (device-gated server delete)
         if (oldId && oldId !== 'temp') {
-          await supabase.from('reactions').delete().eq('id', oldId)
-        } else if (oldType) {
-          await supabase.from('reactions').delete().eq('message_id', messageId).eq('device_id', deviceId)
+          await serverRemoveReaction(messageId, oldType as string)
         }
 
-        // Insert new single reaction
-        const { data, error } = await supabase
-          .from('reactions')
-          .insert({
-            message_id: messageId,
-            reaction_type: type,
-            device_id: deviceId
-          })
-          .select('id')
-          .single()
+        // Insert new single reaction (device-gated server insert, deduped per device+type)
+        const res = await serverAddReaction(messageId, type)
 
-        if (!error && data) {
-          setMyReactions({ [type]: data.id })
-          syncStoredReactions(messageId, { [type]: data.id })
+        if (!(res as any).error && (res as any).id) {
+          setMyReactions({ [type]: (res as any).id })
+          syncStoredReactions(messageId, { [type]: (res as any).id })
         } else {
           // Revert on error
           setMyReactions(oldType && oldId ? { [oldType]: oldId } : {})
@@ -281,16 +282,23 @@ export function InlineInteractions({
 
     setIsSubmitting(true)
     const content = commentText.trim()
-    const { error } = await supabase
-      .from('comments')
-      .insert({ message_id: messageId, content })
-    
-    if (!error) {
-      setCommentText('')
-      // After posting, if modal isn't open, show list
-      if (!isModalOpen) {
-        setCommentMode('list')
-      }
+    // Device-gated server insert (direct anon INSERT is revoked by RLS hardening).
+    const res = await serverAddComment(messageId, content)
+
+    if ((res as any).error) {
+      setIsSubmitting(false)
+      return
+    }
+    const newComment = (res as any).comment
+    if (newComment) {
+      setComments(prev => prev.some(c => c.id === newComment.id)
+        ? prev
+        : [{ id: newComment.id, content: newComment.content, created_at: newComment.created_at }, ...prev].slice(0, 100))
+    }
+    setCommentText('')
+    // After posting, if modal isn't open, show list
+    if (!isModalOpen) {
+      setCommentMode('list')
     }
     setIsSubmitting(false)
   }

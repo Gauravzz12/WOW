@@ -15,7 +15,7 @@ export function CommentSection({ messageId }: { messageId: string }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [myDeviceId, setMyDeviceId] = useState<string>('')
-  const supabase = createClient()
+  const [supabase] = useState(() => createClient())
   const endOfCommentsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

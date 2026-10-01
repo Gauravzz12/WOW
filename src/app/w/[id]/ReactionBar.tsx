@@ -26,7 +26,10 @@ export function ReactionBar({ messageId }: { messageId: string }) {
   // Suppresses the resurrection race: a realtime refetch that lands before our
   // DELETE commits would otherwise re-add the just-removed reaction.
   const recentlyRemoved = useRef<Record<string, number>>({})
-  const supabase = createClient()
+  // Stable client: createBrowserClient returns a NEW instance per call, so
+  // creating it inline re-ran the fetch effect (and resubscribed realtime)
+  // on every render, since setCounts always produces a new object.
+  const [supabase] = useState(() => createClient())
 
   // Sync state if messageId changes (client-only: localStorage is unavailable on server)
   useEffect(() => {

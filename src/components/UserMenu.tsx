@@ -9,7 +9,7 @@ import { ThemeToggle } from './ThemeToggle'
 
 export function UserMenu() {
   const [user, setUser] = useState<any>(null)
-  const supabase = createClient()
+  const [supabase] = useState(() => createClient())
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -21,7 +21,7 @@ export function UserMenu() {
     })
 
     return () => subscription.unsubscribe()
-  }, [supabase.auth])
+  }, [supabase])
 
   if (user) {
     return (
