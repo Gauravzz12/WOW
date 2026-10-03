@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Maximize2, X } from 'lucide-react'
+import { FrameDecorator } from './FrameDecorator'
+import { getFrameClass } from '@/lib/constants/frames'
 
 export interface FullscreenMessageData {
   content: string
@@ -15,6 +17,7 @@ export interface FullscreenMessageData {
   sponsorName?: string
   sponsorNote?: string
   stickers?: any[]
+  frameId?: string
 }
 
 export interface FullscreenMessageAppearance {
@@ -133,8 +136,10 @@ export function FullscreenMessage({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 8 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              className={`relative w-[94vw] ${widthClass} ${aspectClass} ${paddingClass} ${bg} border ${cardBorder || 'border-primary/20'} rounded-3xl flex flex-col overflow-hidden shadow-2xl max-h-[90dvh]`}
+              className={`relative w-[94vw] ${widthClass} ${aspectClass} ${paddingClass} ${bg} border ${cardBorder || 'border-primary/20'} rounded-3xl flex flex-col overflow-hidden shadow-2xl max-h-[90dvh] ${getFrameClass(message.frameId)}`}
             >
+              <FrameDecorator frameId={message.frameId} />
+
               {Array.isArray(message.stickers) && message.stickers.map((sticker: any) => (
                 <span
                   key={sticker.id}

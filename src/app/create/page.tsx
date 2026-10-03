@@ -9,10 +9,23 @@ import { createMessage } from "./actions";
 import { createClient } from '@/lib/supabase/client'
 import { sanitizeHtmlText } from '@/lib/sanitize'
 import { getCategoryStyles, resolveCardStyles, resolveThemeSafeTextColor } from '@/lib/utils/colors'
-import { RichTextEditor } from '@/components/RichTextEditor'
-import { StickerPicker, Sticker } from '@/components/StickerPicker'
+import { FrameDecorator } from '@/components/FrameDecorator'
+import { getFrameClass } from '@/lib/constants/frames'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { toast } from '@/components/Toast'
+import dynamic from 'next/dynamic'
+
+// Dynamically import heavy components to speed up initial page load
+const RichTextEditor = dynamic(() => import('@/components/RichTextEditor').then(mod => mod.RichTextEditor), { 
+  ssr: false, 
+  loading: () => <div className="h-64 w-full flex items-center justify-center bg-background-elevated animate-pulse rounded-lg text-secondary text-sm">Loading Editor...</div> 
+})
+const StickerPicker = dynamic(() => import('@/components/StickerPicker').then(mod => mod.StickerPicker), { ssr: false })
+const FramePicker = dynamic(() => import('@/components/FramePicker').then(mod => mod.FramePicker), { ssr: false })
+const SlotPicker = dynamic(() => import('@/components/SlotPicker').then(mod => mod.SlotPicker), { ssr: false })
+
+import type { Sticker } from '@/components/StickerPicker'
+import type { Slot } from '@/components/SlotPicker'
 
 import { 
   NORMAL_DURATION_OPTIONS, 
@@ -25,7 +38,6 @@ import {
   SPONSORED_PRICE,
   SPONSORED_DURATION_SECS,
 } from '@/lib/constants/pricing';
-import { SlotPicker, Slot } from '@/components/SlotPicker';
 
 import {
   ALL_TEMPLATES,
@@ -52,6 +64,7 @@ function CreateMessageContent() {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [category, setCategory] = useState("general");
   const [template, setTemplate] = useState("a");
+  const [templatePage, setTemplatePage] = useState(0);
   const [hoveredTemplate, setHoveredTemplate] = useState<string | null>(null);
   const [queueBids, setQueueBids] = useState<number[]>([]);
   const [normalDuration, setNormalDuration] = useState(60);
@@ -95,6 +108,7 @@ function CreateMessageContent() {
     }
   }, [tierParam, slotParam]);
   const [stickers, setStickers] = useState<Sticker[]>([]);
+  const [frameId, setFrameId] = useState<string | null>(null);
   const previewCardRef = useRef<HTMLDivElement>(null);
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [isDraggingSticker, setIsDraggingSticker] = useState(false);
@@ -270,7 +284,7 @@ function CreateMessageContent() {
         vipBadge: selectedTemplate.vipBadge || undefined,
         vipIcon: selectedTemplate.vipIcon || undefined,
         cardBorder: cardStyles.cardBorder || undefined,
-        accentGlow: selectedTemplate.accentGlow || undefined,
+        accent: selectedTemplate.accent || undefined,
         brandName: brandName.trim().slice(0, 40) || undefined,
         brandUrl: brandUrl.trim() || undefined,
         isSponsored: isSponsored || undefined,
@@ -285,6 +299,7 @@ function CreateMessageContent() {
         reminderEmail: wantsReminder ? reminderEmail : undefined,
         // Stickers are disabled for Sponsored messages — never persist any.
         stickers: !isSponsored && stickers.length > 0 ? stickers : undefined,
+        frameId: !isSponsored && frameId ? frameId : undefined,
       }),
     });
 
@@ -642,12 +657,22 @@ function CreateMessageContent() {
 
               {/* CLASSIC EDITORIAL TEMPLATES */}
               <div className="mb-8">
-                <h3 className="text-xs uppercase tracking-widest font-bold text-secondary mb-3">
-                  Classic Editorial Styles
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs uppercase tracking-widest font-bold text-secondary">
+                    Classic Editorial Styles
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setTemplatePage(p => (p + 1) % Math.ceil(STANDARD_TEMPLATES.length / 6))}
+                    className="text-xs font-semibold text-primary hover:text-primary/70 bg-background-elevated px-2.5 py-1 rounded-full transition-colors flex items-center gap-1.5 shadow-sm border border-primary/10"
+                  >
+                    More Templates
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 22v-6h6"/></svg>
+                  </button>
+                </div>
                 
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  {STANDARD_TEMPLATES.map(t => {
+                  {STANDARD_TEMPLATES.slice(templatePage * 6, (templatePage + 1) * 6).map(t => {
                     const isSelected = template === t.id;
                     const tStyles = resolveCardStyles({ bg: t.bg, textColor: t.textColor, cardBorder: t.cardBorder, isVip: false }, t.id);
                     return (
@@ -664,6 +689,11 @@ function CreateMessageContent() {
                               : `${tStyles.cardBorder || 'border border-primary/10 hover:border-primary/30'} shadow-sm hover:shadow`
                           }`}
                         >
+                          {/* Accent stripe */}
+                          {t.accent && (
+                            <div className={`absolute top-0 left-0 right-0 h-1 ${t.accent}`} />
+                          )}
+
                           {isSelected && (
                             <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary text-background flex items-center justify-center shadow-md">
                               <Check className="w-3 h-3 stroke-[3]" />
@@ -1024,8 +1054,10 @@ function CreateMessageContent() {
               <div 
                 ref={previewCardRef}
                 onClick={() => setSelectedStickerId(null)}
-                className={`w-full max-w-4xl aspect-square md:aspect-video mx-auto border ${cardStyles.cardBorder || 'border-primary/20'} rounded-2xl flex flex-col p-6 md:p-12 relative overflow-hidden shadow-2xl backdrop-blur-md select-none ${cardStyles.bg}`}
+                className={`w-full max-w-4xl aspect-square md:aspect-video mx-auto border ${cardStyles.cardBorder || 'border-primary/20'} rounded-2xl flex flex-col p-6 md:p-12 relative overflow-hidden shadow-2xl backdrop-blur-md select-none ${cardStyles.bg} ${getFrameClass(frameId || undefined)}`}
               >
+                {!isSponsored && <FrameDecorator frameId={frameId || undefined} />}
+
                 {/* Interactive Draggable & Stretchable Stickers (disabled for Sponsored) */}
                 {!isSponsored && stickers.map(sticker => {
                   const isSelected = selectedStickerId === sticker.id;
@@ -1148,13 +1180,18 @@ function CreateMessageContent() {
                   </p>
                 </div>
               ) : (
-              <div className="w-full mt-6 p-4 sm:p-5 rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 via-background-elevated/40 to-background-elevated/20 shadow-md">
-                <StickerPicker 
-                  stickers={stickers} 
-                  onChange={setStickers}
-                  selectedId={selectedStickerId}
-                  onSelectId={setSelectedStickerId}
-                />
+              <div className="w-full mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 sm:p-5 rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 via-background-elevated/40 to-background-elevated/20 shadow-md flex flex-col">
+                  <StickerPicker 
+                    stickers={stickers} 
+                    onChange={setStickers}
+                    selectedId={selectedStickerId}
+                    onSelectId={setSelectedStickerId}
+                  />
+                </div>
+                <div className="p-4 sm:p-5 rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 via-background-elevated/40 to-background-elevated/20 shadow-md flex flex-col">
+                  <FramePicker selectedId={frameId} onChange={setFrameId} />
+                </div>
               </div>
               )}
 

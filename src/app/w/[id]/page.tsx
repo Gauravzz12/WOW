@@ -16,6 +16,8 @@ import { ShareMenu } from '@/components/ShareMenu'
 import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { getSponsoredTeaser } from '@/lib/masking'
 import { FullscreenMessage } from '@/components/MessageFullscreen'
+import { FrameDecorator } from '@/components/FrameDecorator'
+import { getFrameClass } from '@/lib/constants/frames'
 
 export const dynamic = 'force-dynamic'
 
@@ -233,7 +235,9 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-8 space-y-12">
         
         {/* Message Presentation */}
-        <div className={`${bg || 'bg-background-elevated'} border ${cardBorder || message.style_config?.cardBorder || borderColor} rounded-2xl p-8 md:p-16 text-center shadow-lg relative overflow-hidden transition-colors`}>
+        <div className={`${bg || 'bg-background-elevated'} border ${cardBorder || message.style_config?.cardBorder || borderColor} rounded-2xl p-8 md:p-16 text-center shadow-lg relative overflow-hidden transition-colors ${getFrameClass(message.style_config?.frameId)}`}>
+          <FrameDecorator frameId={message.style_config?.frameId} />
+
           {message.status === 'ACTIVE' && (
             <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-600 text-xs font-bold uppercase tracking-widest rounded-full">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
@@ -320,6 +324,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
                   // Memory card renders plain content with no stickers —
                   // mirror exactly that.
                   stickers: undefined,
+                  frameId: (message as any).style_config?.frameId,
                 }}
                 appearance={{
                   bg: bg || 'bg-background-elevated',

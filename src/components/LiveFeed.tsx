@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import confetti from 'canvas-confetti'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { Heart, MessageCircle, Share2 } from 'lucide-react'
@@ -10,6 +9,8 @@ import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { SpecialMomentOverlay } from './SpecialMomentOverlay'
 import { InlineInteractions } from './InlineInteractions'
 import { FullscreenMessage } from './MessageFullscreen'
+import { FrameDecorator } from './FrameDecorator'
+import { getFrameClass } from '@/lib/constants/frames'
 
 export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL' }: { initialMessage: any, compact?: boolean, activeTab?: 'NORMAL' | 'SPECIAL' | 'SPONSORED' }) {
   const message = initialMessage
@@ -81,11 +82,13 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
       if (lastActiveIdRef.current && lastActiveIdRef.current !== message.id) {
         // Message transitioned live!
         playLiveChime()
-        confetti({
-          particleCount: 55,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#38bdf8', '#818cf8', '#c084fc', '#f472b6', '#fbbf24']
+        import('canvas-confetti').then((confetti) => {
+          confetti.default({
+            particleCount: 55,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#38bdf8', '#818cf8', '#c084fc', '#f472b6', '#fbbf24']
+          })
         })
       }
       lastActiveIdRef.current = message.id
@@ -209,8 +212,10 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
               animate={{ opacity: 1, scale: categorySlug === 'love' ? 1.05 : 1, filter: 'blur(0px)' }}
               exit={{ opacity: 0, scale: categorySlug === 'love' ? 1.1 : 1.05, filter: 'blur(10px)' }}
               transition={{ duration: 1.5, ease: "easeInOut" }}
-              className={`w-full ${compact ? 'max-w-xl aspect-[4/3] p-4 md:p-6' : 'max-w-4xl aspect-square md:aspect-video p-6 md:p-12'} mx-auto border ${cardBorder || message.style_config?.cardBorder || borderClass} rounded-2xl flex flex-col relative overflow-hidden shadow-2xl backdrop-blur-md ${bg || bgClass} hover:border-primary/50 transition-all duration-700 group`}
+              className={`w-full ${compact ? 'max-w-xl aspect-[4/3] p-4 md:p-6' : 'max-w-4xl aspect-square md:aspect-video p-6 md:p-12'} mx-auto border ${cardBorder || message.style_config?.cardBorder || borderClass} rounded-2xl flex flex-col relative overflow-hidden shadow-2xl backdrop-blur-md ${bg || bgClass} hover:border-primary/50 transition-all duration-700 group ${getFrameClass(message.style_config?.frameId)}`}
             >
+              <FrameDecorator frameId={message.style_config?.frameId} />
+
               {/* Custom placed stickers if present */}
               {Array.isArray(message?.style_config?.stickers) && message.style_config.stickers.map((sticker: any) => (
                 <span
@@ -269,6 +274,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
                     sponsorName: message.style_config?.sponsorName,
                     sponsorNote: message.style_config?.sponsorNote,
                     stickers: message.style_config?.stickers,
+                    frameId: message.style_config?.frameId,
                   }}
                   appearance={{
                     bg: bg || bgClass,

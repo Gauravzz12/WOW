@@ -27,6 +27,8 @@ import {
 import { resolveCardStyles } from '@/lib/utils/colors'
 import { InlineInteractions } from './InlineInteractions'
 import { FullscreenMessage } from './MessageFullscreen'
+import { FrameDecorator } from './FrameDecorator'
+import { getFrameClass } from '@/lib/constants/frames'
 
 export interface VipSpecialViewProps {
   activeSpecialMsg: any | null
@@ -363,8 +365,10 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className={`special-glow w-full ${msgBg} border ${msgBorder || 'border-violet-500/30'} ring-1 ring-violet-500/20 rounded-2xl px-6 py-9 sm:px-10 sm:py-12 md:px-14 md:py-14 shadow-sm text-primary relative overflow-hidden flex flex-col justify-between`}
+            className={`special-glow w-full ${msgBg} border ${msgBorder || 'border-violet-500/30'} ring-1 ring-violet-500/20 rounded-2xl px-6 py-9 sm:px-10 sm:py-12 md:px-14 md:py-14 shadow-sm text-primary relative overflow-hidden flex flex-col justify-between ${getFrameClass(activeSpecialMsg.style_config?.frameId)}`}
           >
+            <FrameDecorator frameId={activeSpecialMsg.style_config?.frameId} />
+
             {/* Solid gold hairline with a traveling light dot — premium marker, no gradient */}
             <span aria-hidden="true" className="absolute top-0 left-10 right-10 h-[2px] bg-amber-400/70">
               <span className="special-sweep-dot absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-amber-300 shadow-[0_0_10px_rgba(252,211,77,1)]" />
@@ -500,6 +504,7 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
                   sponsorName: activeSpecialMsg.style_config?.sponsorName,
                   sponsorNote: activeSpecialMsg.style_config?.sponsorNote,
                   stickers: activeSpecialMsg.style_config?.stickers,
+                  frameId: activeSpecialMsg.style_config?.frameId,
                 }}
                 appearance={{
                   bg: msgBg,

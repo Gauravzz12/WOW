@@ -7,6 +7,8 @@ import { Clock, HeartHandshake, Sparkles, ChevronRight } from 'lucide-react'
 import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { InlineInteractions } from './InlineInteractions'
 import { FullscreenMessage } from './MessageFullscreen'
+import { FrameDecorator } from './FrameDecorator'
+import { getFrameClass } from '@/lib/constants/frames'
 
 function SponsoredCard({ message }: { message: any }) {
   const categoryName = message?.category?.name || 'MESSAGE'
@@ -56,8 +58,10 @@ function SponsoredCard({ message }: { message: any }) {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className={`w-full rounded-2xl border ${cardBorder || message?.style_config?.cardBorder || borderClass} ${bg || bgClass} p-5 flex flex-col justify-between shadow-lg hover:shadow-2xl hover:border-primary/40 transition-all duration-300 relative overflow-hidden backdrop-blur-md min-h-[300px] group`}
+      className={`w-full rounded-2xl border ${cardBorder || message?.style_config?.cardBorder || borderClass} ${bg || bgClass} p-5 flex flex-col justify-between shadow-lg hover:shadow-2xl hover:border-primary/40 transition-all duration-300 relative overflow-hidden backdrop-blur-md min-h-[300px] group ${getFrameClass(message?.style_config?.frameId)}`}
     >
+      <FrameDecorator frameId={message?.style_config?.frameId} />
+
       {/* Custom placed stickers if present */}
       {Array.isArray(message?.style_config?.stickers) && message.style_config.stickers.map((sticker: any) => (
         <span
@@ -116,6 +120,7 @@ function SponsoredCard({ message }: { message: any }) {
             sponsorName: message?.style_config?.sponsorName,
             sponsorNote: message?.style_config?.sponsorNote,
             stickers: message?.style_config?.stickers,
+            frameId: message?.style_config?.frameId,
           }}
           appearance={{
             bg: bg || bgClass,

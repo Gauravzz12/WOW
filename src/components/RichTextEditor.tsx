@@ -3,13 +3,11 @@
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { TextStyle, FontSize } from '@tiptap/extension-text-style'
-import { Color } from '@tiptap/extension-color'
 import { FontFamily } from '@tiptap/extension-font-family'
-import { Highlight } from '@tiptap/extension-highlight'
 import { useState, useEffect, useRef } from 'react'
 import data from '@emoji-mart/data'
 import Picker from '@emoji-mart/react'
-import { Bold, Italic, Strikethrough, Palette, Highlighter, Smile, X, Type, ChevronDown } from 'lucide-react'
+import { Bold, Italic, Strikethrough, Smile, X, Type, ChevronDown } from 'lucide-react'
 
 const FONTS = [
   { name: 'Clean',    label: 'Aa', value: 'var(--font-inter)',      hint: 'Inter — clean sans-serif' },
@@ -42,16 +40,6 @@ const ALL_FONT_SIZES = [
   { label: '40px', name: 'Giant (2XL)', value: '40px' },
 ]
 
-const COLORS = [
-  '#090909', // pitch dark / deep black
-  '#f43f5e', // rose-500
-  '#eab308', // yellow-500
-  '#3b82f6', // blue-500
-  '#22c55e', // green-500
-  '#a855f7', // purple-500
-  '#ffffff', // white
-]
-
 export function RichTextEditor({ 
   value, 
   onChange, 
@@ -73,9 +61,7 @@ export function RichTextEditor({
       StarterKit,
       TextStyle,
       FontSize,
-      Color,
       FontFamily,
-      Highlight.configure({ multicolor: true }),
     ],
     content: value,
     onUpdate: ({ editor }) => {
@@ -183,37 +169,6 @@ export function RichTextEditor({
           >
             <Strikethrough size={16} />
           </button>
-          
-          <div className="w-px h-4 bg-primary/15 mx-1" />
-          
-          <div className="flex gap-1 flex-wrap">
-            {FONTS.map(font => {
-              const isActive = editor.isActive('textStyle', { fontFamily: font.value })
-              return (
-                <button
-                  key={font.name}
-                  type="button"
-                  onClick={() => {
-                    if (isActive) {
-                      editor.chain().focus().unsetFontFamily().run()
-                    } else {
-                      editor.chain().focus().setFontFamily(font.value).run()
-                    }
-                  }}
-                  className={`flex flex-col items-center justify-center px-2 py-1.5 min-w-[2.75rem] rounded-xl border transition-all ${
-                    isActive
-                      ? 'bg-primary text-background border-primary shadow-sm scale-105'
-                      : 'text-secondary hover:text-primary hover:bg-primary/10 border-transparent hover:border-primary/20'
-                  }`}
-                  style={{ fontFamily: font.value }}
-                  title={font.hint}
-                >
-                  <span className="text-base leading-none font-semibold">{font.label}</span>
-                  <span className="text-[8px] leading-none mt-0.5 opacity-70 font-sans" style={{ fontFamily: 'var(--font-inter)' }}>{font.name}</span>
-                </button>
-              )
-            })}
-          </div>
         </div>
 
         <div className="w-px h-4 bg-primary/15" />
@@ -311,82 +266,7 @@ export function RichTextEditor({
           )}
         </div>
 
-        <div className="w-px h-4 bg-primary/15" />
 
-        {/* Colors */}
-        <div className="flex gap-2 items-center">
-          <Palette size={15} className="text-secondary shrink-0" />
-          <div className="flex gap-1.5 items-center">
-            {COLORS.map(color => {
-              const isActive = editor.isActive('textStyle', { color })
-              return (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => {
-                    if (isActive) {
-                      editor.chain().focus().unsetColor().run()
-                    } else {
-                      editor.chain().focus().setColor(color).run()
-                    }
-                  }}
-                  className={`w-5 h-5 rounded-full border border-primary/25 hover:scale-115 transition-transform shadow-xs ${
-                    isActive ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-110' : ''
-                  }`}
-                  style={{ backgroundColor: color }}
-                  title={`Color: ${color}${isActive ? ' (Active - click to remove)' : ''}`}
-                />
-              )
-            })}
-            <button
-              type="button"
-              onClick={() => editor.chain().focus().unsetColor().run()}
-              className="w-5 h-5 rounded-full border border-primary/20 flex items-center justify-center hover:bg-primary/10 text-secondary hover:text-primary text-[10px] transition-colors"
-              title="Reset text color"
-            >
-              <X size={10} />
-            </button>
-          </div>
-        </div>
-
-        <div className="w-px h-4 bg-primary/15" />
-
-        {/* Highlights */}
-        <div className="flex gap-2 items-center">
-          <Highlighter size={15} className="text-secondary shrink-0" />
-          <div className="flex gap-1.5 items-center">
-            {COLORS.slice(1).map(color => {
-              const highlightColor = color + '40'
-              const isActive = editor.isActive('highlight', { color: highlightColor })
-              return (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => {
-                    if (isActive) {
-                      editor.chain().focus().unsetHighlight().run()
-                    } else {
-                      editor.chain().focus().toggleHighlight({ color: highlightColor }).run()
-                    }
-                  }}
-                  className={`w-5 h-5 rounded border border-primary/25 hover:scale-115 transition-transform shadow-xs ${
-                    isActive ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-110' : ''
-                  }`}
-                  style={{ backgroundColor: highlightColor }}
-                  title={`Highlight: ${color}${isActive ? ' (Active - click to remove)' : ''}`}
-                />
-              )
-            })}
-            <button
-              type="button"
-              onClick={() => editor.chain().focus().unsetHighlight().run()}
-              className="w-5 h-5 rounded border border-primary/20 flex items-center justify-center hover:bg-primary/10 text-secondary hover:text-primary text-[10px] transition-colors"
-              title="Reset highlight"
-            >
-              <X size={10} />
-            </button>
-          </div>
-        </div>
       </div>
 
       <div className="relative">
