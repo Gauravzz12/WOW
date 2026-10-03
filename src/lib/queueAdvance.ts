@@ -74,16 +74,34 @@ export async function runQueueAdvance() {
   }
 
   if (activeMessages) {
+    // Fetch leaderboard once to check top 50 liked posts
+    const { data: leaderboard } = await supabaseAdmin.rpc('get_leaderboard')
+    const top50Ids = new Set((leaderboard || []).map((m: any) => m.id))
+
     for (const msg of activeMessages) {
       const endTime = getMessageEndTimeMs(msg as any, now.getTime())
 
       if (now.getTime() >= endTime) {
         // Message time has expired
-        await supabaseAdmin
-          .from('messages')
-          .update({ status: 'COMPLETED', actual_end: nowIso })
-          .eq('id', msg.id)
-          .eq('status', 'ACTIVE') // Atomic guard: only complete if still active
+
+        // Always delete comments when post time is over
+        await supabaseAdmin.from('comments').delete().eq('message_id', msg.id)
+
+        if (top50Ids.has(msg.id)) {
+          // Retain post if in top 50 liked posts
+          await supabaseAdmin
+            .from('messages')
+            .update({ status: 'COMPLETED', actual_end: nowIso })
+            .eq('id', msg.id)
+            .eq('status', 'ACTIVE') // Atomic guard: only complete if still active
+        } else {
+          // Otherwise, delete the post entirely
+          await supabaseAdmin
+            .from('messages')
+            .delete()
+            .eq('id', msg.id)
+            .eq('status', 'ACTIVE')
+        }
 
         // Release the reserved slot only if its window is still in the
         // future. Past slots stay BOOKED (history) so they can never be

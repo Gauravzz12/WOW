@@ -60,3 +60,34 @@ export async function sendLiveNotificationEmail(to: string, messageContent: stri
     console.error('Error sending live notification email:', error)
   }
 }
+
+export async function sendOutbidEmail(to: string, messageContent: string, newRank: number, messageId: string) {
+  try {
+    const info = await transporter.sendMail({
+      from: '"Words of the World" <noreply@wordsoftheworld.com>',
+      to,
+      subject: `⚠️ You've been outbid! (New Rank: #${newRank})`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #d97706;">Your Queue Position Dropped</h2>
+          <p>Someone just placed a higher bid on their message, pushing yours down the queue.</p>
+          
+          <div style="background-color: #fef3c7; border: 1px solid #fde68a; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0; font-size: 18px; color: #b45309;">Your new estimated rank is: <strong>#${newRank}</strong></p>
+          </div>
+          
+          <p style="margin-top: 20px;">
+            Want to regain your spot? You can bump your bid right now to jump back ahead.
+          </p>
+          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/w/${messageId}" style="display: inline-block; background-color: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">
+            Bump My Bid
+          </a>
+        </div>
+      `,
+    })
+    console.log('Outbid email sent: %s', info.messageId)
+  } catch (error) {
+    console.error('Error sending outbid email:', error)
+  }
+}
+

@@ -18,6 +18,7 @@ import { getSponsoredTeaser } from '@/lib/masking'
 import { FullscreenMessage } from '@/components/MessageFullscreen'
 import { FrameDecorator } from '@/components/FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
+import { BumpBidButton } from './BumpBidButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -208,6 +209,16 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
       (message as any).status === 'COMPLETED') &&
     (await verifySponsorEditToken(message.id, sponsorToken))
   
+  let currentRank: number | null = null;
+  if (message.status === 'QUEUED' && !(message as any).is_reserved_slot) {
+    const { count } = await supabase
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'QUEUED')
+      .eq('is_reserved_slot', false)
+      .gte('bid_amount', (message as any).bid_amount);
+    if (count !== null) currentRank = count;
+  }
   const { borderClass: borderColor, accentClass: catTextColor, badgeClass } = getCategoryStyles(categorySlug)
   const { 
     bg, 
@@ -298,6 +309,12 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
                 initialNote={(message as any).style_config?.sponsorNote || ''}
                 justSponsored={isJustSponsored}
               />
+            </div>
+          )}
+
+          {currentRank !== null && (
+            <div className="mb-8 max-w-xl mx-auto text-left">
+              <BumpBidButton messageId={message.id} currentBid={(message as any).bid_amount} />
             </div>
           )}
           

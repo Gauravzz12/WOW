@@ -176,11 +176,12 @@ export function InlineInteractions({
     if (comments.length === 0 || commentMode !== 'none') return
 
     const triggerCycle = () => {
-      const shuffled = [...comments].sort(() => 0.5 - Math.random())
-      setCurrentCycle(shuffled.slice(0, 5))
+      // Rotate between top 5 latest comments only (comments are already sorted descending by created_at)
+      setCurrentCycle(comments.slice(0, 5))
       setCommentIndex(0)
       setIsPopUpActive(true)
-      setTimeout(() => setIsPopUpActive(false), 10000)
+      // Pop-up stays active for 1s per comment
+      setTimeout(() => setIsPopUpActive(false), Math.min(5, comments.length) * 1000)
     }
 
     triggerCycle()
@@ -193,7 +194,7 @@ export function InlineInteractions({
     if (!isPopUpActive || currentCycle.length <= 1) return
     const interval = setInterval(() => {
       setCommentIndex(prev => (prev + 1) % currentCycle.length)
-    }, 2000)
+    }, 1000)
     return () => clearInterval(interval)
   }, [isPopUpActive, currentCycle.length])
 

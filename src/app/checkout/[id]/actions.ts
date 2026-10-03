@@ -8,6 +8,7 @@ import {
   issueSponsorEditToken,
   sponsorTokenCookieName,
 } from '@/lib/sponsorToken'
+import { checkAndNotifyOutbids } from '@/lib/outbidService'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,7 +28,7 @@ export async function processPayment(
   // 1. Fetch current message record to verify status and server-side pricing parameters
   const { data: currentMsg, error: msgFetchError } = await supabaseAdmin
     .from('messages')
-    .select('id, status, is_reserved_slot, bid_amount, style_config')
+    .select('id, status, is_reserved_slot, bid_amount, style_config, content, reminder_email')
     .eq('id', messageId)
     .single()
 
@@ -183,6 +184,10 @@ export async function processPayment(
       status: 'SUCCESS',
     })
 
+    if (currentMsg.reminder_email) {
+      import('@/lib/email').then(m => m.sendReceiptEmail(currentMsg.reminder_email, currentMsg.content, officialVipPrice).catch(() => {}))
+    }
+
     revalidatePath('/')
     revalidatePath('/waiting-room')
     return { success: true }
@@ -245,6 +250,9 @@ export async function processPayment(
     }
 
     // Record payment transaction
+    if (!isSponsorMode) {
+      checkAndNotifyOutbids(officialTotal).catch(() => {});
+    }
     await supabaseAdmin.from('payments').insert({
       message_id: messageId,
       provider: 'mock',
@@ -253,6 +261,10 @@ export async function processPayment(
       currency: 'usd',
       status: 'SUCCESS',
     })
+
+    if (currentMsg.reminder_email) {
+      import('@/lib/email').then(m => m.sendReceiptEmail(currentMsg.reminder_email, currentMsg.content, officialTotal).catch(() => {}))
+    }
 
     // --- INSTANT ACTIVATION CHECK ---
     // Sponsor mode activates into the sponsored grid (bid < 2, up to 10 at
@@ -318,3 +330,59 @@ export async function processPayment(
   }
 }
 
+
+export async function bumpBid(messageId: string, additionalAmount: number) {
+  // Must be positive
+  if (!additionalAmount || additionalAmount <= 0) {
+    return { error: 'Invalid bump amount.' }
+  }
+
+  // Simulate payment processing delay
+  await new Promise(resolve => setTimeout(resolve, 1500))
+
+  const { data: currentMsg, error: msgFetchError } = await supabaseAdmin
+    .from('messages')
+    .select('id, status, is_reserved_slot, bid_amount')
+    .eq('id', messageId)
+    .single()
+
+  if (msgFetchError || !currentMsg) {
+    return { error: 'Message not found.' }
+  }
+
+  if (currentMsg.status !== 'QUEUED' || currentMsg.is_reserved_slot) {
+    return { error: 'Only normal queued messages can be bumped.' }
+  }
+
+  const newTotal = currentMsg.bid_amount + additionalAmount
+
+  const { data: updatedMsg, error } = await supabaseAdmin
+    .from('messages')
+    .update({
+      bid_amount: newTotal
+    })
+    .eq('id', messageId)
+    .eq('status', 'QUEUED')
+    .select('id')
+
+  if (error || !updatedMsg || updatedMsg.length === 0) {
+    return { error: 'Failed to bump bid. Message may no longer be queued.' }
+  }
+
+  // Record payment transaction
+  checkAndNotifyOutbids(newTotal).catch(() => {});
+  await supabaseAdmin.from('payments').insert({
+    message_id: messageId,
+    provider: 'mock',
+    provider_payment_id: `mock_bump_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+    amount: additionalAmount,
+    currency: 'usd',
+    status: 'SUCCESS',
+  })
+
+  revalidatePath('/')
+  revalidatePath('/waiting-room')
+  revalidatePath(`/w/${messageId}`)
+
+  return { success: true, newTotal }
+}
