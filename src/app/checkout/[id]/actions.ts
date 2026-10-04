@@ -184,7 +184,7 @@ export async function processPayment(
           quantity: 1,
           amount: Math.round(officialVipPrice * 100),
         }],
-        return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://words.world'}/?tab=SPECIAL`,
+        return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=SPECIAL`,
         metadata: {
           messageId,
           isReservedSlot: 'true',
@@ -268,8 +268,8 @@ export async function processPayment(
           amount: Math.round(officialTotal * 100),
         }],
         return_url: isSponsorMode 
-          ? `${process.env.NEXT_PUBLIC_SITE_URL || 'https://words.world'}/w/${messageId}?justSponsored=1` 
-          : `${process.env.NEXT_PUBLIC_SITE_URL || 'https://words.world'}/?tab=NORMAL`,
+          ? `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/w/${messageId}?justSponsored=1` 
+          : `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=NORMAL`,
         metadata: {
           messageId,
           isSponsorMode: isSponsorMode.toString()
@@ -329,7 +329,7 @@ export async function bumpBid(messageId: string, additionalAmount: number) {
         quantity: 1,
         amount: Math.round(additionalAmount * 100),
       }],
-      return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://words.world'}/w/${messageId}`,
+      return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/w/${messageId}`,
       metadata: {
         messageId,
         isBump: 'true'
