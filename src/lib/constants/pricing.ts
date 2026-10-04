@@ -146,5 +146,5 @@ export function getUserLocalTimeZone(): string {
 // Sponsored Messages (Always 30 min long)
 export const SPONSORED_DURATION_MINS = 30
 export const SPONSORED_DURATION_SECS = 1800 // Exactly 30 minutes
-export const SPONSORED_PRICE = 1.00
+export const SPONSORED_PRICE = 3.00
 

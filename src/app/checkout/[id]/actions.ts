@@ -215,7 +215,7 @@ export async function processPayment(
       if (currentMsg.is_reserved_slot) {
         return { error: 'Reserved slot messages cannot be sponsored through the community pool.' }
       }
-      // Sponsor cost is strictly $1.00
+      // Sponsor cost is strictly SPONSORED_PRICE
       officialTotal = SPONSORED_PRICE
 
       style.durationSecs = SPONSORED_DURATION_SECS // Sponsored messages are always 30 min long

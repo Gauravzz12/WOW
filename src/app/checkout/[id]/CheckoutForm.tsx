@@ -6,7 +6,7 @@ import { processPayment } from './actions'
 import { SlotPicker, Slot } from '@/components/SlotPicker'
 import { Zap, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { calculateSpecialPrice } from '@/lib/constants/pricing'
+import { calculateSpecialPrice, SPONSORED_PRICE } from '@/lib/constants/pricing'
 import { toast } from '@/components/Toast'
 
 export function CheckoutForm({ 
@@ -293,7 +293,7 @@ export function CheckoutForm({
             : isReservedSlot
             ? `Pay $${total.toFixed(2)} — live for ${selectedSlots.length * 3}h`
             : isSponsorMode 
-            ? 'Sponsor for $1.00 & Broadcast' 
+            ? `Sponsor for $${SPONSORED_PRICE.toFixed(2)} & Broadcast` 
             : `Pay $${total.toFixed(2)} & Broadcast`)}
       </button>
 

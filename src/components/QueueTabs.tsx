@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Zap, Sparkles, X, ChevronRight, Info, HeartHandshake, Clock, Globe } from 'lucide-react'
-import { getSlotLabel, getUserLocalTimeZone, formatLocalSlotTime } from '@/lib/constants/pricing'
+import { getSlotLabel, getUserLocalTimeZone, formatLocalSlotTime, SPONSORED_PRICE } from '@/lib/constants/pricing'
 
 export interface QueueItem {
   id: string
@@ -357,7 +357,7 @@ export function QueueTabs({
                           Sponsor Price
                         </span>
                         <span className="text-xs font-bold font-mono bg-blue-600 text-white dark:bg-blue-500 dark:text-black px-2.5 py-0.5 rounded-md shadow-sm">
-                          $1.00
+                          ${SPONSORED_PRICE.toFixed(2)}
                         </span>
                       </div>
 
