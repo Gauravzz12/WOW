@@ -42,7 +42,7 @@ export function getMessageDurationSecs(msg: ExpirableMessage): number {
   return (
     config.durationSecs ||
     cat?.base_duration ||
-    (msg.is_reserved_slot ? 10800 : (msg.bid_amount ?? 0) < 2 ? 1800 : 3600)
+    (msg.is_reserved_slot ? 10800 : (msg.bid_amount ?? 0) < 10 ? 1800 : 3600)
   )
 }
 

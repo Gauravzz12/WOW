@@ -45,7 +45,7 @@ export function getMessageTypeInfo(msg: AdminMessage): MessageTypeInfo {
     }
   }
 
-  if (msg.bid_amount < 2 || config.sponsorName || config.sponsorNote) {
+  if (msg.bid_amount < 10 || config.sponsorName || config.sponsorNote) {
     return {
       type: 'sponsored',
       label: 'Sponsored',

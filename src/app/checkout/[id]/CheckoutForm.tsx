@@ -47,7 +47,7 @@ export function CheckoutForm({
         .select('bid_amount')
         .eq('status', 'QUEUED')
         .eq('is_reserved_slot', false)
-        .gte('bid_amount', 2)
+        .gte('bid_amount', 10)
         .neq('id', messageId)
         .order('bid_amount', { ascending: false })
 

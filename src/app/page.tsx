@@ -24,7 +24,7 @@ export default async function Home() {
 
   // Fetch all initial data in parallel to minimize Server Response Time (TTFB)
   // NOTE paywall: anon RLS can no longer read PENDING_PAYMENT. Paid QUEUED sponsored
-  // (bid<2) remain readable with full content (safe — already paid). Unpaid rows are
+  // (bid<10) remain readable with full content (safe — already paid). Unpaid rows are
   // fetched via service-role and masked to teasers only — full text never leaves server.
   const [
     { data: categories },
@@ -41,7 +41,7 @@ export default async function Home() {
       .select('id, created_at, bid_amount, category:categories(name, slug)')
       .eq('status', 'QUEUED')
       .eq('is_reserved_slot', false)
-      .gte('bid_amount', 2)
+      .gte('bid_amount', 10)
       .order('bid_amount', { ascending: false })
       .order('created_at', { ascending: true })
       .limit(5),
@@ -57,7 +57,7 @@ export default async function Home() {
       .select('id, content, created_at, bid_amount, category:categories(name, slug)')
       .eq('status', 'QUEUED')
       .eq('is_reserved_slot', false)
-      .lt('bid_amount', 2)
+      .lt('bid_amount', 10)
       .order('created_at', { ascending: true })
       .limit(25),
     supabaseAdmin
@@ -97,9 +97,9 @@ export default async function Home() {
     const nowMs = Date.now()
     const isNotExpired = (msg: any) => !isMessageExpired(msg, nowMs)
 
-    const nMsg = activeMessages.find(m => !m.is_reserved_slot && m.bid_amount >= 2 && isNotExpired(m))
+    const nMsg = activeMessages.find(m => !m.is_reserved_slot && m.bid_amount >= 10 && isNotExpired(m))
     const sMsg = activeMessages.find(m => m.is_reserved_slot && isNotExpired(m))
-    const spMsgs = activeMessages.filter(m => !m.is_reserved_slot && m.bid_amount < 2 && isNotExpired(m)).slice(0, 10)
+    const spMsgs = activeMessages.filter(m => !m.is_reserved_slot && m.bid_amount < 10 && isNotExpired(m)).slice(0, 10)
 
     const processMsg = (msg: any) => {
       const cat = Array.isArray(msg.category) ? msg.category[0] : msg.category

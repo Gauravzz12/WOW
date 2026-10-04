@@ -212,7 +212,7 @@ function CreateMessageContent() {
           .select('bid_amount')
           .eq('status', 'QUEUED')
           .eq('is_reserved_slot', false)
-          .gte('bid_amount', 2);
+          .gte('bid_amount', 10);
         if (data) {
           setQueueBids(data.map(d => d.bid_amount || 0).sort((a, b) => b - a));
         }

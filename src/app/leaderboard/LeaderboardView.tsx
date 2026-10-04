@@ -47,7 +47,7 @@ export function classifyMessage(msg: LeaderboardItem): 'special' | 'sponsored' |
   if (
     config.isSponsored === true ||
     config.tier === 'sponsored' ||
-    (typeof msg.bid_amount === 'number' && msg.bid_amount < 2) ||
+    (typeof msg.bid_amount === 'number' && msg.bid_amount < 10) ||
     Boolean(config.sponsorName) ||
     Boolean(config.sponsorNote)
   ) {

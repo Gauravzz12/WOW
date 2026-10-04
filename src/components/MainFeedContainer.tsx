@@ -98,11 +98,11 @@ export function MainFeedContainer({
         const nowMs = Date.now()
         const isNotExpired = (msg: any) => !isMessageExpired(msg, nowMs)
 
-        // Consistent threshold: >= 2 everywhere (matches client queue fetch)
-        const nMsg = actives.find(m => !m.is_reserved_slot && m.bid_amount >= 2 && isNotExpired(m))
+        // Consistent threshold: >= 10 everywhere (matches client queue fetch)
+        const nMsg = actives.find(m => !m.is_reserved_slot && m.bid_amount >= 10 && isNotExpired(m))
         activeNormal = nMsg
         sMsg = actives.find(m => m.is_reserved_slot && isNotExpired(m))
-        const spMsgs = actives.filter(m => !m.is_reserved_slot && m.bid_amount < 2 && isNotExpired(m)).slice(0, 10)
+        const spMsgs = actives.filter(m => !m.is_reserved_slot && m.bid_amount < 10 && isNotExpired(m)).slice(0, 10)
 
         // Always explicitly set — prevents stale messages staying on screen
         setNormalMsg(nMsg ? (() => {
@@ -135,7 +135,7 @@ export function MainFeedContainer({
         .select('id, created_at, bid_amount, template_id, style_config, category:categories(name, slug, base_duration)')
         .eq('status', 'QUEUED')
         .eq('is_reserved_slot', false)
-        .gte('bid_amount', 2) // Normal
+        .gte('bid_amount', 10) // Normal
         // Show highest bids first — matches the actual advance() promotion order
         .order('bid_amount', { ascending: false })
         .order('created_at', { ascending: true })
@@ -151,7 +151,7 @@ export function MainFeedContainer({
         .limit(5)
       if (sQueue) setSpecialQueue(sQueue)
 
-      // Sponsored: paid-but-low-bid (QUEUED, bid < 2) have full content (safe — paid).
+      // Sponsored: paid-but-low-bid (QUEUED, bid < 10) have full content (safe — paid).
       // Unpaid PENDING_PAYMENT must NEVER be fetched with full `content` via anon —
       // anon RLS now blocks them. Load locked teasers via the masked API instead.
       const { data: spPaidQueue } = await supabase
@@ -159,7 +159,7 @@ export function MainFeedContainer({
         .select('id, content, created_at, bid_amount, template_id, style_config, category:categories(name, slug, base_duration)')
         .eq('status', 'QUEUED')
         .eq('is_reserved_slot', false)
-        .lt('bid_amount', 2)
+        .lt('bid_amount', 10)
         .order('created_at', { ascending: true })
         .limit(25)
       let spPendingTeasers: any[] = []
@@ -192,7 +192,7 @@ export function MainFeedContainer({
               .order('actual_start', { ascending: false })
 
             if (freshActives) {
-              const freshNormal = freshActives.find(m => !m.is_reserved_slot && m.bid_amount >= 2)
+              const freshNormal = freshActives.find(m => !m.is_reserved_slot && m.bid_amount >= 10)
               const freshSpecial = freshActives.find(m => m.is_reserved_slot)
               if (freshNormal) {
                 const cat = Array.isArray(freshNormal.category) ? freshNormal.category[0] : freshNormal.category

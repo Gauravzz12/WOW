@@ -40,7 +40,7 @@ export async function GET() {
 
   // Priority: normal track, then special, then sponsored — mirrors the UI.
   const pick =
-    live.find((m: any) => !m.is_reserved_slot && m.bid_amount >= 2) ||
+    live.find((m: any) => !m.is_reserved_slot && m.bid_amount >= 10) ||
     live.find((m: any) => m.is_reserved_slot) ||
     live[0]
 

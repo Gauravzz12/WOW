@@ -53,7 +53,7 @@ export async function updateSponsorShoutout(
   if ((msg as any).status === 'PENDING_PAYMENT') {
     return { error: 'Pay $1 to reveal this message before adding your shoutout.' }
   }
-  if ((msg as any).is_reserved_slot || ((msg as any).bid_amount ?? 0) >= 2) {
+  if ((msg as any).is_reserved_slot || ((msg as any).bid_amount ?? 0) >= 10) {
     return { error: 'Only community sponsored messages carry a sponsor shoutout.' }
   }
 

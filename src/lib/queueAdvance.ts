@@ -116,10 +116,10 @@ export async function runQueueAdvance() {
           }
         }
       } else {
-        // Still active — categorize using same thresholds as client (>= 2 = normal, < 2 = sponsored)
+        // Still active — categorize using same thresholds as client (>= 10 = normal, < 10 = sponsored)
         if (msg.is_reserved_slot) {
           currentActives.special++
-        } else if (msg.bid_amount < 2) {
+        } else if (msg.bid_amount < 10) {
           currentActives.sponsored++
         } else {
           currentActives.normal++
@@ -139,7 +139,7 @@ export async function runQueueAdvance() {
       .select('id')
       .eq('status', 'ACTIVE')
       .eq('is_reserved_slot', false)
-      .gte('bid_amount', 2)
+      .gte('bid_amount', 10)
       .limit(1)
 
     if (!latestActiveNormal || latestActiveNormal.length === 0) {
@@ -148,7 +148,7 @@ export async function runQueueAdvance() {
         .select('id, style_config, content, reminder_email')
         .eq('status', 'QUEUED')
         .eq('is_reserved_slot', false)
-        .gte('bid_amount', 2)
+        .gte('bid_amount', 10)
         .order('bid_amount', { ascending: false })
         .order('created_at', { ascending: true })
         .limit(1)
@@ -179,7 +179,7 @@ export async function runQueueAdvance() {
     }
   }
 
-  // Sponsored Queue Promotion — bid < 2 threshold, FIFO order (up to 10 active at once in grid)
+  // Sponsored Queue Promotion — bid < 10 threshold, FIFO order (up to 10 active at once in grid)
   if (currentActives.sponsored < 10) {
     // Re-verify the live count first (concurrency guard, mirrors normal/VIP):
     // two overlapping runs must not both promote up to the cap.
@@ -188,7 +188,7 @@ export async function runQueueAdvance() {
       .select('id')
       .eq('status', 'ACTIVE')
       .eq('is_reserved_slot', false)
-      .lt('bid_amount', 2)
+      .lt('bid_amount', 10)
       .limit(10)
 
     const liveSponsored = latestActiveSponsored?.length ?? currentActives.sponsored
@@ -199,7 +199,7 @@ export async function runQueueAdvance() {
       .select('id, style_config, content, reminder_email')
       .eq('status', 'QUEUED')
       .eq('is_reserved_slot', false)
-      .lt('bid_amount', 2)
+      .lt('bid_amount', 10)
       .order('created_at', { ascending: true })
       .limit(needed)
 

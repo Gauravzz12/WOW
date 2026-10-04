@@ -167,7 +167,6 @@ export async function POST(req: Request) {
         .update({
           status: 'BOOKED',
           message_id: messageId,
-          bid_amount: amountTotal / targetSlotIds.length,
         })
         .in('id', targetSlotIds)
         .eq('status', 'AVAILABLE')
@@ -191,7 +190,6 @@ export async function POST(req: Request) {
         .update({
           status: 'QUEUED',
           is_reserved_slot: true,
-          bid_amount: amountTotal,
           scheduled_start: slots[0].scheduled_start,
           scheduled_end: slots[slots.length - 1].scheduled_end,
           style_config: style,
@@ -228,7 +226,6 @@ export async function POST(req: Request) {
         .update({
           status: 'QUEUED',
           is_reserved_slot: false,
-          bid_amount: amountTotal,
           style_config: style,
         })
         .eq('id', messageId)
@@ -245,7 +242,7 @@ export async function POST(req: Request) {
         .select('id')
         .eq('status', 'ACTIVE')
         .eq('is_reserved_slot', false)
-        .filter('bid_amount', isSponsorMode ? 'lt' : 'gte', 2)
+        .filter('bid_amount', isSponsorMode ? 'lt' : 'gte', 10)
 
       const canActivate = isSponsorMode ? (!actives || actives.length < 10) : (!actives || actives.length === 0)
 
@@ -262,7 +259,7 @@ export async function POST(req: Request) {
             .select('id')
             .eq('status', 'QUEUED')
             .eq('is_reserved_slot', false)
-            .gte('bid_amount', 2)
+            .gte('bid_amount', 10)
             .order('bid_amount', { ascending: false })
             .order('created_at', { ascending: true })
             .limit(1)

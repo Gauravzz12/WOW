@@ -203,7 +203,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
   const sponsorToken = cookies().get(sponsorTokenCookieName(message.id))?.value
   const canEditShoutout =
     !(message as any).is_reserved_slot &&
-    ((message as any).bid_amount ?? 0) < 2 &&
+    ((message as any).bid_amount ?? 0) < 10 &&
     ((message as any).status === 'QUEUED' ||
       (message as any).status === 'ACTIVE' ||
       (message as any).status === 'COMPLETED') &&
