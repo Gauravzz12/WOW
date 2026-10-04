@@ -194,7 +194,7 @@ export async function processPayment(
       return { success: true, redirectUrl: session.checkout_url }
     } catch (err: any) {
       console.error('Checkout error:', err)
-      return { error: 'Failed to initialize checkout session.' }
+      return { error: `Failed to initialize checkout session: ${err.message || err}` }
     }
 
   } else {
@@ -286,7 +286,7 @@ export async function processPayment(
       return { success: true, redirectUrl: session.checkout_url }
     } catch (err: any) {
       console.error('Checkout error:', err)
-      return { error: 'Failed to initialize checkout session.' }
+      return { error: `Failed to initialize checkout session: ${err.message || err}` }
     }
   }
 }
@@ -338,6 +338,6 @@ export async function bumpBid(messageId: string, additionalAmount: number) {
     return { success: true, redirectUrl: session.checkout_url }
   } catch (err: any) {
     console.error('Bump checkout error:', err)
-    return { error: 'Failed to initialize bump checkout session.' }
+    return { error: `Failed to initialize bump checkout session: ${err.message || err}` }
   }
 }
