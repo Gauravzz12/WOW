@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     if ((message as any).status !== 'PENDING_PAYMENT') {
        // Wait, if it's a bump bid, the status will be QUEUED!
        if (payment.metadata?.isBump === 'true' && (message as any).status === 'QUEUED') {
-           const additionalAmount = payment.total_amount / 100; // Assuming cents
+           const additionalAmount = payment.metadata?.usdAmount ? parseFloat(payment.metadata.usdAmount) : (payment.total_amount / 100);
            const { data: currentMsg } = await supabaseAdmin.from('messages').select('bid_amount').eq('id', messageId).single();
            const newTotal = (currentMsg?.bid_amount || 0) + additionalAmount;
            await supabaseAdmin.from('messages').update({ bid_amount: newTotal }).eq('id', messageId);
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     const isSponsorMode = payment.metadata?.isSponsorMode === 'true'
     const isReserved = payment.metadata?.isReservedSlot === 'true'
     const targetSlotIds = payment.metadata?.slotIds ? payment.metadata.slotIds.split(',') : []
-    const amountTotal = (payment.total_amount || 0) / 100 // Convert cents to dollars
+    const amountTotal = payment.metadata?.usdAmount ? parseFloat(payment.metadata.usdAmount) : ((payment.total_amount || 0) / 100)
     
     let style = message.style_config || {}
     if (typeof style === 'string') {

@@ -188,7 +188,8 @@ export async function processPayment(
         metadata: {
           messageId,
           isReservedSlot: 'true',
-          slotIds: resolvedSlotIds.join(',')
+          slotIds: resolvedSlotIds.join(','),
+          usdAmount: officialVipPrice.toString()
         }
       })
       return { success: true, redirectUrl: session.checkout_url }
@@ -272,7 +273,8 @@ export async function processPayment(
           : `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=NORMAL`,
         metadata: {
           messageId,
-          isSponsorMode: isSponsorMode.toString()
+          isSponsorMode: isSponsorMode.toString(),
+          usdAmount: officialTotal.toString()
         }
       })
       
@@ -332,7 +334,8 @@ export async function bumpBid(messageId: string, additionalAmount: number) {
       return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/w/${messageId}`,
       metadata: {
         messageId,
-        isBump: 'true'
+        isBump: 'true',
+        usdAmount: additionalAmount.toString()
       }
     })
     return { success: true, redirectUrl: session.checkout_url }
