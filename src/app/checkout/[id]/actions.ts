@@ -4,10 +4,8 @@ import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { calculateSpecialPrice, calculateNormalMinBid, SPONSORED_PRICE, SPONSORED_DURATION_SECS } from '@/lib/constants/pricing'
-import {
-  issueSponsorEditToken,
-  sponsorTokenCookieName,
-} from '@/lib/sponsorToken'
+import { issueSponsorEditToken, sponsorTokenCookieName } from '@/lib/sponsorToken'
+import { cookies } from 'next/headers'
 import { checkAndNotifyOutbids } from '@/lib/outbidService'
 
 const supabaseAdmin = createClient(
@@ -180,7 +178,7 @@ export async function processPayment(
     try {
       const session = await client.checkoutSessions.create({
         product_cart: [{
-          product_id: process.env.NEXT_PUBLIC_DODO_PAYMENTS_PRODUCT_ID!,
+          product_id: process.env.DODO_PAYMENTS_PRODUCT_ID!,
           quantity: 1,
           amount: Math.round(officialVipPrice * 100),
         }],
@@ -264,7 +262,7 @@ export async function processPayment(
     try {
       const session = await client.checkoutSessions.create({
         product_cart: [{
-          product_id: process.env.NEXT_PUBLIC_DODO_PAYMENTS_PRODUCT_ID!,
+          product_id: process.env.DODO_PAYMENTS_PRODUCT_ID!,
           quantity: 1,
           amount: Math.round(officialTotal * 100),
         }],
@@ -278,12 +276,17 @@ export async function processPayment(
         }
       })
       
-      // We do NOT issue the sponsorEditToken here anymore, because payment is not complete.
-      // We will issue it in a separate server action / API or via magic link later, OR
-      // we can do it on the success redirect page (since we can pass a temp token to return_url)
-      // For now we'll do it on the redirect if needed, or in the webhook.
-      // Since webhooks can't set cookies, we can pass a one-time setup token in return_url if needed,
-      // but let's stick to simple redirect for now.
+      // Issue the sponsorEditToken BEFORE checkout so the user can edit their shoutout when they return.
+      // Even if they abandon checkout, this just gives them an unused token for an un-sponsored message.
+      if (isSponsorMode) {
+        const sponsorToken = await issueSponsorEditToken(messageId)
+        cookies().set(sponsorTokenCookieName(messageId), sponsorToken, {
+          path: '/',
+          maxAge: 30 * 24 * 60 * 60, // 30 days
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production'
+        })
+      }
 
       return { success: true, redirectUrl: session.checkout_url }
     } catch (err: any) {
@@ -327,7 +330,7 @@ export async function bumpBid(messageId: string, additionalAmount: number) {
   try {
     const session = await client.checkoutSessions.create({
       product_cart: [{
-        product_id: process.env.NEXT_PUBLIC_DODO_PAYMENTS_PRODUCT_ID!,
+        product_id: process.env.DODO_PAYMENTS_PRODUCT_ID!,
         quantity: 1,
         amount: Math.round(additionalAmount * 100),
       }],
