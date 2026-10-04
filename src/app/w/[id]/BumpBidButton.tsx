@@ -20,7 +20,9 @@ export function BumpBidButton({ messageId, currentBid }: { messageId: string, cu
     setIsProcessing(true)
     const result = await bumpBid(messageId, amount)
     setIsProcessing(false)
-    if (result.success) {
+    if (result.success && result.redirectUrl) {
+      window.location.href = result.redirectUrl
+    } else if (result.success) {
       toast.success(`Bid increased by $${amount.toFixed(2)}! Your rank has been updated.`)
       setIsModalOpen(false)
     } else {

@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@dodopayments/nextjs": "^0.3.9",
     "@emoji-mart/data": "^1.2.1",
     "@emoji-mart/react": "^1.1.1",
     "@stripe/stripe-js": "^9.16.0",
@@ -22,6 +23,8 @@
     "@tiptap/starter-kit": "^3.31.3",
     "@types/canvas-confetti": "^1.9.0",
     "canvas-confetti": "^1.9.4",
+    "dodopayments": "^2.52.0",
+    "dodopayments-checkout": "^1.9.9",
     "emoji-mart": "^5.6.0",
     "framer-motion": "^13.4.0",
     "lucide-react": "^1.47.0",

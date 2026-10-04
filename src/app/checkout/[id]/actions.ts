@@ -142,23 +142,19 @@ export async function processPayment(
     const now = Date.now()
     const isCurrentLiveSlot = new Date(slots[0].scheduled_start).getTime() <= now && now < new Date(slots[slots.length - 1].scheduled_end).getTime()
 
-    // 4. Update style_config and transition message atomically from PENDING_PAYMENT to ACTIVE or QUEUED
+    // 4. Record atomic reservation status (but keep PENDING_PAYMENT until webhook succeeds)
     style.durationSecs = resolvedSlotIds.length * 3 * 3600 // 3 hours per slot (10800s, 21600s, or 32400s)
     style.slotCount = resolvedSlotIds.length
     style.slotIds = resolvedSlotIds
     style.selectedSlots = slots
 
-    const targetStatus = isCurrentLiveSlot ? 'ACTIVE' : 'QUEUED'
-
     const { data: updatedMsg, error: msgError } = await supabaseAdmin
       .from('messages')
       .update({
-        status: targetStatus,
         is_reserved_slot: true,
         bid_amount: officialVipPrice,
         scheduled_start: slots[0].scheduled_start,
         scheduled_end: slots[slots.length - 1].scheduled_end,
-        actual_start: isCurrentLiveSlot ? new Date().toISOString() : null,
         style_config: style,
       })
       .eq('id', messageId)
@@ -174,23 +170,32 @@ export async function processPayment(
       return { error: 'Failed to finalize reservation or order was already processed.' }
     }
 
-    // 5. Record payment transaction
-    await supabaseAdmin.from('payments').insert({
-      message_id: messageId,
-      provider: 'mock',
-      provider_payment_id: `mock_vip_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      amount: officialVipPrice,
-      currency: 'usd',
-      status: 'SUCCESS',
+    // CREATE DODO PAYMENTS CHECKOUT SESSION FOR RESERVED SLOTS
+    const DodoPayments = (await import('dodopayments')).default
+    const client = new DodoPayments({
+      bearerToken: process.env.DODO_PAYMENTS_API_KEY,
+      environment: 'test_mode'
     })
 
-    if (currentMsg.reminder_email) {
-      import('@/lib/email').then(m => m.sendReceiptEmail(currentMsg.reminder_email, currentMsg.content, officialVipPrice).catch(() => {}))
+    try {
+      const session = await client.checkoutSessions.create({
+        product_cart: [{
+          product_id: process.env.NEXT_PUBLIC_DODO_PAYMENTS_PRODUCT_ID!,
+          quantity: 1,
+          amount: Math.round(officialVipPrice * 100),
+        }],
+        return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://words.world'}/?tab=SPECIAL`,
+        metadata: {
+          messageId,
+          isReservedSlot: 'true',
+          slotIds: resolvedSlotIds.join(',')
+        }
+      })
+      return { success: true, redirectUrl: session.checkout_url }
+    } catch (err: any) {
+      console.error('Checkout error:', err)
+      return { error: 'Failed to initialize checkout session.' }
     }
-
-    revalidatePath('/')
-    revalidatePath('/waiting-room')
-    return { success: true }
 
   } else {
     // --- STANDARD QUEUE PATH ---
@@ -236,7 +241,6 @@ export async function processPayment(
     const { data: updatedMsg, error } = await supabaseAdmin
       .from('messages')
       .update({
-        status: 'QUEUED',
         is_reserved_slot: false,
         bid_amount: officialTotal,
         style_config: style,
@@ -249,84 +253,41 @@ export async function processPayment(
       return { error: 'Failed to process payment: order already processed or expired.' }
     }
 
-    // Record payment transaction
-    if (!isSponsorMode) {
-      checkAndNotifyOutbids(officialTotal).catch(() => {});
-    }
-    await supabaseAdmin.from('payments').insert({
-      message_id: messageId,
-      provider: 'mock',
-      provider_payment_id: `mock_${isSponsorMode ? 'sponsor' : 'normal'}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      amount: officialTotal,
-      currency: 'usd',
-      status: 'SUCCESS',
+    // CREATE DODO PAYMENTS CHECKOUT SESSION FOR STANDARD BIDS
+    const DodoPayments = (await import('dodopayments')).default
+    const client = new DodoPayments({
+      bearerToken: process.env.DODO_PAYMENTS_API_KEY,
+      environment: 'test_mode'
     })
 
-    if (currentMsg.reminder_email) {
-      import('@/lib/email').then(m => m.sendReceiptEmail(currentMsg.reminder_email, currentMsg.content, officialTotal).catch(() => {}))
+    try {
+      const session = await client.checkoutSessions.create({
+        product_cart: [{
+          product_id: process.env.NEXT_PUBLIC_DODO_PAYMENTS_PRODUCT_ID!,
+          quantity: 1,
+          amount: Math.round(officialTotal * 100),
+        }],
+        return_url: isSponsorMode 
+          ? `${process.env.NEXT_PUBLIC_SITE_URL || 'https://words.world'}/w/${messageId}?justSponsored=1` 
+          : `${process.env.NEXT_PUBLIC_SITE_URL || 'https://words.world'}/?tab=NORMAL`,
+        metadata: {
+          messageId,
+          isSponsorMode: isSponsorMode.toString()
+        }
+      })
+      
+      // We do NOT issue the sponsorEditToken here anymore, because payment is not complete.
+      // We will issue it in a separate server action / API or via magic link later, OR
+      // we can do it on the success redirect page (since we can pass a temp token to return_url)
+      // For now we'll do it on the redirect if needed, or in the webhook.
+      // Since webhooks can't set cookies, we can pass a one-time setup token in return_url if needed,
+      // but let's stick to simple redirect for now.
+
+      return { success: true, redirectUrl: session.checkout_url }
+    } catch (err: any) {
+      console.error('Checkout error:', err)
+      return { error: 'Failed to initialize checkout session.' }
     }
-
-    // --- INSTANT ACTIVATION CHECK ---
-    // Sponsor mode activates into the sponsored grid (bid < 2, up to 10 at
-    // once); normal activates solo.
-    const isGridTier = isSponsorMode
-    const { data: actives } = await supabaseAdmin
-      .from('messages')
-      .select('id')
-      .eq('status', 'ACTIVE')
-      .eq('is_reserved_slot', false)
-      .filter('bid_amount', isGridTier ? 'lt' : 'gte', 2)
-
-    const canActivate = isGridTier ? (!actives || actives.length < 10) : (!actives || actives.length === 0)
-
-    if (canActivate) {
-      if (isGridTier) {
-        await supabaseAdmin
-          .from('messages')
-          .update({ status: 'ACTIVE', actual_start: new Date().toISOString() })
-          .eq('id', messageId)
-          .eq('status', 'QUEUED')
-      } else {
-        // Query the highest priority normal queued message
-        const { data: topQueued } = await supabaseAdmin
-          .from('messages')
-          .select('id')
-          .eq('status', 'QUEUED')
-          .eq('is_reserved_slot', false)
-          .gte('bid_amount', 2)
-          .order('bid_amount', { ascending: false })
-          .order('created_at', { ascending: true })
-          .limit(1)
-
-        const targetId = (topQueued && topQueued.length > 0) ? topQueued[0].id : messageId
-        // Atomic update: only activate if target is still strictly QUEUED
-        await supabaseAdmin
-          .from('messages')
-          .update({ status: 'ACTIVE', actual_start: new Date().toISOString() })
-          .eq('id', targetId)
-          .eq('status', 'QUEUED')
-      }
-    }
-
-    revalidatePath('/')
-    revalidatePath('/waiting-room')
-
-    // Sponsor edit token: lets this browser (and only it) edit the shoutout
-    // later. Raw token in an httpOnly cookie, hash stored server-side.
-    if (isSponsorMode) {
-      try {
-        const token = await issueSponsorEditToken(messageId)
-        cookies().set(sponsorTokenCookieName(messageId), token, {
-          path: '/',
-          maxAge: 30 * 24 * 60 * 60,
-          sameSite: 'lax',
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-        })
-      } catch {}
-    }
-
-    return { success: true }
   }
 }
 
@@ -354,35 +315,29 @@ export async function bumpBid(messageId: string, additionalAmount: number) {
     return { error: 'Only normal queued messages can be bumped.' }
   }
 
-  const newTotal = currentMsg.bid_amount + additionalAmount
-
-  const { data: updatedMsg, error } = await supabaseAdmin
-    .from('messages')
-    .update({
-      bid_amount: newTotal
-    })
-    .eq('id', messageId)
-    .eq('status', 'QUEUED')
-    .select('id')
-
-  if (error || !updatedMsg || updatedMsg.length === 0) {
-    return { error: 'Failed to bump bid. Message may no longer be queued.' }
-  }
-
-  // Record payment transaction
-  checkAndNotifyOutbids(newTotal).catch(() => {});
-  await supabaseAdmin.from('payments').insert({
-    message_id: messageId,
-    provider: 'mock',
-    provider_payment_id: `mock_bump_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-    amount: additionalAmount,
-    currency: 'usd',
-    status: 'SUCCESS',
+  // CREATE DODO PAYMENTS CHECKOUT SESSION FOR BUMP
+  const DodoPayments = (await import('dodopayments')).default
+  const client = new DodoPayments({
+    bearerToken: process.env.DODO_PAYMENTS_API_KEY,
+    environment: 'test_mode'
   })
 
-  revalidatePath('/')
-  revalidatePath('/waiting-room')
-  revalidatePath(`/w/${messageId}`)
-
-  return { success: true, newTotal }
+  try {
+    const session = await client.checkoutSessions.create({
+      product_cart: [{
+        product_id: process.env.NEXT_PUBLIC_DODO_PAYMENTS_PRODUCT_ID!,
+        quantity: 1,
+        amount: Math.round(additionalAmount * 100),
+      }],
+      return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://words.world'}/w/${messageId}`,
+      metadata: {
+        messageId,
+        isBump: 'true'
+      }
+    })
+    return { success: true, redirectUrl: session.checkout_url }
+  } catch (err: any) {
+    console.error('Bump checkout error:', err)
+    return { error: 'Failed to initialize bump checkout session.' }
+  }
 }

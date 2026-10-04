@@ -90,7 +90,9 @@ export function CheckoutForm({
       undefined
     )
     
-    if (result.success) {
+    if (result.success && result.redirectUrl) {
+      window.location.href = result.redirectUrl
+    } else if (result.success) {
       if (isSponsorMode) {
         toast.success('Payment successful! Revealing the full message — you can add your shoutout next.', {
           title: 'Sponsorship Confirmed'
