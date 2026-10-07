@@ -38,34 +38,29 @@ export async function GET() {
       adminQueryCount = count !== null ? count : (data?.length ?? 0)
       adminQueryError = error ? error.message : null
 
-      // Query B: the exact query used by waiting-room and teasers
-      const { data: bData, error: bError } = await admin
-        .from('messages')
-        .select('id, content, bid_amount, is_reserved_slot, created_at, category:categories(name, slug)')
-        .eq('status', 'PENDING_PAYMENT')
-        .eq('is_reserved_slot', false)
-        .order('created_at', { ascending: false })
-        .limit(100)
+      // Test 1: filter on is_reserved_slot
+      const { data: t1 } = await admin.from('messages').select('id').eq('status', 'PENDING_PAYMENT').eq('is_reserved_slot', false)
+      // Test 2: join on category
+      const { data: t2, error: t2Err } = await admin.from('messages').select('id, category:categories(name, slug)').eq('status', 'PENDING_PAYMENT')
+      // Test 3: order by created_at
+      const { data: t3 } = await admin.from('messages').select('id').eq('status', 'PENDING_PAYMENT').order('created_at', { ascending: false })
+      // Test 4: select raw is_reserved_slot values
+      const { data: t4 } = await admin.from('messages').select('id, is_reserved_slot, category_id').eq('status', 'PENDING_PAYMENT')
 
-      queryB_count = bData?.length ?? -1
-      queryB_error = bError ? bError.message : null
-      queryB_sample = bData && bData.length > 0 ? { id: bData[0].id, category: bData[0].category } : null
+      return NextResponse.json({
+        status: 'ok',
+        serviceKeyRole,
+        adminQueryCount,
+        t1_reservedSlotFilter_count: t1?.length ?? -1,
+        t2_categoryJoin_count: t2?.length ?? -1,
+        t2_error: t2Err ? t2Err.message : null,
+        t3_order_count: t3?.length ?? -1,
+        t4_sample: t4?.slice(0, 3),
+      })
     } catch (e: any) {
-      adminQueryError = e.message
+      return NextResponse.json({ status: 'error', error: e.message })
     }
   }
 
-  return NextResponse.json({
-    status: 'ok',
-    hasSupabaseUrl: Boolean(url),
-    hasAnonKey: Boolean(anonKey),
-    hasServiceKey: Boolean(serviceKey),
-    serviceKeyRole, // Should be 'service_role', NOT 'anon'
-    adminQueryCount,
-    adminQueryError,
-    queryB_count,
-    queryB_error,
-    queryB_sample,
-    dodoConfigured: Boolean(process.env.DODO_PAYMENTS_API_KEY && process.env.DODO_PAYMENTS_WEBHOOK_SECRET),
-  })
+  return NextResponse.json({ status: 'missing-keys' })
 }
