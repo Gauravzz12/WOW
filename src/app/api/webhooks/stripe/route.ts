@@ -21,7 +21,7 @@ const supabaseAdmin = createClient(
 
 /**
  * Recomputes the official price (cents) for a session and rejects mismatches.
- * Sponsor = exactly $1. Reserved = exact multi-slot price for 1–3 slots.
+ * Sponsor = exactly $3. Reserved = exact multi-slot price for 1–3 slots.
  * Normal = at/above the duration-based minimum (higher bids earn priority).
  */
 function verifySessionAmount(

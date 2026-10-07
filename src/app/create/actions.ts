@@ -141,7 +141,7 @@ export async function createMessage(data: {
 
   // Server-side pricing: never trust the client bid. Reserved messages are
   // priced exactly from the selected slot count (and must carry selected
-  // slots); self-served Sponsored messages are a flat $1 for 30 minutes;
+  // slots); self-served Sponsored messages are a flat $3 for 30 minutes;
   // normal messages are floored to the duration-based minimum.
   const isReserved = data.isReservedSlot || false
   const isSponsored = !isReserved && (data.isSponsored === true || parsedStyle.isSponsored === true)

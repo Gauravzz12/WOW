@@ -1,18 +1,28 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { runQueueAdvance } from '@/lib/queueAdvance'
+import DodoPayments from 'dodopayments'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const dodoClient = new DodoPayments({
+  bearerToken: process.env.DODO_PAYMENTS_API_KEY,
+  webhookKey: process.env.DODO_PAYMENTS_WEBHOOK_SECRET,
+})
+
 export async function POST(req: Request) {
+  const payload = await req.text();
+  const headers = Object.fromEntries(req.headers.entries());
+
   let event: any;
   try {
-    event = await req.json();
+    event = dodoClient.webhooks.unwrap(payload, { headers });
   } catch (err: any) {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    console.error('DodoPayments Webhook signature verification failed.', err.message);
+    return NextResponse.json({ error: 'Webhook signature verification failed.' }, { status: 400 })
   }
 
   // Handle DodoPayments webhook event

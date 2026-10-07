@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   if ((message as any).status === 'PENDING_PAYMENT') {
     return {
       title: 'Locked message — sponsor to reveal | Words.World',
-      description: 'This community message is waiting for sponsorship. Pay $1 to broadcast it.',
+      description: 'This community message is waiting for sponsorship. Pay $3 to broadcast it.',
     }
   }
 
@@ -83,7 +83,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
         .single()
       if (locked && (locked as any).status === 'PENDING_PAYMENT') {
         const catName = (locked.category as any)?.name || 'MESSAGE'
-        // VIP/Special (reserved) can never be sponsored for $1 — owner completes own checkout.
+        // VIP/Special (reserved) can never be sponsored for $3 — owner completes own checkout.
         if ((locked as any).is_reserved_slot) {
           return (
             <div className="min-h-screen bg-background text-primary flex flex-col">
@@ -124,9 +124,9 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
                 </div>
                 <p className="text-xs uppercase tracking-widest text-secondary font-bold">{catName} • Locked</p>
                 <h1 className="text-2xl font-serif mt-2">This message is waiting for sponsorship</h1>
-                <p className="text-sm text-secondary mt-2">Pay $1 to broadcast the full message worldwide. The preview stays locked until then.</p>
+                <p className="text-sm text-secondary mt-2">Pay $3 to broadcast the full message worldwide. The preview stays locked until then.</p>
                 <Link href={`/checkout/${locked.id}?mode=sponsor`} className="inline-block mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-sm font-bold transition-colors">
-                  Sponsor for $1 to reveal
+                  Sponsor for $3 to reveal
                 </Link>
               </div>
             </main>
@@ -139,7 +139,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
 
   // Defense-in-depth: even if RLS is bypassed, never render unpaid content here.
   if ((message as any).status === 'PENDING_PAYMENT') {
-    // VIP/Special (reserved) can never be sponsored for $1.
+    // VIP/Special (reserved) can never be sponsored for $3.
     if ((message as any).is_reserved_slot) {
       return (
         <div className="min-h-screen bg-background text-primary flex flex-col">
@@ -184,7 +184,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
             <p className="font-serif italic text-lg mt-3">&ldquo;{teaser}&hellip;&rdquo;</p>
             <p className="text-sm text-secondary mt-2">Full message reveals after sponsorship.</p>
             <Link href={`/checkout/${(message as any).id}?mode=sponsor`} className="inline-block mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-sm font-bold transition-colors">
-              Sponsor for $1 to reveal
+              Sponsor for $3 to reveal
             </Link>
           </div>
         </main>

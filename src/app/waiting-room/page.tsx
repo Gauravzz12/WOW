@@ -28,7 +28,7 @@ export default async function WaitingRoomPage() {
     .lt('created_at', twelveHoursAgo)
 
   // Fetch unpaid NORMAL messages only — VIP/Special (is_reserved_slot) can never
-  // be sponsored for $1; the owner must complete their own $30+ checkout.
+  // be sponsored for $3; the owner must complete their own $30+ checkout.
   const { data: unpaidMessages, error: unpaidError } = await supabase
     .from('messages')
     .select('id, content, bid_amount, is_reserved_slot, created_at, category:categories(name, slug)')
@@ -65,7 +65,7 @@ export default async function WaitingRoomPage() {
             Back to World
           </Link>
           <h1 className="text-4xl font-serif">The Waiting Room</h1>
-          <p className="text-secondary mt-2">These messages are waiting to be heard. Sponsor one for $1 to broadcast it worldwide — unpaid messages are removed after 12 hours.</p>
+          <p className="text-secondary mt-2">These messages are waiting to be heard. Sponsor one for $3 to broadcast it worldwide — unpaid messages are removed after 12 hours.</p>
         </div>
         
         <div className="flex items-center gap-2 self-start md:self-auto px-3.5 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-xs font-mono text-blue-700 dark:text-blue-300 shadow-sm">
@@ -89,7 +89,7 @@ export default async function WaitingRoomPage() {
                 <WaitingRoomTimer createdAt={msg.created_at} />
               </div>
 
-              {/* Locked teaser — full text reveals only after $1 sponsorship */}
+              {/* Locked teaser — full text reveals only after $3 sponsorship */}
               <div className="flex-1 my-4 max-h-48 overflow-y-auto overscroll-contain custom-scrollbar pr-2">
                 <p className="text-xl font-serif leading-relaxed">
                   <span>{msg.teaser}</span>
@@ -97,7 +97,7 @@ export default async function WaitingRoomPage() {
                 </p>
                 <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-secondary">
                   <Lock size={11} />
-                  <span>Locked preview ({msg.contentLength} chars) — sponsor for $1 to reveal the full message</span>
+                  <span>Locked preview ({msg.contentLength} chars) — sponsor for $3 to reveal the full message</span>
                 </p>
               </div>
 

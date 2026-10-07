@@ -65,7 +65,7 @@ export default async function CheckoutPage({
   }
 
   const categoryName = (message.category as any)?.name || 'Message'
-  // Self-served Sponsored tier (first-party $1 grid message) is marked on the
+  // Self-served Sponsored tier (first-party $3 grid message) is marked on the
   // row itself. Legacy sponsor mode (paying for someone else's message) is the
   // separate ?mode=sponsor path.
   const rawStyle = typeof message.style_config === 'string'
@@ -73,7 +73,7 @@ export default async function CheckoutPage({
     : (message.style_config || {})
   const isSponsoredTier = (rawStyle as any)?.isSponsored === true && !(message as any).is_reserved_slot && !isSponsorMode
   // Paywall: never render full content. Sponsors see a short teaser + length only.
-  // Full text unlocks after the $1 payment moves the row to QUEUED/ACTIVE.
+  // Full text unlocks after the $3 payment moves the row to QUEUED/ACTIVE.
   const plain = stripHtml(message.content || '')
   const { teaser, totalLength } = getSponsoredTeaser(plain)
 
@@ -109,7 +109,7 @@ export default async function CheckoutPage({
             </p>
             <p className="mt-2 inline-flex items-center gap-1 text-[11px] text-secondary">
               <Lock size={11} />
-              <span>Locked preview ({totalLength} chars) — full message reveals after you sponsor for $1</span>
+              <span>Locked preview ({totalLength} chars) — full message reveals after you sponsor for $3</span>
             </p>
           </div>
         )}

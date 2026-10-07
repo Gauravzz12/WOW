@@ -111,7 +111,7 @@ export function LeaderboardView({ items }: { items: LeaderboardItem[] }) {
     },
     {
       id: 'sponsored',
-      label: 'Sponsored ($1)',
+      label: 'Sponsored ($3)',
       shortLabel: 'Sponsored',
       icon: Sparkles,
       badgeColor: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
@@ -142,7 +142,7 @@ export function LeaderboardView({ items }: { items: LeaderboardItem[] }) {
     },
     sponsored: {
       title: 'Sponsored Grid Leaderboard',
-      subtitle: 'Beloved messages backed and brought to life by the global community for $1.',
+      subtitle: 'Beloved messages backed and brought to life by the global community for $3.',
       ctaText: 'Visit Waiting Room',
       ctaHref: '/waiting-room',
     },
@@ -259,7 +259,7 @@ export function LeaderboardView({ items }: { items: LeaderboardItem[] }) {
                     icon: Radio,
                   },
                   sponsored: {
-                    label: 'Sponsored $1',
+                    label: 'Sponsored $3',
                     badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25',
                     icon: Sparkles,
                   },

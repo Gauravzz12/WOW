@@ -149,7 +149,7 @@ export function QueueTabs({
           {activeTab === 'SPONSORED' && (
             <div className="mt-3 px-2.5 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center gap-1.5 text-[10px] text-blue-800 dark:text-blue-300 font-medium">
               <HeartHandshake size={11} className="text-blue-600 dark:text-blue-400 shrink-0" />
-              <span>Sponsor for $1 to broadcast a community voice live</span>
+              <span>Sponsor for $3 to broadcast a community voice live</span>
             </div>
           )}
         </div>
@@ -368,7 +368,7 @@ export function QueueTabs({
                         className="mt-2.5 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors shadow-sm"
                       >
                         <HeartHandshake size={13} />
-                        <span>Sponsor this for $1</span>
+                        <span>Sponsor this for $3</span>
                       </Link>
                       )}
                     </div>

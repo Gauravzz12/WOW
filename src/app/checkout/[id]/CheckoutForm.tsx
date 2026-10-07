@@ -41,7 +41,7 @@ export function CheckoutForm({
     const fetchBids = async () => {
       // Exclude our own message: the moment payment succeeds it joins QUEUED
       // itself, and counting it would raise a false "outbid" alert against
-      // our own bid (e.g. $15 <= $15).
+      // our own bid (e.g. $35 <= $35).
       const { data } = await supabase
         .from('messages')
         .select('bid_amount')
@@ -119,7 +119,7 @@ export function CheckoutForm({
       {isSponsoredTier ? (
         <div className="space-y-4">
           <div className="p-4 bg-blue-500/10 border border-blue-500/25 rounded-2xl text-blue-700 dark:text-blue-300 text-xs font-medium text-center leading-relaxed">
-            Sponsored messages have no pay-and-broadcast. This message is waiting in the Waiting Room and will go live for 30 minutes once someone sponsors it for $1.
+            Sponsored messages have no pay-and-broadcast. This message is waiting in the Waiting Room and will go live for 30 minutes once someone sponsors it for $3.
           </div>
           <button
             type="button"
