@@ -90,7 +90,7 @@ export async function POST(req: Request) {
       // VIP RESERVED SLOTS FULFILLMENT
       const { data: slots } = await supabaseAdmin
         .from('reserved_slots')
-        .select('id, scheduled_start, scheduled_end')
+        .select('id, scheduled_start, scheduled_end, status, message_id')
         .in('id', targetSlotIds)
         .order('scheduled_start', { ascending: true })
 
@@ -98,17 +98,9 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Slots not found' }, { status: 400 })
       }
 
-      const { data: bookedSlots, error: bookError } = await supabaseAdmin
-        .from('reserved_slots')
-        .update({
-          status: 'BOOKED',
-          message_id: messageId,
-        })
-        .in('id', targetSlotIds)
-        .eq('status', 'AVAILABLE')
-        .select('id')
-
-      if (bookError || !bookedSlots || bookedSlots.length !== targetSlotIds.length) {
+      // Check if slots are correctly booked by this message
+      const invalidSlots = slots.filter(s => s.message_id !== messageId)
+      if (invalidSlots.length > 0) {
         return NextResponse.json({ error: 'Slots claimed by another buyer.' }, { status: 409 })
       }
 
