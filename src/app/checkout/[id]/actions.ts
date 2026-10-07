@@ -177,7 +177,7 @@ export async function processPayment(
     try {
       const session = await client.checkoutSessions.create({
         product_cart: [{
-          product_id: process.env.DODO_PAYMENTS_PRODUCT_ID!,
+          product_id: process.env.NEXT_PUBLIC_DODO_PAYMENTS_PRODUCT_ID!,
           quantity: 1,
           amount: Math.round(officialVipPrice * 100),
         }],
@@ -261,7 +261,7 @@ export async function processPayment(
     try {
       const session = await client.checkoutSessions.create({
         product_cart: [{
-          product_id: process.env.DODO_PAYMENTS_PRODUCT_ID!,
+          product_id: process.env.NEXT_PUBLIC_DODO_PAYMENTS_PRODUCT_ID!,
           quantity: 1,
           amount: Math.round(officialTotal * 100),
         }],
@@ -329,7 +329,7 @@ export async function bumpBid(messageId: string, additionalAmount: number) {
   try {
     const session = await client.checkoutSessions.create({
       product_cart: [{
-        product_id: process.env.DODO_PAYMENTS_PRODUCT_ID!,
+        product_id: process.env.NEXT_PUBLIC_DODO_PAYMENTS_PRODUCT_ID!,
         quantity: 1,
         amount: Math.round(additionalAmount * 100),
       }],
