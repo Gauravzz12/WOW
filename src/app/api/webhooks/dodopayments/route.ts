@@ -108,7 +108,7 @@ export async function POST(req: Request) {
       style.slotCount = targetSlotIds.length
       style.slotIds = targetSlotIds
 
-      await supabaseAdmin
+      const { error: vipUpdateErr } = await supabaseAdmin
         .from('messages')
         .update({
           status: 'QUEUED',
@@ -119,6 +119,10 @@ export async function POST(req: Request) {
         })
         .eq('id', messageId)
 
+      if (vipUpdateErr) {
+        console.error('[Dodo Webhook] VIP message update error:', vipUpdateErr)
+      }
+
       await runQueueAdvance().catch(console.error)
     } else {
       // STANDARD QUEUE FULFILLMENT
@@ -126,7 +130,7 @@ export async function POST(req: Request) {
         style.durationSecs = 1800
       }
 
-      await supabaseAdmin
+      const { error: stdUpdateErr } = await supabaseAdmin
         .from('messages')
         .update({
           status: 'QUEUED',
@@ -134,6 +138,10 @@ export async function POST(req: Request) {
           style_config: style,
         })
         .eq('id', messageId)
+
+      if (stdUpdateErr) {
+        console.error('[Dodo Webhook] Standard message update error:', stdUpdateErr)
+      }
 
       const isGridTier = isSponsorMode
       const { data: actives } = await supabaseAdmin

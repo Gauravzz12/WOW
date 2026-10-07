@@ -75,7 +75,7 @@ export function CheckoutForm({
 
   const specialPricing = calculateSpecialPrice(selectedSlots.length)
   const total = isSponsorMode
-    ? 1 
+    ? SPONSORED_PRICE 
     : isReservedSlot 
     ? specialPricing.finalPrice 
     : currentBid
