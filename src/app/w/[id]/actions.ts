@@ -8,10 +8,9 @@ import {
   verifySponsorEditToken,
 } from '@/lib/sponsorToken'
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
+
+const supabaseAdmin = getSupabaseAdmin()
 
 /**
  * Post-pay shoutout edit: the sponsor pays on a locked teaser, then sees the

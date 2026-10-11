@@ -7,10 +7,9 @@ import { calculateSpecialPrice, calculateNormalMinBid, SPONSORED_PRICE, SPONSORE
 import { issueSponsorEditToken, sponsorTokenCookieName } from '@/lib/sponsorToken'
 import { checkAndNotifyOutbids } from '@/lib/outbidService'
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
+
+const supabaseAdmin = getSupabaseAdmin()
 
 export async function processPayment(
   messageId: string, 

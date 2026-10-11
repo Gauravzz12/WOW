@@ -12,10 +12,9 @@ import {
 } from '@/lib/constants/pricing'
 import { STANDARD_TEMPLATES } from '@/lib/constants/templates'
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
+
+const supabaseAdmin = getSupabaseAdmin()
 
 export async function createMessage(data: {
   categorySlug: string

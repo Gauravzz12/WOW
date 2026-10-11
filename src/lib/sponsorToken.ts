@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'crypto'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from './supabase/admin'
 
 /**
  * Sponsor shoutout edit tokens (server-only).
@@ -18,10 +18,7 @@ export function sponsorTokenCookieName(messageId: string): string {
 }
 
 function getAdmin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  return getSupabaseAdmin()
 }
 
 function hashToken(token: string): string {

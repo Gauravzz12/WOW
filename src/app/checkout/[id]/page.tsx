@@ -1,4 +1,4 @@
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { notFound, redirect } from 'next/navigation'
 import { CheckoutForm } from './CheckoutForm'
 import Link from 'next/link'
@@ -6,13 +6,8 @@ import { ArrowLeft, Lock } from 'lucide-react'
 import { getSponsoredTeaser, stripHtml } from '@/lib/masking'
 
 export const dynamic = 'force-dynamic'
-
-function getSupabaseAdmin() {
-  return createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-}
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
 
 export default async function CheckoutPage({ 
   params,

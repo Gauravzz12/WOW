@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { MainFeedContainer } from '@/components/MainFeedContainer'
@@ -9,6 +9,8 @@ import { toLockedSponsoredCard } from '@/lib/masking'
 import { getMessageDurationSecs, isMessageExpired } from '@/lib/messageExpiry'
 
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
 
 export default async function Home() {
   // Advance queue so expired messages are archived and due messages are promoted before initial load
@@ -17,10 +19,7 @@ export default async function Home() {
   })
 
   const supabase = createClient()
-  const supabaseAdmin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const supabaseAdmin = getSupabaseAdmin()
 
   // Fetch all initial data in parallel to minimize Server Response Time (TTFB)
   // NOTE paywall: anon RLS can no longer read PENDING_PAYMENT. Paid QUEUED sponsored

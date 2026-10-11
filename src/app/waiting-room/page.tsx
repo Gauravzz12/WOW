@@ -1,4 +1,4 @@
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { ArrowLeft, Lock } from 'lucide-react'
 import { getCategoryStyles } from '@/lib/utils/colors'
@@ -6,13 +6,8 @@ import { toLockedSponsoredCard } from '@/lib/masking'
 import { WaitingRoomTimer } from '@/components/WaitingRoomTimer'
 
 export const dynamic = 'force-dynamic'
-
-function getSupabaseAdmin() {
-  return createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-}
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
 
 export default async function WaitingRoomPage() {
   // Service-role: anon RLS no longer allows reading PENDING_PAYMENT rows.

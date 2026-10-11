@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -21,6 +21,8 @@ import { getFrameClass } from '@/lib/constants/frames'
 import { BumpBidButton } from './BumpBidButton'
 
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const supabase = createClient()
@@ -72,10 +74,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
     // Anon RLS hides PENDING_PAYMENT (returns no row). Check via admin to render
     // a locked paywall instead of leaking existence details, without exposing content.
     try {
-      const admin = createAdminClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      )
+      const admin = getSupabaseAdmin()
       const { data: locked } = await admin
         .from('messages')
         .select('id, status, is_reserved_slot, created_at, category:categories(name, slug)')

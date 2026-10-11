@@ -1,10 +1,7 @@
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from './supabase/admin'
 import { getMessageEndTimeMs } from './messageExpiry'
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabaseAdmin = getSupabaseAdmin()
 
 // Send a reminder email via Resend (falls back silently if not configured)
 async function sendReminderEmail(to: string, messageContent: string) {
