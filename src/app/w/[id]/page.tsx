@@ -275,10 +275,23 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
     sponsorNoteStyle 
   } = resolveCardStyles(message.style_config, message.template_id)
 
+  const contentLength = message.content?.length || 0
+  const textSizeClass =
+    contentLength > 200
+      ? 'text-lg sm:text-xl md:text-2xl'
+      : contentLength > 90
+      ? 'text-xl sm:text-2xl md:text-3xl'
+      : 'text-2xl sm:text-3xl md:text-4xl'
+
+  let fontStyle = message.style_config?.font || 'font-serif italic'
+  if (contentLength > 80 && fontStyle.includes('tracking-[')) {
+    fontStyle = fontStyle.replace(/tracking-\[[^\]]+\]/, 'tracking-wide')
+  }
+
   return (
     <div className="min-h-screen bg-background text-primary flex flex-col">
       <MessageViewTracker messageId={message.id} categoryName={(message.category as any)?.name} />
-      <header className="p-4 md:p-6 max-w-4xl w-full mx-auto flex items-center justify-between">
+      <header className="p-4 md:p-6 max-w-3xl w-full mx-auto flex items-center justify-between">
         <Link href="/" className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background-elevated border border-primary/10 hover:border-primary/30 text-secondary hover:text-primary transition-colors text-sm font-medium shadow-sm">
           <ArrowLeft className="w-4 h-4" />
           <span>Back to World</span>
@@ -288,20 +301,20 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
         </Link>
       </header>
       
-      <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-8 space-y-12">
+      <main className="flex-1 max-w-3xl w-full mx-auto p-4 md:p-6 space-y-8">
         
         {/* Message Presentation */}
-        <div className={`${bg || 'bg-background-elevated'} border ${cardBorder || message.style_config?.cardBorder || borderColor} rounded-2xl p-8 md:p-16 text-center shadow-lg relative overflow-hidden transition-colors ${getFrameClass(message.style_config?.frameId)}`}>
+        <div className={`${bg || 'bg-background-elevated'} border ${cardBorder || message.style_config?.cardBorder || borderColor} rounded-3xl p-6 sm:p-10 md:p-12 text-center shadow-md relative overflow-hidden transition-colors ${getFrameClass(message.style_config?.frameId)}`}>
           <FrameDecorator frameId={message.style_config?.frameId} />
 
           {message.status === 'ACTIVE' && (
-            <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-600 text-xs font-bold uppercase tracking-widest rounded-full">
+            <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-600 text-[11px] font-bold uppercase tracking-wider rounded-full">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
               Live Now
             </div>
           )}
           
-          <div className="flex flex-col items-center gap-2 mb-8">
+          <div className="flex flex-col items-center gap-2 mb-6">
             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border shadow-sm backdrop-blur-md ${isVip ? 'bg-amber-400/20 border-amber-400/40 text-amber-300' : badgeClass}`}>
               {categoryName}
             </span>
@@ -314,13 +327,13 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
             )}
           </div>
           
-          <h1 className={`text-4xl md:text-6xl ${message.style_config?.font || 'font-serif italic'} leading-tight mb-8 ${textColor}`} style={{ color: inlineColor }}>
+          <h1 className={`${textSizeClass} ${fontStyle} leading-relaxed mb-6 ${textColor}`} style={{ color: inlineColor }}>
             &quot;{message.content}&quot;
           </h1>
 
           {/* Brand Showcase Link if present */}
           {message.style_config?.brandUrl && (
-            <div className="mb-8">
+            <div className="mb-6">
               <a 
                 href={message.style_config.brandUrl.startsWith('http') ? message.style_config.brandUrl : `https://${message.style_config.brandUrl}`}
                 target="_blank" 
@@ -335,7 +348,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
 
           {/* Sponsor Attribution */}
           {(message.style_config?.sponsorName || message.style_config?.sponsorNote) && (
-            <div className={`mb-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-2 rounded-2xl border text-xs shadow-sm backdrop-blur-md max-w-xl text-center ${sponsorStyle}`}>
+            <div className={`mb-6 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-2 rounded-2xl border text-xs shadow-sm backdrop-blur-md max-w-xl mx-auto text-center ${sponsorStyle}`}>
               <span className="text-amber-500 shrink-0">✨</span>
               <span className={`${sponsorLabelStyle} text-[10px] uppercase font-bold tracking-wider shrink-0`}>Sponsored by</span>
               <span className={`font-semibold shrink-0 ${sponsorNameStyle}`}>{message.style_config.sponsorName || 'Community'}</span>
@@ -347,7 +360,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
 
           {/* Post-pay shoutout: sponsor-only editor (token-gated), writes dedication after full reveal */}
           {canEditShoutout && (
-            <div className="mb-8 max-w-xl mx-auto text-left">
+            <div className="mb-6 max-w-xl mx-auto text-left">
               <SponsorShoutoutEditor
                 messageId={(message as any).id}
                 initialName={(message as any).style_config?.sponsorName || ''}
@@ -360,12 +373,12 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
           )}
 
           {currentRank !== null && (
-            <div className="mb-8 max-w-xl mx-auto text-left">
+            <div className="mb-6 max-w-xl mx-auto text-left">
               <BumpBidButton messageId={message.id} currentBid={(message as any).bid_amount} />
             </div>
           )}
           
-          <div className="text-sm text-secondary flex flex-col items-center gap-6">
+          <div className="text-sm text-secondary flex flex-col items-center gap-5">
             <div>
               {message.actual_start ? (
                 <p suppressHydrationWarning>Broadcasted on {new Date(message.actual_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</p>
@@ -385,8 +398,6 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
                   brandUrl: (message as any).style_config?.brandUrl,
                   sponsorName: (message as any).style_config?.sponsorName,
                   sponsorNote: (message as any).style_config?.sponsorNote,
-                  // Memory card renders plain content with no stickers —
-                  // mirror exactly that.
                   stickers: undefined,
                   frameId: (message as any).style_config?.frameId,
                 }}
@@ -396,37 +407,33 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
                   cardBorder: cardBorder || (message as any).style_config?.cardBorder || borderColor,
                   inlineColor,
                   isDarkCard,
-                  // Same geometry + type scale as the memory card above
-                  // (which renders plain content only).
-                  widthClass: 'max-w-4xl',
+                  widthClass: 'max-w-3xl',
                   aspectClass: '',
-                  paddingClass: 'p-8 md:p-16',
+                  paddingClass: 'p-6 sm:p-10 md:p-12',
                   bodyClassName: 'relative z-10 flex-1 min-h-0 w-full overflow-y-auto overscroll-contain custom-scrollbar px-2 py-4 my-2 flex flex-col',
                   bodyInnerClassName: 'my-auto w-full',
                   htmlTextClass: undefined,
-                  plainTextClass: `text-center leading-relaxed text-4xl md:text-6xl ${(message as any).style_config?.font || 'font-serif italic'} ${textColor}`,
+                  plainTextClass: `text-center leading-relaxed ${textSizeClass} ${fontStyle} ${textColor}`,
                 }}
               />
             </div>
           </div>
         </div>
 
-        {/* Interaction Zone — hidden right after sponsoring so Reactions/Comments don't auto-open */}
-        {!isJustSponsored && (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
+        {/* Interaction Zone */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 pt-2">
           {/* Reactions */}
-          <div className="md:col-span-5 space-y-6">
-            <h2 className="text-xl font-serif">Reactions</h2>
+          <div className="md:col-span-5 space-y-4">
+            <h2 className="text-lg font-serif">Reactions</h2>
             <ReactionBar messageId={message.id} />
           </div>
 
           {/* Comments */}
-          <div className="md:col-span-7 space-y-6">
-            <h2 className="text-xl font-serif">Comments</h2>
+          <div className="md:col-span-7 space-y-4">
+            <h2 className="text-lg font-serif">Comments</h2>
             <CommentSection messageId={message.id} />
           </div>
         </div>
-        )}
 
       </main>
     </div>
