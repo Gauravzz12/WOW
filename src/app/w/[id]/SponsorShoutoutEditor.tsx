@@ -53,10 +53,18 @@ export function SponsorShoutoutEditor({
     }
   }
 
+  const handleClose = () => {
+    if (justSponsored) {
+      window.location.href = '/'
+    } else {
+      setIsOpen(false)
+    }
+  }
+
   return (
     <>
-      {/* Inline banner when modal is closed */}
-      {!isOpen && (
+      {/* Inline banner when modal is closed (only for returning sponsors, never on the shoutout page) */}
+      {!isOpen && !justSponsored && (
         <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-left">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
@@ -88,7 +96,7 @@ export function SponsorShoutoutEditor({
         {isOpen && (
           <div 
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-            onClick={() => setIsOpen(false)}
+            onClick={handleClose}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -101,7 +109,7 @@ export function SponsorShoutoutEditor({
               {/* Close Button */}
               <button
                 type="button"
-                onClick={() => setIsOpen(false)}
+                onClick={handleClose}
                 className="absolute top-5 right-5 p-2 rounded-full text-secondary hover:text-primary hover:bg-background-muted transition-colors"
                 aria-label="Close shoutout menu"
               >
@@ -191,7 +199,7 @@ export function SponsorShoutoutEditor({
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsOpen(false)}
+                  onClick={handleClose}
                   disabled={saving}
                   className="flex-1 py-3 rounded-full border border-primary/20 hover:bg-background-muted text-primary text-xs font-bold transition-colors disabled:opacity-50"
                 >

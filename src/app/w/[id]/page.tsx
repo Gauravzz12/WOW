@@ -420,20 +420,22 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
           </div>
         </div>
 
-        {/* Interaction Zone */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 pt-2">
-          {/* Reactions */}
-          <div className="md:col-span-5 space-y-4">
-            <h2 className="text-lg font-serif">Reactions</h2>
-            <ReactionBar messageId={message.id} />
-          </div>
+        {/* Interaction Zone — hidden on the sponsor shoutout landing page */}
+        {!isJustSponsored && (
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 pt-2">
+            {/* Reactions */}
+            <div className="md:col-span-5 space-y-4">
+              <h2 className="text-lg font-serif">Reactions</h2>
+              <ReactionBar messageId={message.id} />
+            </div>
 
-          {/* Comments */}
-          <div className="md:col-span-7 space-y-4">
-            <h2 className="text-lg font-serif">Comments</h2>
-            <CommentSection messageId={message.id} />
+            {/* Comments */}
+            <div className="md:col-span-7 space-y-4">
+              <h2 className="text-lg font-serif">Comments</h2>
+              <CommentSection messageId={message.id} />
+            </div>
           </div>
-        </div>
+        )}
 
       </main>
     </div>
