@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { cookies } from 'next/headers'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Lock, X } from 'lucide-react'
 import { CommentSection } from './CommentSection'
@@ -57,19 +57,15 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
   const sponsorToken = tokenFromUrl || tokenFromCookie
   const isSponsorTokenValid = sponsorToken ? await verifySponsorEditToken(params.id, sponsorToken) : false
 
-  // If token is valid and just sponsored, activate row so paywall does not block
-  if (isSponsorTokenValid && isJustSponsored) {
-    try {
-      const admin = getSupabaseAdmin()
-      await admin
-        .from('messages')
-        .update({
-          status: 'ACTIVE',
-          actual_start: new Date().toISOString(),
-          is_reserved_slot: false,
-        })
-        .eq('id', params.id)
-    } catch {}
+  // Legacy shoutout landing (?justSponsored=1) now lives at the dedicated
+  // sponsor shoutout screen. Preserve the token across the redirect so
+  // in-flight checkout sessions and old links keep working.
+  if (isJustSponsored) {
+    redirect(
+      tokenFromUrl
+        ? `/sponsor/${params.id}?token=${encodeURIComponent(tokenFromUrl)}`
+        : `/sponsor/${params.id}`
+    )
   }
 
   let { data: message, error } = await supabase

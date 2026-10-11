@@ -94,10 +94,10 @@ export function CheckoutForm({
       window.location.href = result.redirectUrl
     } else if (result.success) {
       if (isSponsorMode) {
-        toast.success('Payment successful! Revealing the full message — you can add your shoutout next.', {
+        toast.success('Payment successful! Taking you to your sponsor shoutout screen.', {
           title: 'Sponsorship Confirmed'
         })
-        router.push(`/w/${messageId}?justSponsored=1`)
+        router.push(`/sponsor/${messageId}`)
         return
       }
       const tabParam = isReservedSlot ? 'SPECIAL' : 'NORMAL'

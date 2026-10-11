@@ -269,7 +269,7 @@ export async function processPayment(
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
         })
-        returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/w/${messageId}?justSponsored=1&token=${sponsorToken}`
+        returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/sponsor/${messageId}?token=${sponsorToken}`
       }
 
       const session = await client.checkoutSessions.create({
