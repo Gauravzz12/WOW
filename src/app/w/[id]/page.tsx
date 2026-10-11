@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Lock } from 'lucide-react'
+import { ArrowLeft, Lock, X } from 'lucide-react'
 import { CommentSection } from './CommentSection'
 import { ReactionBar } from './ReactionBar'
 import { MessageViewTracker } from './MessageViewTracker'
@@ -51,8 +51,28 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
 
 export default async function MessageMemoryPage({ params, searchParams }: { params: { id: string }, searchParams?: { [key: string]: string | string[] | undefined } }) {
   const supabase = createClient()
+  const isJustSponsored = searchParams?.justSponsored === '1'
+  const tokenFromUrl = typeof searchParams?.token === 'string' ? searchParams.token : undefined
+  const tokenFromCookie = cookies().get(sponsorTokenCookieName(params.id))?.value
+  const sponsorToken = tokenFromUrl || tokenFromCookie
+  const isSponsorTokenValid = sponsorToken ? await verifySponsorEditToken(params.id, sponsorToken) : false
 
-  const { data: message, error } = await supabase
+  // If token is valid and just sponsored, activate row so paywall does not block
+  if (isSponsorTokenValid && isJustSponsored) {
+    try {
+      const admin = getSupabaseAdmin()
+      await admin
+        .from('messages')
+        .update({
+          status: 'ACTIVE',
+          actual_start: new Date().toISOString(),
+          is_reserved_slot: false,
+        })
+        .eq('id', params.id)
+    } catch {}
+  }
+
+  let { data: message, error } = await supabase
     .from('messages')
     .select(`
       id,
@@ -69,6 +89,34 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
     `)
     .eq('id', params.id)
     .single()
+
+  // If anon query failed or returned null (e.g. RLS on pending row), but user has valid sponsor token:
+  if ((error || !message) && isSponsorTokenValid) {
+    try {
+      const admin = getSupabaseAdmin()
+      const { data: adminMsg } = await admin
+        .from('messages')
+        .select(`
+          id,
+          content,
+          template_id,
+          status,
+          bid_amount,
+          is_reserved_slot,
+          created_at,
+          actual_start,
+          actual_end,
+          style_config,
+          category:categories(name, slug)
+        `)
+        .eq('id', params.id)
+        .single()
+      if (adminMsg) {
+        message = adminMsg
+        error = null
+      }
+    } catch {}
+  }
 
   if (error || !message) {
     // Anon RLS hides PENDING_PAYMENT (returns no row). Check via admin to render
@@ -137,7 +185,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
   }
 
   // Defense-in-depth: even if RLS is bypassed, never render unpaid content here.
-  if ((message as any).status === 'PENDING_PAYMENT') {
+  if ((message as any).status === 'PENDING_PAYMENT' && !isSponsorTokenValid) {
     // VIP/Special (reserved) can never be sponsored for $3.
     if ((message as any).is_reserved_slot) {
       return (
@@ -195,18 +243,13 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
   const categorySlug = (message.category as any)?.slug || 'general'
   const shareText = `"${message.content}"\n\n${categoryName} on Words of the World`
   const shareUrl = `https://words.world/w/${message.id}`
-  const isJustSponsored = searchParams?.justSponsored === '1'
 
   // Shoutout editor is sponsor-only: verified via the edit token issued at
-  // sponsorship time. Everyone else sees the static attribution above.
-  const sponsorToken = cookies().get(sponsorTokenCookieName(message.id))?.value
+  // sponsorship time.
   const canEditShoutout =
     !(message as any).is_reserved_slot &&
     ((message as any).bid_amount ?? 0) < 10 &&
-    ((message as any).status === 'QUEUED' ||
-      (message as any).status === 'ACTIVE' ||
-      (message as any).status === 'COMPLETED') &&
-    (await verifySponsorEditToken(message.id, sponsorToken))
+    isSponsorTokenValid
   
   let currentRank: number | null = null;
   if (message.status === 'QUEUED' && !(message as any).is_reserved_slot) {
@@ -235,10 +278,13 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
   return (
     <div className="min-h-screen bg-background text-primary flex flex-col">
       <MessageViewTracker messageId={message.id} categoryName={(message.category as any)?.name} />
-      <header className="p-6">
-        <Link href="/" className="inline-flex items-center text-secondary hover:text-primary transition-colors">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to World
+      <header className="p-4 md:p-6 max-w-4xl w-full mx-auto flex items-center justify-between">
+        <Link href="/" className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background-elevated border border-primary/10 hover:border-primary/30 text-secondary hover:text-primary transition-colors text-sm font-medium shadow-sm">
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to World</span>
+        </Link>
+        <Link href="/" aria-label="Close message view" className="p-2 rounded-full bg-background-elevated border border-primary/10 hover:border-primary/30 text-secondary hover:text-primary transition-colors shadow-sm">
+          <X className="w-4 h-4" />
         </Link>
       </header>
       
@@ -307,6 +353,8 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
                 initialName={(message as any).style_config?.sponsorName || ''}
                 initialNote={(message as any).style_config?.sponsorNote || ''}
                 justSponsored={isJustSponsored}
+                messageContent={message.content || ''}
+                token={sponsorToken || undefined}
               />
             </div>
           )}

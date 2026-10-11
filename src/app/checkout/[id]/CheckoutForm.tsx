@@ -267,14 +267,6 @@ export function CheckoutForm({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <label className="text-xs font-medium text-secondary uppercase tracking-widest">Card Number</label>
-        <div className="w-full bg-background p-4 rounded-xl border border-primary/20 text-primary/50 font-mono flex items-center justify-between opacity-50 cursor-not-allowed">
-          <span>•••• •••• •••• 4242</span>
-          <span>VISA</span>
-        </div>
-        <p className="text-xs text-secondary mt-1 text-center">Mock payment system. No real charges.</p>
-      </div>
       
       <button 
         onClick={handlePay}

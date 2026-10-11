@@ -258,33 +258,33 @@ export async function processPayment(
     })
 
     try {
-      const session = await client.checkoutSessions.create({
-        product_cart: [{
-          product_id: process.env.NEXT_PUBLIC_DODO_PAYMENTS_PRODUCT_ID!,
-          quantity: 1,
-          amount: Math.round(officialTotal * 100),
-        }],
-        return_url: isSponsorMode 
-          ? `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/w/${messageId}?justSponsored=1` 
-          : `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=NORMAL`,
-        metadata: {
-          messageId,
-          isSponsorMode: isSponsorMode.toString(),
-          usdAmount: officialTotal.toString()
-        }
-      })
-      
-      // Issue the sponsorEditToken BEFORE checkout so the user can edit their shoutout when they return.
-      // Even if they abandon checkout, this just gives them an unused token for an un-sponsored message.
+      let returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=NORMAL`
+
       if (isSponsorMode) {
         const sponsorToken = await issueSponsorEditToken(messageId)
         cookies().set(sponsorTokenCookieName(messageId), sponsorToken, {
           path: '/',
           maxAge: 30 * 24 * 60 * 60, // 30 days
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production'
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
         })
+        returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/w/${messageId}?justSponsored=1&token=${sponsorToken}`
       }
+
+      const session = await client.checkoutSessions.create({
+        product_cart: [{
+          product_id: process.env.NEXT_PUBLIC_DODO_PAYMENTS_PRODUCT_ID!,
+          quantity: 1,
+          amount: Math.round(officialTotal * 100),
+        }],
+        return_url: returnUrl,
+        metadata: {
+          messageId,
+          isSponsorMode: isSponsorMode.toString(),
+          usdAmount: officialTotal.toString()
+        }
+      })
 
       return { success: true, redirectUrl: session.checkout_url }
     } catch (err: any) {

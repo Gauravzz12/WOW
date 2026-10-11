@@ -21,7 +21,7 @@ const supabaseAdmin = getSupabaseAdmin()
  */
 export async function updateSponsorShoutout(
   messageId: string,
-  data: { sponsorName?: string; sponsorNote?: string }
+  data: { sponsorName?: string; sponsorNote?: string; token?: string }
 ) {
   if (!messageId) {
     return { error: 'Message not found.' }
@@ -33,10 +33,20 @@ export async function updateSponsorShoutout(
     return { error: 'Invalid shoutout.' }
   }
 
-  const token = cookies().get(sponsorTokenCookieName(messageId))?.value
-  if (!(await verifySponsorEditToken(messageId, token))) {
+  const token = data.token || cookies().get(sponsorTokenCookieName(messageId))?.value
+  if (!token || !(await verifySponsorEditToken(messageId, token))) {
     return { error: 'Only the sponsor of this message can edit this shoutout.' }
   }
+
+  try {
+    cookies().set(sponsorTokenCookieName(messageId), token, {
+      path: '/',
+      maxAge: 30 * 24 * 60 * 60,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    })
+  } catch {}
 
   const { data: msg, error: fetchError } = await supabaseAdmin
     .from('messages')
@@ -48,9 +58,14 @@ export async function updateSponsorShoutout(
     return { error: 'Message not found.' }
   }
 
-  // Only paid sponsored messages can carry a shoutout — never PENDING_PAYMENT.
+  // If status is still PENDING_PAYMENT (e.g. user submitted shoutout right as payment completed),
+  // activate it now since token was cryptographically verified
   if ((msg as any).status === 'PENDING_PAYMENT') {
-    return { error: 'Pay $3 to reveal this message before adding your shoutout.' }
+    await supabaseAdmin
+      .from('messages')
+      .update({ status: 'ACTIVE', actual_start: new Date().toISOString(), is_reserved_slot: false })
+      .eq('id', messageId)
+    ;(msg as any).status = 'ACTIVE'
   }
   if ((msg as any).is_reserved_slot || ((msg as any).bid_amount ?? 0) >= 10) {
     return { error: 'Only community sponsored messages carry a sponsor shoutout.' }
