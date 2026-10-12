@@ -52,12 +52,25 @@ export async function POST(req: Request) {
     }
 
     if ((message as any).status !== 'PENDING_PAYMENT') {
-       // Wait, if it's a bump bid, the status will be QUEUED!
        if (payment.metadata?.isBump === 'true' && (message as any).status === 'QUEUED') {
            const additionalAmount = payment.metadata?.usdAmount ? parseFloat(payment.metadata.usdAmount) : (payment.total_amount / 100);
-           const { data: currentMsg } = await supabaseAdmin.from('messages').select('bid_amount').eq('id', messageId).single();
-           const newTotal = (currentMsg?.bid_amount || 0) + additionalAmount;
-           await supabaseAdmin.from('messages').update({ bid_amount: newTotal }).eq('id', messageId);
+           const { data: currentMsg } = await supabaseAdmin
+             .from('messages')
+             .select('bid_amount, reminder_email, content, style_config')
+             .eq('id', messageId)
+             .single();
+
+           const targetTotal = payment.metadata?.newTotalBid 
+             ? parseFloat(payment.metadata.newTotalBid) 
+             : ((currentMsg?.bid_amount || 0) + additionalAmount);
+
+           const newToken = payment.metadata?.newToken;
+           if (newToken) {
+             const { rotateBumpToken } = await import('@/lib/bumpToken')
+             await rotateBumpToken(messageId, targetTotal, newToken)
+           } else {
+             await supabaseAdmin.from('messages').update({ bid_amount: targetTotal }).eq('id', messageId);
+           }
            
            await supabaseAdmin.from('payments').insert({
              message_id: messageId,
@@ -67,7 +80,33 @@ export async function POST(req: Request) {
              currency: payment.currency || 'usd',
              status: 'SUCCESS',
            });
-           return NextResponse.json({ received: true, note: 'Bump processed' });
+
+           // Send email notification with the rotated new token
+           const emailTo = currentMsg?.reminder_email || payment.customer?.email || payment.metadata?.userEmail;
+           if (emailTo && newToken) {
+             try {
+               const { sendBumpTokenEmail } = await import('@/lib/email')
+               await sendBumpTokenEmail({
+                 to: emailTo,
+                 messageContent: currentMsg?.content || '',
+                 bumpToken: newToken,
+                 currentBid: targetTotal,
+                 isUpdated: true
+               })
+             } catch (emailErr) {
+               console.error('[Bump Webhook] Failed to send email:', emailErr)
+             }
+           }
+
+           // Notify any queued messages that were outbid by this higher bump
+           try {
+             const { checkAndNotifyOutbids } = await import('@/lib/outbidService')
+             await checkAndNotifyOutbids(targetTotal)
+           } catch (outbidErr) {
+             console.error('[Bump Webhook] Outbid check error:', outbidErr)
+           }
+
+           return NextResponse.json({ received: true, note: 'Bump processed and token rotated' });
        }
 
       return NextResponse.json({ received: true, note: 'Already processed or wrong status' })
@@ -190,6 +229,38 @@ export async function POST(req: Request) {
         const { issueSponsorEditToken } = await import('@/lib/sponsorToken')
         await issueSponsorEditToken(messageId)
       } catch {}
+    } else if (!isReserved) {
+      // Standard priority queue message: send secret bump token email
+      try {
+        let tokenToSend = payment.metadata?.initialBumpToken || style?.bumpToken || null
+        if (!tokenToSend) {
+          const { generateBumpToken, hashBumpToken } = await import('@/lib/bumpToken')
+          tokenToSend = generateBumpToken()
+          style.bumpTokenHash = hashBumpToken(tokenToSend)
+          await supabaseAdmin
+            .from('messages')
+            .update({ style_config: style })
+            .eq('id', messageId)
+        }
+
+        const emailTo = (message as any)?.reminder_email || payment.customer?.email || payment.metadata?.userEmail
+        if (emailTo && tokenToSend) {
+          const { sendBumpTokenEmail } = await import('@/lib/email')
+          await sendBumpTokenEmail({
+            to: emailTo,
+            messageContent: (message as any)?.content || '',
+            bumpToken: tokenToSend,
+            currentBid: amountTotal,
+            isUpdated: false,
+          })
+        }
+
+        // Notify anyone who was outbid by this initial bid
+        const { checkAndNotifyOutbids } = await import('@/lib/outbidService')
+        await checkAndNotifyOutbids(amountTotal)
+      } catch (bumpEmailErr) {
+        console.error('[Dodo Webhook] Failed to process standard queue bump token/outbids:', bumpEmailErr)
+      }
     }
   }
 

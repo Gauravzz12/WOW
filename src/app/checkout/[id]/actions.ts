@@ -259,6 +259,7 @@ export async function processPayment(
 
     try {
       let returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=NORMAL`
+      let initialBumpToken: string | null = null
 
       if (isSponsorMode) {
         const sponsorToken = await issueSponsorEditToken(messageId)
@@ -270,6 +271,21 @@ export async function processPayment(
           sameSite: 'lax',
         })
         returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/sponsor/${messageId}?token=${sponsorToken}`
+      } else {
+        // Standard priority queue bid: generate secret bump token
+        const { generateBumpToken, hashBumpToken } = await import('@/lib/bumpToken')
+        initialBumpToken = generateBumpToken()
+        style.bumpTokenHash = hashBumpToken(initialBumpToken)
+        style.bumpCount = 0
+
+        await supabaseAdmin
+          .from('messages')
+          .update({
+            style_config: style,
+          })
+          .eq('id', messageId)
+
+        returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=NORMAL&initialBumpToken=${encodeURIComponent(initialBumpToken)}`
       }
 
       const session = await client.checkoutSessions.create({
@@ -282,7 +298,9 @@ export async function processPayment(
         metadata: {
           messageId,
           isSponsorMode: isSponsorMode.toString(),
-          usdAmount: officialTotal.toString()
+          usdAmount: officialTotal.toString(),
+          initialBumpToken: initialBumpToken || '',
+          userEmail: currentMsg.reminder_email || ''
         }
       })
 
