@@ -241,10 +241,12 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
   const shareUrl = `https://words.world/w/${message.id}`
 
   // Shoutout editor is sponsor-only: verified via the edit token issued at
-  // sponsorship time.
+  // sponsorship time, and can only be submitted once.
+  const isShoutoutLocked = Boolean((message.style_config as any)?.shoutoutLocked)
   const canEditShoutout =
     !(message as any).is_reserved_slot &&
     ((message as any).bid_amount ?? 0) < 10 &&
+    !isShoutoutLocked &&
     isSponsorTokenValid
   
   let currentRank: number | null = null;

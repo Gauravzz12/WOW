@@ -191,7 +191,7 @@ export function SponsorShoutoutEditor({
 
               {saved && (
                 <p className="text-xs text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-2.5 flex items-center gap-1.5 font-medium">
-                  <Check size={14} /> Shoutout saved successfully! Redirecting...
+                  <Check size={14} /> Shoutout locked & finalized! Broadcasting worldwide...
                 </p>
               )}
 

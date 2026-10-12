@@ -76,6 +76,11 @@ export async function updateSponsorShoutout(
     try { style = JSON.parse(style) } catch { style = {} }
   }
 
+  // Once submitted, sponsor shoutouts are permanently locked and cannot be edited
+  if (style.shoutoutLocked) {
+    return { error: 'This shoutout has already been finalized and cannot be edited.' }
+  }
+
   if (data.sponsorName !== undefined) {
     style.sponsorName = data.sponsorName.trim().slice(0, 30)
   }
@@ -83,6 +88,8 @@ export async function updateSponsorShoutout(
     const words = data.sponsorNote.trim().split(/\s+/).filter(Boolean)
     style.sponsorNote = words.slice(0, 12).join(' ').slice(0, 150)
   }
+
+  style.shoutoutLocked = true
 
   const { error: updateError } = await supabaseAdmin
     .from('messages')
@@ -92,6 +99,19 @@ export async function updateSponsorShoutout(
   if (updateError) {
     return { error: 'Failed to save shoutout.' }
   }
+
+  // Invalidate token from database so it can never be used again
+  try {
+    await supabaseAdmin
+      .from('sponsor_edit_tokens')
+      .delete()
+      .eq('message_id', messageId)
+  } catch {}
+
+  // Expire cookie
+  try {
+    cookies().delete(sponsorTokenCookieName(messageId))
+  } catch {}
 
   revalidatePath(`/w/${messageId}`)
   revalidatePath('/')
