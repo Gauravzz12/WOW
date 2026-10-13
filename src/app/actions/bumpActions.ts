@@ -48,7 +48,7 @@ export async function createBumpCheckoutAction(token: string, newTotalBid: numbe
     })
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'
-    const returnUrl = `${siteUrl}/?tab=NORMAL&bumpSuccess=1&msgId=${msg.id}&newBid=${candidateBid}&token=${encodeURIComponent(newToken)}`
+    const returnUrl = `${siteUrl}/?tab=NORMAL&bumpSuccess=1`
 
     const session = await client.checkoutSessions.create({
       product_cart: [{
@@ -57,6 +57,7 @@ export async function createBumpCheckoutAction(token: string, newTotalBid: numbe
         amount: Math.round(difference * 100),
       }],
       return_url: returnUrl,
+      ...(msg.reminder_email ? { customer: { email: msg.reminder_email } } : {}),
       metadata: {
         messageId: msg.id,
         isBump: 'true',
@@ -64,7 +65,8 @@ export async function createBumpCheckoutAction(token: string, newTotalBid: numbe
         usdAmount: difference.toString(),
         newToken,
         oldTokenHash: hashBumpToken(token),
-        userEmail: msg.reminder_email || ''
+        userEmail: msg.reminder_email || '',
+        userMessage: (msg.content || '').slice(0, 200),
       }
     })
 

@@ -285,7 +285,7 @@ export async function processPayment(
           })
           .eq('id', messageId)
 
-        returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=NORMAL&initialBumpToken=${encodeURIComponent(initialBumpToken)}`
+        returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=NORMAL`
       }
 
       const session = await client.checkoutSessions.create({
@@ -295,12 +295,14 @@ export async function processPayment(
           amount: Math.round(officialTotal * 100),
         }],
         return_url: returnUrl,
+        ...(currentMsg.reminder_email ? { customer: { email: currentMsg.reminder_email } } : {}),
         metadata: {
           messageId,
           isSponsorMode: isSponsorMode.toString(),
           usdAmount: officialTotal.toString(),
-          initialBumpToken: initialBumpToken || '',
-          userEmail: currentMsg.reminder_email || ''
+          bumpToken: initialBumpToken || '',
+          userEmail: currentMsg.reminder_email || '',
+          userMessage: (currentMsg.content || '').slice(0, 200),
         }
       })
 

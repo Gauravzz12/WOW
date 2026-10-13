@@ -53,8 +53,7 @@ export function QueueTabs({
   const [isMounted, setIsMounted] = useState(false)
   const [isBumpModalOpen, setIsBumpModalOpen] = useState(false)
   const [initialBumpToken, setInitialBumpToken] = useState('')
-  const [successToken, setSuccessToken] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
+  const [bumpSuccessNotice, setBumpSuccessNotice] = useState(false)
 
   useEffect(() => {
     setIsMounted(true)
@@ -66,15 +65,8 @@ export function QueueTabs({
       setIsBumpModalOpen(true)
     }
 
-    const bumpSuccess = searchParams?.get('bumpSuccess')
-    const token = searchParams?.get('token')
-    if (bumpSuccess === '1' && token) {
-      setSuccessToken(token)
-    }
-
-    const initToken = searchParams?.get('initialBumpToken')
-    if (initToken) {
-      setSuccessToken(initToken)
+    if (searchParams?.get('bumpSuccess') === '1') {
+      setBumpSuccessNotice(true)
     }
   }, [searchParams])
 
@@ -150,42 +142,21 @@ export function QueueTabs({
             </Link>
           </div>
 
-          {/* Success Banner if user landed with a new token */}
-          {successToken && (
-            <div className="mt-3 p-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-left space-y-1.5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 dark:text-amber-200 flex items-center gap-1">
-                  <Sparkles size={11} className="text-amber-500" />
-                  Secret Bump Token
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSuccessToken(null)}
-                  className="text-secondary hover:text-primary text-[10px]"
-                >
-                  ✕
-                </button>
+          {/* Notice after bump success (token sent to email only) */}
+          {bumpSuccessNotice && (
+            <div className="mt-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-left flex items-center justify-between gap-2 shadow-sm">
+              <div className="flex items-center gap-2 text-[11px] text-emerald-800 dark:text-emerald-300 font-medium">
+                <Sparkles size={13} className="text-emerald-500 shrink-0" />
+                <span>Bid boosted! Your updated bump token was sent to your email.</span>
               </div>
-              <p className="text-[10px] text-secondary">
-                Use this anytime to boost your message position in line:
-              </p>
-              <div className="flex items-center gap-1.5 bg-background p-1.5 rounded-lg border border-primary/10">
-                <code className="text-[11px] font-mono font-bold text-amber-500 flex-1 truncate">
-                  {successToken}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(successToken)
-                    setCopied(true)
-                    setTimeout(() => setCopied(false), 2000)
-                  }}
-                  className="px-2 py-0.5 rounded bg-primary/5 hover:bg-primary/10 text-primary text-[10px] font-semibold flex items-center gap-1 shrink-0"
-                >
-                  {copied ? <Check size={10} className="text-emerald-500" /> : <Copy size={10} />}
-                  <span>{copied ? 'Copied' : 'Copy'}</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setBumpSuccessNotice(false)}
+                className="text-secondary hover:text-primary text-[11px] shrink-0"
+                aria-label="Dismiss notice"
+              >
+                ✕
+              </button>
             </div>
           )}
 

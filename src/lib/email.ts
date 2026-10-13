@@ -1,10 +1,20 @@
 import nodemailer from 'nodemailer'
 
-const transporter = nodemailer.createTransport({
-  host: 'localhost',
-  port: 1025,
-  secure: false, // true for 465, false for other ports
-})
+const transporter = process.env.SMTP_HOST
+  ? nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER || '',
+        pass: process.env.SMTP_PASS || '',
+      },
+    })
+  : nodemailer.createTransport({
+      host: 'localhost',
+      port: 1025,
+      secure: false,
+    })
 
 export async function sendReceiptEmail(to: string, messageContent: string, amount: number) {
   try {
@@ -200,7 +210,7 @@ export async function sendBumpTokenEmail({
           Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
         },
         body: JSON.stringify({
-          from: process.env.EMAIL_FROM || 'Words of the World <noreply@words.world>',
+          from: process.env.EMAIL_FROM || 'Words of the World <onboarding@resend.dev>',
           to: [to],
           subject,
           html,
@@ -218,7 +228,7 @@ export async function sendBumpTokenEmail({
   // 2. Fallback to nodemailer transporter
   try {
     await transporter.sendMail({
-      from: '"Words of the World" <noreply@wordsoftheworld.com>',
+      from: process.env.EMAIL_FROM || '"Words of the World" <noreply@words.world>',
       to,
       subject,
       html,
@@ -226,6 +236,89 @@ export async function sendBumpTokenEmail({
     console.log('[Email] Bump token sent via SMTP to', to)
   } catch (error) {
     console.warn('[Email] Could not send email (SMTP offline):', (error as any)?.message || error)
+  }
+}
+
+export async function sendSponsorConfirmationEmail({
+  to,
+  messageId,
+  messageContent,
+}: {
+  to: string
+  messageId: string
+  messageContent: string
+}) {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'
+  const shoutoutUrl = `${siteUrl}/sponsor/${messageId}`
+  const broadcastUrl = `${siteUrl}/w/${messageId}`
+  const subject = `✨ You just broadcasted a community voice worldwide!`
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 16px; background-color: #ffffff;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 28px;">✨</span>
+        <h2 style="color: #111827; margin: 8px 0 4px; font-size: 22px;">
+          Thank You for Sponsoring a Voice!
+        </h2>
+        <p style="color: #6b7280; font-size: 14px; margin: 0;">
+          Your sponsored message is now broadcasting live on Words of the World for 30 minutes.
+        </p>
+      </div>
+
+      <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; padding: 16px; border-radius: 12px; margin-bottom: 20px;">
+        <p style="margin: 0; font-size: 14px; color: #111827; font-style: italic;">
+          "${messageContent.slice(0, 200)}${messageContent.length > 200 ? '...' : ''}"
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-bottom: 20px;">
+        <a href="${shoutoutUrl}" style="background-color: #d97706; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 9999px; font-weight: bold; font-size: 14px; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          ✨ Add Your Sponsor Dedication & Name
+        </a>
+      </div>
+
+      <div style="text-align: center;">
+        <a href="${broadcastUrl}" style="color: #6b7280; text-decoration: underline; font-size: 12px;">
+          Or view the live broadcast memory page →
+        </a>
+      </div>
+    </div>
+  `
+
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        },
+        body: JSON.stringify({
+          from: process.env.EMAIL_FROM || 'Words of the World <onboarding@resend.dev>',
+          to: [to],
+          subject,
+          html,
+        }),
+      })
+      if (res.ok) {
+        console.log('[Email] Sponsor confirmation sent via Resend to', to)
+        return
+      }
+    } catch (e) {
+      console.error('[Email] Resend sponsor email error:', e)
+    }
+  }
+
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM || '"Words of the World" <noreply@words.world>',
+      to,
+      subject,
+      html,
+    })
+    console.log('[Email] Sponsor confirmation sent via SMTP to', to)
+  } catch (error) {
+    console.warn('[Email] Could not send sponsor email (SMTP offline):', (error as any)?.message || error)
   }
 }
 

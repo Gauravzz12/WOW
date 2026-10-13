@@ -43,7 +43,7 @@ export async function POST(req: Request) {
 
     const { data: message, error: fetchErr } = await supabaseAdmin
       .from('messages')
-      .select('id, status, is_reserved_slot, style_config')
+      .select('id, status, is_reserved_slot, style_config, content, reminder_email, bid_amount')
       .eq('id', messageId)
       .single()
 
@@ -81,14 +81,27 @@ export async function POST(req: Request) {
              status: 'SUCCESS',
            });
 
-           // Send email notification with the rotated new token
-           const emailTo = currentMsg?.reminder_email || payment.customer?.email || payment.metadata?.userEmail;
+           // Extract customer email provided to DodoPayments during checkout
+           const emailTo = 
+             payment.customer?.email || 
+             payment.customer_email || 
+             payment.billing?.email || 
+             currentMsg?.reminder_email || 
+             payment.metadata?.userEmail;
+
+           if (emailTo) {
+             await supabaseAdmin
+               .from('messages')
+               .update({ reminder_email: emailTo })
+               .eq('id', messageId);
+           }
+
            if (emailTo && newToken) {
              try {
                const { sendBumpTokenEmail } = await import('@/lib/email')
                await sendBumpTokenEmail({
                  to: emailTo,
-                 messageContent: currentMsg?.content || '',
+                 messageContent: currentMsg?.content || payment.metadata?.userMessage || '',
                  bumpToken: newToken,
                  currentBid: targetTotal,
                  isUpdated: true
@@ -224,15 +237,39 @@ export async function POST(req: Request) {
       status: 'SUCCESS',
     })
 
+    // Extract customer email provided to DodoPayments during checkout
+    const dodoCustomerEmail = 
+      payment.customer?.email || 
+      payment.customer_email || 
+      payment.billing?.email || 
+      payment.metadata?.userEmail || 
+      (message as any)?.reminder_email;
+
+    if (dodoCustomerEmail) {
+      await supabaseAdmin
+        .from('messages')
+        .update({ reminder_email: dodoCustomerEmail })
+        .eq('id', messageId);
+    }
+
     if (isSponsorMode) {
-      try {
-        const { issueSponsorEditToken } = await import('@/lib/sponsorToken')
-        await issueSponsorEditToken(messageId)
-      } catch {}
+      // Send sponsor confirmation email to customer email provided to DodoPayments
+      if (dodoCustomerEmail) {
+        try {
+          const { sendSponsorConfirmationEmail } = await import('@/lib/email')
+          await sendSponsorConfirmationEmail({
+            to: dodoCustomerEmail,
+            messageId,
+            messageContent: (message as any)?.content || payment.metadata?.userMessage || '',
+          })
+        } catch (sponsorEmailErr) {
+          console.error('[Dodo Webhook] Failed to send sponsor confirmation email:', sponsorEmailErr)
+        }
+      }
     } else if (!isReserved) {
       // Standard priority queue message: send secret bump token email
       try {
-        let tokenToSend = payment.metadata?.initialBumpToken || style?.bumpToken || null
+        let tokenToSend = payment.metadata?.bumpToken || payment.metadata?.initialBumpToken || style?.bumpToken || null
         if (!tokenToSend) {
           const { generateBumpToken, hashBumpToken } = await import('@/lib/bumpToken')
           tokenToSend = generateBumpToken()
@@ -243,12 +280,11 @@ export async function POST(req: Request) {
             .eq('id', messageId)
         }
 
-        const emailTo = (message as any)?.reminder_email || payment.customer?.email || payment.metadata?.userEmail
-        if (emailTo && tokenToSend) {
+        if (dodoCustomerEmail && tokenToSend) {
           const { sendBumpTokenEmail } = await import('@/lib/email')
           await sendBumpTokenEmail({
-            to: emailTo,
-            messageContent: (message as any)?.content || '',
+            to: dodoCustomerEmail,
+            messageContent: (message as any)?.content || payment.metadata?.userMessage || '',
             bumpToken: tokenToSend,
             currentBid: amountTotal,
             isUpdated: false,

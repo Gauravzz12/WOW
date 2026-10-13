@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { ArrowLeft, Lock, PartyPopper, Radio } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { sponsorTokenCookieName, verifySponsorEditToken } from '@/lib/sponsorToken'
+import { sponsorTokenCookieName, verifySponsorEditToken, issueSponsorEditToken } from '@/lib/sponsorToken'
 import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { FrameDecorator } from '@/components/FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
@@ -32,41 +32,11 @@ export default async function SponsorShoutoutPage({
   const tokenFromUrl = typeof searchParams?.token === 'string' ? searchParams.token : undefined
   const tokenFromCookie = cookies().get(sponsorTokenCookieName(messageId))?.value
   const sponsorToken = tokenFromUrl || tokenFromCookie
-  const isSponsorTokenValid = sponsorToken ? await verifySponsorEditToken(messageId, sponsorToken) : false
+  let isSponsorTokenValid = sponsorToken ? await verifySponsorEditToken(messageId, sponsorToken) : false
 
-  // Activate PENDING_PAYMENT rows for verified sponsors so the reveal never blocks
-  // on webhook timing (same guarantee as the legacy ?justSponsored landing).
-  if (isSponsorTokenValid) {
-    try {
-      const admin = getSupabaseAdmin()
-      await admin
-        .from('messages')
-        .update({
-          status: 'ACTIVE',
-          actual_start: new Date().toISOString(),
-          is_reserved_slot: false,
-        })
-        .eq('id', messageId)
-        .eq('status', 'PENDING_PAYMENT')
-    } catch {}
-  }
-
-  // Persist a URL-passed token into the httpOnly cookie so later edits from
-  // /w/[id] keep working without the query param.
-  if (tokenFromUrl && isSponsorTokenValid) {
-    try {
-      cookies().set(sponsorTokenCookieName(messageId), tokenFromUrl, {
-        path: '/',
-        maxAge: 30 * 24 * 60 * 60,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-      })
-    } catch {}
-  }
-
-  const supabase = createClient()
-  let { data: message } = await supabase
+  // Always use admin client to inspect message data so RLS never blocks legitimate sponsors
+  const admin = getSupabaseAdmin()
+  let { data: message } = await admin
     .from('messages')
     .select(`
       id,
@@ -82,30 +52,6 @@ export default async function SponsorShoutoutPage({
     `)
     .eq('id', messageId)
     .single()
-
-  // Anon RLS hides PENDING_PAYMENT rows — verified sponsors read via admin.
-  if (!message && isSponsorTokenValid) {
-    try {
-      const admin = getSupabaseAdmin()
-      const { data: adminMsg } = await admin
-        .from('messages')
-        .select(`
-          id,
-          content,
-          template_id,
-          status,
-          bid_amount,
-          is_reserved_slot,
-          created_at,
-          actual_start,
-          style_config,
-          category:categories(name, slug)
-        `)
-        .eq('id', messageId)
-        .single()
-      if (adminMsg) message = adminMsg as any
-    } catch {}
-  }
 
   if (!message) {
     // Check via admin whether this is a locked unpaid message (paywall, no leak).
@@ -151,32 +97,45 @@ export default async function SponsorShoutoutPage({
     redirect(`/w/${messageId}`)
   }
 
-  // Still locked and no valid sponsor token → paywall.
-  if ((message as any).status === 'PENDING_PAYMENT' && !isSponsorTokenValid) {
-    const catName = (message.category as any)?.name || 'MESSAGE'
-    return (
-      <div className="min-h-screen bg-background text-primary flex flex-col">
-        <header className="p-6">
-          <Link href="/waiting-room" className="inline-flex items-center text-secondary hover:text-primary transition-colors">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Waiting Room
-          </Link>
-        </header>
-        <main className="flex-1 max-w-2xl w-full mx-auto p-4 md:p-8">
-          <div className="bg-background-elevated border border-primary/10 rounded-2xl p-8 md:p-12 text-center shadow-lg">
-            <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
-              <Lock size={20} />
-            </div>
-            <p className="text-xs uppercase tracking-widest text-secondary font-bold">{catName} • Locked</p>
-            <h1 className="text-2xl font-serif mt-2">This message is waiting for sponsorship</h1>
-            <p className="text-sm text-secondary mt-2">Pay $3 to unlock the shoutout screen and broadcast the full message worldwide.</p>
-            <Link href={`/checkout/${(message as any).id}?mode=sponsor`} className="inline-block mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-sm font-bold transition-colors">
-              Sponsor for $3 to continue
-            </Link>
-          </div>
-        </main>
-      </div>
-    )
+  let style = (message as any).style_config || {}
+  if (typeof style === 'string') {
+    try { style = JSON.parse(style) } catch { style = {} }
+  }
+
+  const isLocked = Boolean(style.shoutoutLocked)
+  let activeToken = sponsorToken
+
+  if (!isLocked) {
+    // If returning from checkout and still marked PENDING_PAYMENT, activate immediately
+    if ((message as any).status === 'PENDING_PAYMENT') {
+      try {
+        await admin
+          .from('messages')
+          .update({
+            status: 'ACTIVE',
+            actual_start: new Date().toISOString(),
+            is_reserved_slot: false,
+          })
+          .eq('id', messageId)
+        ;(message as any).status = 'ACTIVE'
+      } catch {}
+    }
+
+    // Ensure sponsor has a valid edit token for this session
+    if (!isSponsorTokenValid || !activeToken) {
+      const freshToken = await issueSponsorEditToken(messageId)
+      activeToken = freshToken
+      isSponsorTokenValid = true
+      try {
+        cookies().set(sponsorTokenCookieName(messageId), freshToken, {
+          path: '/',
+          maxAge: 30 * 24 * 60 * 60,
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+        })
+      } catch {}
+    }
   }
 
   const categoryName = (message.category as any)?.name || 'MESSAGE'
@@ -280,20 +239,19 @@ export default async function SponsorShoutoutPage({
           )}
         </div>
 
-        {/* Shoutout form (dedicated screen — no modal) */}
-        {isSponsorTokenValid ? (
+        {/* Shoutout form: available until finalized & locked */}
+        {!isLocked ? (
           <SponsorShoutoutForm
             messageId={(message as any).id}
             initialName={(message as any).style_config?.sponsorName || ''}
             initialNote={(message as any).style_config?.sponsorNote || ''}
-            token={sponsorToken || undefined}
+            token={activeToken || undefined}
           />
         ) : (
           <div className="bg-background-elevated border border-primary/10 rounded-3xl p-6 md:p-8 text-center shadow-lg space-y-3">
-            <h2 className="text-lg font-serif font-bold">Shoutout editing needs your sponsor link</h2>
+            <h2 className="text-lg font-serif font-bold">Shoutout finalized</h2>
             <p className="text-sm text-secondary">
-              The message is live, but this browser isn&apos;t holding the sponsor edit token.
-              Open the link from your checkout confirmation email — or view the live broadcast.
+              This sponsor dedication has been saved and locked for broadcasting worldwide.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
               <Link href={`/w/${(message as any).id}`} className="px-6 py-2.5 bg-background border border-primary/20 rounded-full text-sm font-bold hover:bg-background-muted transition-colors">
