@@ -243,13 +243,17 @@ export async function sendSponsorConfirmationEmail({
   to,
   messageId,
   messageContent,
+  sponsorToken,
 }: {
   to: string
   messageId: string
   messageContent: string
+  sponsorToken?: string
 }) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'
-  const shoutoutUrl = `${siteUrl}/sponsor/${messageId}`
+  const shoutoutUrl = sponsorToken 
+    ? `${siteUrl}/sponsor/${messageId}?token=${encodeURIComponent(sponsorToken)}`
+    : `${siteUrl}/sponsor/${messageId}`
   const broadcastUrl = `${siteUrl}/w/${messageId}`
   const subject = `✨ You just broadcasted a community voice worldwide!`
 
@@ -270,6 +274,13 @@ export async function sendSponsorConfirmationEmail({
           "${messageContent.slice(0, 200)}${messageContent.length > 200 ? '...' : ''}"
         </p>
       </div>
+
+      ${sponsorToken ? `
+      <div style="background-color: #fef3c7; border: 1px solid #fde68a; padding: 14px; border-radius: 12px; margin-bottom: 20px; text-align: center;">
+        <p style="margin: 0 0 6px; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.1em; color: #92400e;">Your Sponsor Edit Token</p>
+        <code style="display: block; font-size: 15px; font-family: monospace; color: #b45309; word-break: break-all; background: #fff; padding: 8px 12px; border-radius: 8px; border: 1px solid #fcd34d;">${sponsorToken}</code>
+      </div>
+      ` : ''}
 
       <div style="text-align: center; margin-bottom: 20px;">
         <a href="${shoutoutUrl}" style="background-color: #d97706; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 9999px; font-weight: bold; font-size: 14px; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">

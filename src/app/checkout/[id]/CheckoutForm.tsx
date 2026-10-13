@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { processPayment } from './actions'
+import { processPayment, processMockPayment } from './actions'
 import { SlotPicker, Slot } from '@/components/SlotPicker'
 import { Zap, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -28,6 +28,7 @@ export function CheckoutForm({
 }) {
   const router = useRouter()
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isMockProcessing, setIsMockProcessing] = useState(false)
   const [selectedSlots, setSelectedSlots] = useState<Slot[]>(initialSlots)
   const [isEditingSlots, setIsEditingSlots] = useState(initialSlots.length === 0)
   const [currentBid, setCurrentBid] = useState(baseAmount)
@@ -111,6 +112,33 @@ export function CheckoutForm({
     } else {
       toast.error(result.error || 'Payment failed.', { title: 'Payment Failed' })
       setIsProcessing(false)
+    }
+  }
+
+  const handleMockPay = async () => {
+    setIsMockProcessing(true)
+    const result = await processMockPayment(
+      messageId, 
+      isReservedSlot ? selectedSlots.map(s => s.id) : null, 
+      total, 
+      isSponsorMode,
+      undefined
+    )
+    
+    if (result.success && result.redirectUrl) {
+      if (isSponsorMode) {
+        toast.success('Mock payment successful! Taking you to the sponsor shoutout screen.', {
+          title: 'Sponsorship Confirmed (Mock)'
+        })
+      } else {
+        toast.success('Mock payment successful! Message queued/activated.', {
+          title: 'Payment Confirmed (Mock)'
+        })
+      }
+      window.location.href = result.redirectUrl
+    } else {
+      toast.error(result.error || 'Mock payment failed.', { title: 'Payment Failed' })
+      setIsMockProcessing(false)
     }
   }
 
@@ -268,26 +296,47 @@ export function CheckoutForm({
       </div>
 
       
-      <button 
-        onClick={handlePay}
-        disabled={isProcessing || (isReservedSlot && selectedSlots.length === 0)}
-        className={`w-full py-4 mt-4 rounded-full font-bold disabled:opacity-50 transition-colors flex items-center justify-center gap-2 ${
-          isReservedSlot
-            ? 'bg-violet-700 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 text-white shadow-sm'
-            : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
-        }`}
-      >
-        {isReservedSlot && selectedSlots.length > 0 && <Zap size={18} />}
-        {isProcessing 
-          ? 'Processing...' 
-          : (isReservedSlot && selectedSlots.length === 0 
-            ? 'Pick at least 1 slot to continue' 
-            : isReservedSlot
-            ? `Pay $${total.toFixed(2)} — live for ${selectedSlots.length * 3}h`
-            : isSponsorMode 
-            ? `Sponsor for $${SPONSORED_PRICE.toFixed(2)} & Broadcast` 
-            : `Pay $${total.toFixed(2)} & Broadcast`)}
-      </button>
+      <div className="space-y-3 mt-4">
+        {/* Real Payment Button */}
+        <button 
+          onClick={handlePay}
+          disabled={isProcessing || isMockProcessing || (isReservedSlot && selectedSlots.length === 0)}
+          className={`w-full py-4 rounded-full font-bold disabled:opacity-50 transition-colors flex items-center justify-center gap-2 ${
+            isReservedSlot
+              ? 'bg-violet-700 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 text-white shadow-sm'
+              : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
+          }`}
+        >
+          {isReservedSlot && selectedSlots.length > 0 && <Zap size={18} />}
+          {isProcessing 
+            ? 'Redirecting to checkout...' 
+            : (isReservedSlot && selectedSlots.length === 0 
+              ? 'Pick at least 1 slot to continue' 
+              : isReservedSlot
+              ? `Pay $${total.toFixed(2)} with Card — live for ${selectedSlots.length * 3}h`
+              : isSponsorMode 
+              ? `Sponsor for $${SPONSORED_PRICE.toFixed(2)} with Card & Broadcast` 
+              : `Pay $${total.toFixed(2)} with Card & Broadcast`)}
+        </button>
+
+        {/* Mock Payment Button for Testing */}
+        <button
+          type="button"
+          onClick={handleMockPay}
+          disabled={isProcessing || isMockProcessing || (isReservedSlot && selectedSlots.length === 0)}
+          className="w-full py-3.5 rounded-full font-bold text-xs bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/40 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99]"
+        >
+          <Zap size={15} className="text-amber-500 fill-amber-500" />
+          <span>
+            {isMockProcessing
+              ? 'Processing Mock Payment...'
+              : `⚡ Instant Mock Pay ($${total.toFixed(2)} Test Mode)`}
+          </span>
+        </button>
+        <p className="text-[11px] text-secondary text-center">
+          Instant test checkout: skips card input, activates message, and sends token confirmation email.
+        </p>
+      </div>
 
       {/* Transparent auction notice */}
       {!isReservedSlot && !isSponsorMode && (

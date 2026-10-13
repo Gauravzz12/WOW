@@ -261,6 +261,7 @@ export async function POST(req: Request) {
             to: dodoCustomerEmail,
             messageId,
             messageContent: (message as any)?.content || payment.metadata?.userMessage || '',
+            sponsorToken: payment.metadata?.sponsorToken || undefined,
           })
         } catch (sponsorEmailErr) {
           console.error('[Dodo Webhook] Failed to send sponsor confirmation email:', sponsorEmailErr)

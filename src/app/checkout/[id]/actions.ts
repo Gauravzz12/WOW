@@ -260,9 +260,10 @@ export async function processPayment(
     try {
       let returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=NORMAL`
       let initialBumpToken: string | null = null
+      let sponsorToken: string | null = null
 
       if (isSponsorMode) {
-        const sponsorToken = await issueSponsorEditToken(messageId)
+        sponsorToken = await issueSponsorEditToken(messageId)
         cookies().set(sponsorTokenCookieName(messageId), sponsorToken, {
           path: '/',
           maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -301,6 +302,7 @@ export async function processPayment(
           isSponsorMode: isSponsorMode.toString(),
           usdAmount: officialTotal.toString(),
           bumpToken: initialBumpToken || '',
+          sponsorToken: sponsorToken || '',
           userEmail: currentMsg.reminder_email || '',
           userMessage: (currentMsg.content || '').slice(0, 200),
         }
@@ -311,6 +313,222 @@ export async function processPayment(
       console.error('Checkout error:', err)
       return { error: `Failed to initialize checkout session: ${err.message || err}` }
     }
+  }
+}
+
+export async function processMockPayment(
+  messageId: string, 
+  slotId: string | string[] | null, 
+  total: number, 
+  isSponsorMode: boolean = false,
+  sponsorData?: { sponsorName?: string; sponsorNote?: string }
+) {
+  // 1. Fetch current message record
+  const { data: currentMsg, error: msgFetchError } = await supabaseAdmin
+    .from('messages')
+    .select('id, status, is_reserved_slot, bid_amount, style_config, content, reminder_email')
+    .eq('id', messageId)
+    .single()
+
+  if (msgFetchError || !currentMsg) {
+    return { error: 'Message not found.' }
+  }
+
+  let style = currentMsg.style_config || {}
+  if (typeof style === 'string') {
+    try { style = JSON.parse(style) } catch (e) { style = {} }
+  }
+
+  const emailTo = currentMsg.reminder_email || 'test@example.com'
+  const targetSlotIds: string[] = Array.isArray(slotId) ? slotId : (slotId ? [slotId] : [])
+
+  if (targetSlotIds.length > 0) {
+    // --- VIP RESERVED SLOTS MOCK FULFILLMENT ---
+    const { finalPrice: officialVipPrice } = calculateSpecialPrice(targetSlotIds.length)
+
+    await supabaseAdmin
+      .from('reserved_slots')
+      .update({
+        status: 'BOOKED',
+        message_id: messageId,
+        bid_amount: officialVipPrice / targetSlotIds.length,
+      })
+      .in('id', targetSlotIds)
+
+    const { data: slots } = await supabaseAdmin
+      .from('reserved_slots')
+      .select('id, scheduled_start, scheduled_end')
+      .in('id', targetSlotIds)
+      .order('scheduled_start', { ascending: true })
+
+    style.durationSecs = targetSlotIds.length * 3 * 3600
+    style.slotCount = targetSlotIds.length
+    style.slotIds = targetSlotIds
+
+    await supabaseAdmin
+      .from('messages')
+      .update({
+        status: 'QUEUED',
+        is_reserved_slot: true,
+        bid_amount: officialVipPrice,
+        scheduled_start: slots && slots[0] ? slots[0].scheduled_start : null,
+        scheduled_end: slots && slots[slots.length - 1] ? slots[slots.length - 1].scheduled_end : null,
+        style_config: style,
+        reminder_email: emailTo,
+      })
+      .eq('id', messageId)
+
+    await supabaseAdmin.from('payments').insert({
+      message_id: messageId,
+      provider: 'mock_test',
+      provider_payment_id: `mock_vip_${Date.now()}`,
+      amount: officialVipPrice,
+      currency: 'usd',
+      status: 'SUCCESS',
+    })
+
+    const { runQueueAdvance } = await import('@/lib/queueAdvance')
+    await runQueueAdvance().catch(console.error)
+
+    revalidatePath('/')
+    revalidatePath('/waiting-room')
+    return { success: true, redirectUrl: '/?tab=SPECIAL' }
+  } else if (isSponsorMode) {
+    // --- SPONSOR MODE MOCK FULFILLMENT ---
+    const officialTotal = SPONSORED_PRICE // $3
+    style.durationSecs = SPONSORED_DURATION_SECS // 1800s (30m)
+    style.isSponsored = true
+
+    if (sponsorData?.sponsorName?.trim()) {
+      style.sponsorName = sponsorData.sponsorName.trim().slice(0, 50)
+    }
+    if (sponsorData?.sponsorNote?.trim()) {
+      const words = sponsorData.sponsorNote.trim().split(/\s+/).filter(Boolean)
+      style.sponsorNote = words.slice(0, 12).join(' ').slice(0, 150)
+    }
+
+    const sponsorToken = await issueSponsorEditToken(messageId)
+    cookies().set(sponsorTokenCookieName(messageId), sponsorToken, {
+      path: '/',
+      maxAge: 30 * 24 * 60 * 60,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    })
+
+    await supabaseAdmin
+      .from('messages')
+      .update({
+        status: 'ACTIVE',
+        is_reserved_slot: false,
+        bid_amount: officialTotal,
+        actual_start: new Date().toISOString(),
+        style_config: style,
+        reminder_email: emailTo,
+      })
+      .eq('id', messageId)
+
+    await supabaseAdmin.from('payments').insert({
+      message_id: messageId,
+      provider: 'mock_test',
+      provider_payment_id: `mock_sp_${Date.now()}`,
+      amount: officialTotal,
+      currency: 'usd',
+      status: 'SUCCESS',
+    })
+
+    // Send confirmation email with sponsor edit token!
+    try {
+      const { sendSponsorConfirmationEmail } = await import('@/lib/email')
+      await sendSponsorConfirmationEmail({
+        to: emailTo,
+        messageId,
+        messageContent: currentMsg.content || '',
+        sponsorToken,
+      })
+    } catch (emailErr) {
+      console.error('[Mock Sponsor] Email failed:', emailErr)
+    }
+
+    revalidatePath('/')
+    revalidatePath('/waiting-room')
+    revalidatePath(`/sponsor/${messageId}`)
+
+    return { 
+      success: true, 
+      redirectUrl: `/sponsor/${messageId}?token=${sponsorToken}` 
+    }
+  } else {
+    // --- STANDARD QUEUE BID MOCK FULFILLMENT ---
+    const durationSecs = Number(style.durationSecs) || 3600
+    const durationMins = Math.max(60, Math.min(120, Math.round(durationSecs / 60)))
+    const minBid = calculateNormalMinBid(durationMins)
+    const candidateBid = Number(total)
+    const officialTotal = !isNaN(candidateBid) && candidateBid >= minBid 
+      ? Math.round(candidateBid * 100) / 100 
+      : minBid
+
+    const { generateBumpToken, hashBumpToken } = await import('@/lib/bumpToken')
+    const initialBumpToken = generateBumpToken()
+    style.bumpTokenHash = hashBumpToken(initialBumpToken)
+    style.bumpCount = 0
+
+    const { data: actives } = await supabaseAdmin
+      .from('messages')
+      .select('id')
+      .eq('status', 'ACTIVE')
+      .eq('is_reserved_slot', false)
+      .gte('bid_amount', 10)
+
+    const canActivate = !actives || actives.length === 0
+    const targetStatus = canActivate ? 'ACTIVE' : 'QUEUED'
+
+    await supabaseAdmin
+      .from('messages')
+      .update({
+        status: targetStatus,
+        is_reserved_slot: false,
+        bid_amount: officialTotal,
+        actual_start: canActivate ? new Date().toISOString() : null,
+        style_config: style,
+        reminder_email: emailTo,
+      })
+      .eq('id', messageId)
+
+    await supabaseAdmin.from('payments').insert({
+      message_id: messageId,
+      provider: 'mock_test',
+      provider_payment_id: `mock_std_${Date.now()}`,
+      amount: officialTotal,
+      currency: 'usd',
+      status: 'SUCCESS',
+    })
+
+    // Send confirmation email with secret bump token!
+    try {
+      const { sendBumpTokenEmail } = await import('@/lib/email')
+      await sendBumpTokenEmail({
+        to: emailTo,
+        messageContent: currentMsg.content || '',
+        bumpToken: initialBumpToken,
+        currentBid: officialTotal,
+        isUpdated: false,
+      })
+    } catch (emailErr) {
+      console.error('[Mock Bid] Email failed:', emailErr)
+    }
+
+    try {
+      const { checkAndNotifyOutbids } = await import('@/lib/outbidService')
+      await checkAndNotifyOutbids(officialTotal)
+    } catch (outbidErr) {
+      console.error('[Mock Bid] Outbid check failed:', outbidErr)
+    }
+
+    revalidatePath('/')
+    revalidatePath('/waiting-room')
+
+    return { success: true, redirectUrl: '/?tab=NORMAL' }
   }
 }
 

@@ -92,8 +92,8 @@ export default async function SponsorShoutoutPage({
     notFound()
   }
 
-  // VIP / non-sponsored rows have no shoutout screen.
-  if ((message as any).is_reserved_slot || ((message as any).bid_amount ?? 0) >= 10) {
+  // VIP reserved slots have no shoutout screen.
+  if ((message as any).is_reserved_slot) {
     redirect(`/w/${messageId}`)
   }
 

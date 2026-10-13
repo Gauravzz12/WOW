@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, X, Check, Copy, AlertTriangle, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react'
-import { verifyTokenAction, createBumpCheckoutAction } from '@/app/actions/bumpActions'
+import { verifyTokenAction, createBumpCheckoutAction, createMockBumpAction } from '@/app/actions/bumpActions'
 import type { VerifiedBumpMessage } from '@/lib/bumpToken'
+import { toast } from '@/components/Toast'
 
 export function BumpBidModal({
   isOpen,
@@ -89,6 +90,28 @@ export function BumpBidModal({
     } else {
       // Redirect to Dodo Payments checkout for the difference
       window.location.href = res.redirectUrl
+    }
+  }
+
+  const [isMockCheckingOut, setIsMockCheckingOut] = useState(false)
+
+  const handleMockBump = async () => {
+    if (!verifiedMsg || !activeToken || !isBidValid) return
+
+    setIsMockCheckingOut(true)
+    setCheckoutError(null)
+
+    const res = await createMockBumpAction(activeToken, candidateBid)
+    setIsMockCheckingOut(false)
+
+    if (res.error) {
+      setCheckoutError(res.error)
+    } else {
+      toast.success(`Bid boosted to $${candidateBid.toFixed(2)}! Your updated bump token was sent to your email.`, {
+        title: 'Priority Bumped (Mock)'
+      })
+      onClose()
+      window.location.href = '/?tab=NORMAL&bumpSuccess=1'
     }
   }
 
@@ -312,7 +335,7 @@ export function BumpBidModal({
                   <button
                     type="button"
                     onClick={onClose}
-                    disabled={isCheckingOut}
+                    disabled={isCheckingOut || isMockCheckingOut}
                     className="flex-1 py-3 rounded-full border border-primary/20 hover:bg-background-muted text-primary text-xs font-bold transition-colors disabled:opacity-50"
                   >
                     Cancel
@@ -320,7 +343,7 @@ export function BumpBidModal({
                   <button
                     type="button"
                     onClick={handleCheckout}
-                    disabled={isCheckingOut || !isBidValid}
+                    disabled={isCheckingOut || isMockCheckingOut || !isBidValid}
                     className="flex-1 py-3 rounded-full bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-1.5"
                   >
                     {isCheckingOut ? (
@@ -333,6 +356,21 @@ export function BumpBidModal({
                     )}
                   </button>
                 </div>
+
+                {/* Instant Mock Bump for Testing */}
+                <button
+                  type="button"
+                  onClick={handleMockBump}
+                  disabled={isCheckingOut || isMockCheckingOut || !isBidValid}
+                  className="w-full py-2.5 rounded-full font-bold text-xs bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/40 transition-all flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+                >
+                  <Zap size={14} className="text-amber-500 fill-amber-500" />
+                  <span>
+                    {isMockCheckingOut
+                      ? 'Processing Mock Bump...'
+                      : `⚡ Instant Mock Bump (+${difference.toFixed(2)} Test Mode)`}
+                  </span>
+                </button>
               </div>
             )}
           </motion.div>

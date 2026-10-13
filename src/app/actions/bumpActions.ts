@@ -81,3 +81,76 @@ export async function createBumpCheckoutAction(token: string, newTotalBid: numbe
     return { error: err.message || 'Failed to initialize bump checkout session.' }
   }
 }
+
+export async function createMockBumpAction(token: string, newTotalBid: number): Promise<{
+  success?: boolean
+  error?: string
+  difference?: number
+}> {
+  try {
+    const verification = await verifyBumpToken(token)
+    if (verification.error || !verification.message) {
+      return { error: verification.error || 'Token is invalid or message is no longer in queue.' }
+    }
+
+    const msg = verification.message
+    const candidateBid = Math.round(Number(newTotalBid) * 100) / 100
+
+    if (isNaN(candidateBid) || candidateBid <= msg.bid_amount) {
+      return { 
+        error: `New bid must be strictly higher than your current bid of $${msg.bid_amount.toFixed(2)}.` 
+      }
+    }
+
+    const difference = Math.round((candidateBid - msg.bid_amount) * 100) / 100
+    if (difference < 1) {
+      return { error: 'Minimum bid increment is $1.00.' }
+    }
+
+    const newToken = generateBumpToken()
+    const { rotateBumpToken } = await import('@/lib/bumpToken')
+    await rotateBumpToken(msg.id, candidateBid, newToken)
+
+    const { getSupabaseAdmin } = await import('@/lib/supabase/admin')
+    const supabaseAdmin = getSupabaseAdmin()
+
+    await supabaseAdmin.from('payments').insert({
+      message_id: msg.id,
+      provider: 'mock_test',
+      provider_payment_id: `mock_bump_${Date.now()}`,
+      amount: difference,
+      currency: 'usd',
+      status: 'SUCCESS',
+    })
+
+    if (msg.reminder_email) {
+      try {
+        const { sendBumpTokenEmail } = await import('@/lib/email')
+        await sendBumpTokenEmail({
+          to: msg.reminder_email,
+          messageContent: msg.content || '',
+          bumpToken: newToken,
+          currentBid: candidateBid,
+          isUpdated: true
+        })
+      } catch (e) {
+        console.error('[Mock Bump] Email error:', e)
+      }
+    }
+
+    try {
+      const { checkAndNotifyOutbids } = await import('@/lib/outbidService')
+      await checkAndNotifyOutbids(candidateBid)
+    } catch (e) {
+      console.error('[Mock Bump] Outbid check error:', e)
+    }
+
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath('/')
+
+    return { success: true, difference }
+  } catch (err: any) {
+    console.error('Mock bump error:', err)
+    return { error: err.message || 'Failed to process mock bump.' }
+  }
+}
