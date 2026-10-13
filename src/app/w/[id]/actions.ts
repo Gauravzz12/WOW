@@ -67,7 +67,7 @@ export async function updateSponsorShoutout(
       .eq('id', messageId)
     ;(msg as any).status = 'ACTIVE'
   }
-  if ((msg as any).is_reserved_slot || ((msg as any).bid_amount ?? 0) >= 10) {
+  if ((msg as any).is_reserved_slot) {
     return { error: 'Only community sponsored messages carry a sponsor shoutout.' }
   }
 
