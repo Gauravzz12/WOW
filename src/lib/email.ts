@@ -16,58 +16,145 @@ const transporter = process.env.SMTP_HOST
       secure: false,
     })
 
+async function sendViaResend({
+  to,
+  subject,
+  html,
+}: {
+  to: string
+  subject: string
+  html: string
+}): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) return false
+
+  const from = process.env.EMAIL_FROM || 'Words of the World <onboarding@resend.dev>'
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject,
+        html,
+      }),
+    })
+
+    if (res.ok) {
+      console.log('[Email] Delivered via Resend to', to)
+      return true
+    }
+
+    const errData = await res.json().catch(() => null)
+    console.warn('[Email] Resend API error response:', errData)
+
+    // Check if error is Sandbox recipient restriction (testing mode only permits account owner)
+    const match = errData?.message?.match(/\(([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)\)/)
+    const sandboxAllowed = match ? match[1] : (process.env.RESEND_ACCOUNT_EMAIL || 'gthakurzzz424@gmail.com')
+
+    if ((res.status === 403 || errData?.statusCode === 403) && sandboxAllowed && sandboxAllowed !== to) {
+      console.log(`[Email] Resend sandbox fallback: redirecting to account owner (${sandboxAllowed})`)
+      const retryRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          from,
+          to: [sandboxAllowed],
+          subject: `${subject} [Sandbox Test: For ${to}]`,
+          html: `
+            <div style="padding: 12px; background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; margin-bottom: 16px; font-size: 13px; color: #92400e; font-family: sans-serif;">
+              <strong>Sandbox Delivery Notice:</strong> In Resend test mode, emails can only be sent to your registered account (<em>${sandboxAllowed}</em>). This email was generated for <strong>${to}</strong>.
+            </div>
+            ${html}
+          `,
+        }),
+      })
+
+      if (retryRes.ok) {
+        console.log('[Email] Resend sandbox delivery succeeded to', sandboxAllowed)
+        return true
+      }
+      const retryErr = await retryRes.json().catch(() => null)
+      console.warn('[Email] Resend sandbox retry also failed:', retryErr)
+    }
+  } catch (err) {
+    console.error('[Email] Resend network error:', err)
+  }
+  return false
+}
+
 export async function sendReceiptEmail(to: string, messageContent: string, amount: number) {
+  const subject = 'Receipt: Your message has been queued!'
+  const html = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+      <h2 style="color: #333;">Thank you for your purchase!</h2>
+      <p>Your message has been successfully queued and will be displayed on the billboard soon.</p>
+      
+      <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <p style="margin: 0; font-style: italic; color: #555;">"${messageContent}"</p>
+      </div>
+      
+      <p><strong>Total Paid:</strong> $${amount.toFixed(2)}</p>
+      <p style="color: #777; font-size: 12px; margin-top: 30px;">
+        You will receive another email the moment your message goes live.
+      </p>
+    </div>
+  `
+
+  const sent = await sendViaResend({ to, subject, html })
+  if (sent) return
+
   try {
     const info = await transporter.sendMail({
-      from: '"Words of the World" <noreply@wordsoftheworld.com>',
+      from: process.env.EMAIL_FROM || '"Words of the World" <noreply@words.world>',
       to,
-      subject: 'Receipt: Your message has been queued!',
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-          <h2 style="color: #333;">Thank you for your purchase!</h2>
-          <p>Your message has been successfully queued and will be displayed on the billboard soon.</p>
-          
-          <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <p style="margin: 0; font-style: italic; color: #555;">"${messageContent}"</p>
-          </div>
-          
-          <p><strong>Total Paid:</strong> $${amount.toFixed(2)}</p>
-          <p style="color: #777; font-size: 12px; margin-top: 30px;">
-            You will receive another email the moment your message goes live.
-          </p>
-        </div>
-      `,
+      subject,
+      html,
     })
-    console.log('Receipt email sent: %s', info.messageId)
+    console.log('Receipt email sent via SMTP: %s', info.messageId)
   } catch (error) {
-    console.error('Error sending receipt email:', error)
+    console.warn('Could not send receipt email via SMTP:', (error as any)?.message || error)
   }
 }
 
 export async function sendLiveNotificationEmail(to: string, messageContent: string) {
+  const subject = '🔥 Your message is LIVE right now!'
+  const html = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px; background-color: #FAFAFA;">
+      <h2 style="color: #090909;">It's happening!</h2>
+      <p style="color: #090909;">Look up! Your message is currently being broadcasted on the big screen.</p>
+      
+      <div style="background-color: #FFFFFF; border: 1px solid #E5E5E5; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+        <h1 style="margin: 0; font-style: italic; color: #090909;">"${messageContent}"</h1>
+      </div>
+      
+      <p style="color: #777; font-size: 12px; margin-top: 30px;">
+        This broadcast will end automatically when the duration is up.
+      </p>
+    </div>
+  `
+
+  const sent = await sendViaResend({ to, subject, html })
+  if (sent) return
+
   try {
     const info = await transporter.sendMail({
-      from: '"Words of the World" <noreply@wordsoftheworld.com>',
+      from: process.env.EMAIL_FROM || '"Words of the World" <noreply@words.world>',
       to,
-      subject: '🔥 Your message is LIVE right now!',
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px; background-color: #FAFAFA;">
-          <h2 style="color: #090909;">It's happening!</h2>
-          <p style="color: #090909;">Look up! Your message is currently being broadcasted on the big screen.</p>
-          
-          <div style="background-color: #FFFFFF; border: 1px solid #E5E5E5; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
-            <h1 style="margin: 0; font-style: italic; color: #090909;">"${messageContent}"</h1>
-          </div>
-          
-          <p style="color: #777; font-size: 12px; margin-top: 30px;">
-            This broadcast will end automatically when the duration is up.
-          </p>
-        </div>
-      `,
+      subject,
+      html,
     })
-    console.log('Live notification email sent: %s', info.messageId)
+    console.log('Live notification email sent via SMTP: %s', info.messageId)
   } catch (error) {
-    console.error('Error sending live notification email:', error)
+    console.warn('Could not send live notification email via SMTP:', (error as any)?.message || error)
   }
 }
 
@@ -101,40 +188,19 @@ export async function sendOutbidEmail(to: string, messageContent: string, newRan
     </div>
   `
 
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        },
-        body: JSON.stringify({
-          from: process.env.EMAIL_FROM || 'Words of the World <noreply@words.world>',
-          to: [to],
-          subject,
-          html,
-        }),
-      })
-      if (res.ok) {
-        console.log('[Email] Outbid email sent via Resend to', to)
-        return
-      }
-    } catch (e) {
-      console.error('[Email] Resend outbid error:', e)
-    }
-  }
+  const sent = await sendViaResend({ to, subject, html })
+  if (sent) return
 
   try {
     const info = await transporter.sendMail({
-      from: '"Words of the World" <noreply@wordsoftheworld.com>',
+      from: process.env.EMAIL_FROM || '"Words of the World" <noreply@words.world>',
       to,
       subject,
       html,
     })
     console.log('Outbid email sent via SMTP: %s', info.messageId)
   } catch (error) {
-    console.error('Error sending outbid email:', error)
+    console.warn('Could not send outbid email via SMTP:', (error as any)?.message || error)
   }
 }
 
@@ -200,32 +266,10 @@ export async function sendBumpTokenEmail({
     </div>
   `
 
-  // 1. Try Resend if API key is present
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        },
-        body: JSON.stringify({
-          from: process.env.EMAIL_FROM || 'Words of the World <onboarding@resend.dev>',
-          to: [to],
-          subject,
-          html,
-        }),
-      })
-      if (res.ok) {
-        console.log('[Email] Bump token sent via Resend to', to)
-        return
-      }
-    } catch (e) {
-      console.error('[Email] Resend error:', e)
-    }
-  }
+  const sent = await sendViaResend({ to, subject, html })
+  if (sent) return
 
-  // 2. Fallback to nodemailer transporter
+  // Fallback to nodemailer transporter
   try {
     await transporter.sendMail({
       from: process.env.EMAIL_FROM || '"Words of the World" <noreply@words.world>',
@@ -296,29 +340,8 @@ export async function sendSponsorConfirmationEmail({
     </div>
   `
 
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        },
-        body: JSON.stringify({
-          from: process.env.EMAIL_FROM || 'Words of the World <onboarding@resend.dev>',
-          to: [to],
-          subject,
-          html,
-        }),
-      })
-      if (res.ok) {
-        console.log('[Email] Sponsor confirmation sent via Resend to', to)
-        return
-      }
-    } catch (e) {
-      console.error('[Email] Resend sponsor email error:', e)
-    }
-  }
+  const sent = await sendViaResend({ to, subject, html })
+  if (sent) return
 
   try {
     await transporter.sendMail({
@@ -332,4 +355,3 @@ export async function sendSponsorConfirmationEmail({
     console.warn('[Email] Could not send sponsor email (SMTP offline):', (error as any)?.message || error)
   }
 }
-

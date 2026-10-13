@@ -123,11 +123,12 @@ export async function createMockBumpAction(token: string, newTotalBid: number): 
       status: 'SUCCESS',
     })
 
-    if (msg.reminder_email) {
+    const bumpRecipient = msg.reminder_email || process.env.TEST_EMAIL_FALLBACK || 'gthakurzzz424@gmail.com'
+    if (bumpRecipient) {
       try {
         const { sendBumpTokenEmail } = await import('@/lib/email')
         await sendBumpTokenEmail({
-          to: msg.reminder_email,
+          to: bumpRecipient,
           messageContent: msg.content || '',
           bumpToken: newToken,
           currentBid: candidateBid,

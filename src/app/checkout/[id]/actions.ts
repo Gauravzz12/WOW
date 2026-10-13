@@ -339,7 +339,7 @@ export async function processMockPayment(
     try { style = JSON.parse(style) } catch (e) { style = {} }
   }
 
-  const emailTo = currentMsg.reminder_email || 'test@example.com'
+  const emailTo = currentMsg.reminder_email || process.env.TEST_EMAIL_FALLBACK || 'gthakurzzz424@gmail.com'
   const targetSlotIds: string[] = Array.isArray(slotId) ? slotId : (slotId ? [slotId] : [])
 
   if (targetSlotIds.length > 0) {
