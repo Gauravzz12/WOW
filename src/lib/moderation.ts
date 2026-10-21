@@ -1,19 +1,19 @@
 /**
- * Automated Content Moderation & Community Safety Engine
+ * Automated Content Moderation Engine
  * 
- * Supports:
- * 1. Jev by TypeSafe AI (System One calibrated probabilistic guardrail model)
- * 2. Multi-representation de-obfuscation (defeats dots, dashes, leetspeak, zero-width chars, spaces)
- * 3. English-only script validation
- * 4. Visa / Mastercard / DodoPayments legal compliance red lines:
- *    - Child safety & exploitation (CSAM)
- *    - Direct violent threats & suicide incitement
- *    - Severe hate speech & slurs
- *    - Illegal narcotics & weapons trafficking
- *    - Financial fraud, crypto drainers & phishing
+ * Powered by Jev by TypeSafe AI (System One calibrated probabilistic guardrail model).
  * 
- * NOTE: Open creative expression (swearing, raw emotion, confessions, heartbreak rants)
- * is fully preserved and NOT censored.
+ * Jev is the sole authoritative decision maker for content moderation:
+ * 1. Child Safety & CSAM (Zero Tolerance)
+ * 2. Targeted violent threats, murder, rape, blackmail, mass attacks & terrorism
+ * 3. Racism, racial slurs, neo-nazism & severe hate speech
+ * 4. Hardcore adult pornography & commercial sex/escort solicitation
+ * 5. Hard narcotics trafficking, illegal weapons, stolen data & scams
+ * 
+ * NOTE: Open creative expression, everyday swearing, raw emotions, confessions,
+ * misanthropic rants ("everyone should die"), anti-drug/anti-violence opinions
+ * ("cocaine should be illegal", "School shooting should be prohibited"), and digital piracy
+ * discussions are completely preserved and ALLOWED by Jev.
  */
 
 export interface ModerationResult {
@@ -27,110 +27,38 @@ export interface ModerationResult {
 const NON_ENGLISH_SCRIPTS = new RegExp(
   '[\\p{Script=Cyrillic}\\p{Script=Arabic}\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}\\p{Script=Hangul}\\p{Script=Devanagari}\\p{Script=Hebrew}\\p{Script=Thai}\\p{Script=Greek}\\p{Script=Bengali}\\p{Script=Tamil}\\p{Script=Telugu}\\p{Script=Georgian}\\p{Script=Armenian}]',
   'u'
-);
-
-// 1. Severe Hate Speech & Slurs (Standard & Dense)
-const HATE_SPEECH_PATTERNS = [
-  /\b(n+i+g+g+[e3a]+r+|f+a+g+g+o+t+|k+i+k+e+|c+h+i+n+k+|g+o+o+k+|w+e+t+b+a+c+k+|s+p+i+c+)\b/i,
-  /\b(white\s+supremac|neo[\s-]?nazi|heil\s+hitler|gas\s+the\s+jews|kill\s+all\s+(jews|muslims|blacks|whites))\b/i,
-]
-const DENSE_HATE_SPEECH = [
-  /(n+i+g+g+[ea3]+r+|f+a+g+g+o+t+|k+i+k+e+|c+h+i+n+k+|g+o+o+k+|w+e+t+b+a+c+k+|s+p+i+c+)/i,
-  /(whitesupremac|neonazi|heilhitler|gasthejews)/i,
-]
-
-// 2. Harassment, Violence & Threats (Targeted & Actionable)
-const VIOLENCE_THREATS_PATTERNS = [
-  /\b(i\s+will\s+(kill|murder|shoot|bomb|rape|stab)\s+you)\b/i,
-  /\b((i\s+will|going\s+to|planning\s+to|threaten(ing)?\s+to|commit|carry\s+out)\s+(a\s+)?(school\s+shoot|mass\s+shoot|bombing|terrorist\s+attack))\b/i,
-  /\b(shoot\s+up|bomb)\s+(the\s+|a\s+|our\s+)?(school|high\s+school|campus|mall|church|synagogue|mosque)\b/i,
-  /\b(commit\s+suicide|hang\s+yourself|kill\s+yourself|kys)\b/i,
-  /\b(pay\s+me\s+.*or\s+i\s+will\s+(leak|kill|destroy|post)|swat(ting)?\s+(your|his|her)\s+house)\b/i,
-  /\b(i\s+will\s+rape\s+you)\b/i,
-]
-const DENSE_VIOLENCE_PATTERNS = [
-  /(iwill(kill|murder|shoot|bomb|rape|stab)|(kill|murder|shoot|bomb|rape|stab)you)/i,
-  /(shootup|bomb)(the|a|our)?(school|highschool|campus|mall|church|synagogue|mosque)/i,
-  /(commitsuicide|hangyourself|killyourself|kys)/i,
-  /(iwillrapeyou)/i,
-]
-
-// 3. Child Safety & Hardcore Exploitation (CSAM) - Zero Tolerance & Commercial Sex / Porn
-const ADULT_NSFW_PATTERNS = [
-  /\b(child|minor|underage|teen|kid|baby|ped|pedo|lolita|cp)\s*(\W|_)*(sex|sexual|porn|nude|naked|erotic|abuse|exploit|molest|touch)\b/i,
-  /\b(child\s*porn|cp|pedo|pedophile|lolita|beastiality)\b/i,
-  /\b(escort\s+service|prostitut(e|ion)|call\s+girls?\b|hire\s+escort)\b/i,
-  /\b(hardcore\s+porn|xxx[\s-]?videos?|pornographic\s+videos?)\b/i,
-]
-const DENSE_ADULT_NSFW_PATTERNS = [
-  /(child|minor|underage|teen|kid|baby|pedo|lolita|cp)(sex|sexual|porn|nude|naked|erotic|abuse|exploit|molest)/i,
-  /(childporn|pedo|pedophile|lolita|beastiality|childsex|minorsex|underagesex|teensex)/i,
-  /\bcp\b/i,
-  /(escortservice|prostitut|callgirl)/i,
-]
-
-// 4. Illegal Drugs, Controlled Substances & Weapons
-const ILLEGAL_SUBSTANCES_PATTERNS = [
-  /\b(buy\s+(cocaine|meth|heroin|fentanyl|lsd|ecstasy|mdma|ketamine))\b/i,
-  /\b(cocaine|methamphetamine|fentanyl\s+for\s+sale|buy\s+guns\s+online)\b/i,
-  /\b(buy\s+(unregistered|illegal)\s+(guns?|firearms?|glock|pistol|rifle))\b/i,
-  /\b(stolen\s+(credit\s+cards?|cvv|bank\s+logins?))\b/i,
-]
-const DENSE_ILLEGAL_SUBSTANCES = [
-  /(buy(cocaine|meth|heroin|fentanyl|lsd|ecstasy|mdma|ketamine))/i,
-  /(buygunsonline|buyunregisteredgun)/i,
-]
-
-// 5. Scams, Crypto Phishing & Malicious links
-const SCAM_PHISHING_PATTERNS = [
-  /\b(send\s+eth\s+to|send\s+btc\s+to|double\s+your\s+(btc|bitcoin|crypto))\b/i,
-  /\b(claim\s+airdrop|connect\s+wallet\s+to\s+claim|wallet\s+drainer)\b/i,
-  /\b(login-verification|paypal-verify)\b/i,
-]
-const DENSE_SCAM_PATTERNS = [
-  /(sendeth|sendbtc|doubleyour(btc|bitcoin|crypto))/i,
-  /(claimairdrop|walletdrainer)/i,
-  /(loginverification|paypalverify)/i,
-]
+)
 
 /**
- * Normalizes text with token spacing preserved.
+ * Strips all spaces, dots, dashes, and punctuation into a normalized dense string.
+ * Helps Jev recognize obfuscated text like "c.h.i.l.d.s.e.x", "k_y_s", etc.
  */
-function normalizeSpaced(text: string): string {
-  return text
-    .toLowerCase()
+function normalizeDense(text: string): string {
+  const marked = text.toLowerCase().replace(/[.!?]\s+/g, '_')
+  return marked
     .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '') // strip diacritics / accents
-    .replace(/[\u200B-\u200D\uFEFF]/g, '') // strip zero-width characters
-    .replace(/[@]/g, 'a')
-    .replace(/[$]/g, 's')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/[@4]/g, 'a')
+    .replace(/[$5]/g, 's')
     .replace(/[0]/g, 'o')
     .replace(/[1!|]/g, 'i')
     .replace(/[3]/g, 'e')
-    .replace(/[4]/g, 'a')
-    .replace(/[5]/g, 's')
     .replace(/[7+]/g, 't')
     .replace(/[8]/g, 'b')
-    .replace(/[\s\-_.]+/g, ' ')
+    .replace(/[^a-z0-9_]/g, '')
 }
 
 /**
- * Strips all spaces, dots, dashes, and punctuation into a single dense string.
- * Defeats evasions like "k.i.l.l.y.o.u", "k_y_s", "b.u.y.c.o.c.a.i.n.e", etc.
- */
-function normalizeDense(text: string): string {
-  return normalizeSpaced(text).replace(/[^a-z0-9]/g, '')
-}
-
-/**
- * Fast synchronous moderation check: runs locally in 0ms.
+ * Platform technical pre-check: ensures messages use the English alphabet script.
+ * Zero keyword blocklists or regex traps.
  */
 export function validateContentModeration(rawText: string): ModerationResult {
   if (!rawText || typeof rawText !== 'string') {
     return { allowed: true }
   }
 
-  // 1. Language Restriction: English Only
+  // Language Requirement: English alphabet script
   if (NON_ENGLISH_SCRIPTS.test(rawText)) {
     return {
       allowed: false,
@@ -139,129 +67,16 @@ export function validateContentModeration(rawText: string): ModerationResult {
     }
   }
 
-  const spaced = normalizeSpaced(rawText)
-  const dense = normalizeDense(rawText)
-
-  // 2. Severe Hate Speech & Slurs
-  for (const pattern of HATE_SPEECH_PATTERNS) {
-    const match = rawText.match(pattern) || spaced.match(pattern)
-    if (match) {
-      return {
-        allowed: false,
-        category: 'HATE_SPEECH',
-        reason: 'Hate speech, slurs, or targeted discriminatory language are prohibited.',
-        flaggedSnippet: match[0],
-      }
-    }
-  }
-  for (const pattern of DENSE_HATE_SPEECH) {
-    if (pattern.test(dense)) {
-      return {
-        allowed: false,
-        category: 'HATE_SPEECH',
-        reason: 'Hate speech or discriminatory language detected.',
-      }
-    }
-  }
-
-  // 3. Violence & Threats
-  for (const pattern of VIOLENCE_THREATS_PATTERNS) {
-    const match = rawText.match(pattern) || spaced.match(pattern)
-    if (match) {
-      return {
-        allowed: false,
-        category: 'HARASSMENT_VIOLENCE',
-        reason: 'Threats of violence, self-harm incitement, or terrorism are strictly prohibited.',
-        flaggedSnippet: match[0],
-      }
-    }
-  }
-  for (const pattern of DENSE_VIOLENCE_PATTERNS) {
-    if (pattern.test(dense)) {
-      return {
-        allowed: false,
-        category: 'HARASSMENT_VIOLENCE',
-        reason: 'Threats of violence or self-harm incitement detected.',
-      }
-    }
-  }
-
-  // 4. Child Safety & NSFW
-  for (const pattern of ADULT_NSFW_PATTERNS) {
-    const match = rawText.match(pattern) || spaced.match(pattern)
-    if (match) {
-      return {
-        allowed: false,
-        category: 'NSFW_ADULT',
-        reason: 'Underage exploitation, commercial sex, or prohibited adult content is not allowed.',
-        flaggedSnippet: match[0],
-      }
-    }
-  }
-  for (const pattern of DENSE_ADULT_NSFW_PATTERNS) {
-    if (pattern.test(dense)) {
-      return {
-        allowed: false,
-        category: 'NSFW_ADULT',
-        reason: 'Prohibited adult content or child exploitation detected.',
-      }
-    }
-  }
-
-  // 5. Illegal Drugs & Weapons
-  for (const pattern of ILLEGAL_SUBSTANCES_PATTERNS) {
-    const match = rawText.match(pattern) || spaced.match(pattern)
-    if (match) {
-      return {
-        allowed: false,
-        category: 'ILLEGAL_SUBSTANCES',
-        reason: 'Solicitation of illegal drugs, controlled substances, or weapons is prohibited.',
-        flaggedSnippet: match[0],
-      }
-    }
-  }
-  for (const pattern of DENSE_ILLEGAL_SUBSTANCES) {
-    if (pattern.test(dense)) {
-      return {
-        allowed: false,
-        category: 'ILLEGAL_SUBSTANCES',
-        reason: 'Solicitation of illegal substances or weapons detected.',
-      }
-    }
-  }
-
-  // 6. Scams & Crypto Phishing
-  for (const pattern of SCAM_PHISHING_PATTERNS) {
-    const match = rawText.match(pattern) || spaced.match(pattern)
-    if (match) {
-      return {
-        allowed: false,
-        category: 'SCAM_PHISHING',
-        reason: 'Financial scams, crypto wallet drainers, or deceptive links violate our terms.',
-        flaggedSnippet: match[0],
-      }
-    }
-  }
-  for (const pattern of DENSE_SCAM_PATTERNS) {
-    if (pattern.test(dense)) {
-      return {
-        allowed: false,
-        category: 'SCAM_PHISHING',
-        reason: 'Deceptive financial solicitation or phishing detected.',
-      }
-    }
-  }
-
   return { allowed: true }
 }
 
 /**
- * Evaluates state using Jev (TypeSafe AI) System One decision model.
+ * Evaluates semantic content using Jev (TypeSafe AI) System One decision model.
  * Returns null if the service is unreachable or unconfigured.
  */
 async function evaluateWithJev(text: string, apiKey: string): Promise<ModerationResult | null> {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 2500)
+  const timeoutId = setTimeout(() => controller.abort(), 4000)
   const dense = normalizeDense(text)
 
   try {
@@ -282,17 +97,17 @@ async function evaluateWithJev(text: string, apiKey: string): Promise<Moderation
           child_safety: {
             type: 'noul',
             instructions:
-              "CRITICAL ZERO-TOLERANCE: Does this text contain, depict, promote, or solicit child sexual abuse material (CSAM), underage sexual content, child exploitation, pedophilia, or sexual acts involving minors, even if disguised with punctuation, symbols, spaces, or leetspeak (e.g. 'child S>E>X', 'c.p', 'child sex', 'underage nudes')?",
+              "CRITICAL ZERO-TOLERANCE: Does this text contain, depict, promote, solicit, or mention child sexual abuse material (CSAM), underage sexual content, child exploitation, grooming of minors, underage sugar babies, pedophilia, or sexual acts involving minors in any order or phrasing (e.g. 'child sex', 'sex child', 'sex with a child', 'c.p', 'underage nudes'), even if disguised with punctuation, symbols, spaces, leetspeak, or inserted into random sentences?",
           },
           violent_threats: {
             type: 'noul',
             instructions:
-              'Evaluate the WHOLE MESSAGE in context: Does this message express a real, credible, actionable threat of violence directed at specific individuals or groups (such as murder, physical assault, rape, acid attacks, swatting, blackmail/extortion, or mass attacks/bombings)? IMPORTANT: Anti-violence advocacy ("School shooting should be prohibited"), non-targeted misanthropic rants ("everyone should die", "humanity sucks"), or emotional venting are safe.',
+              'Evaluate the WHOLE MESSAGE in context: Does this message express a real, credible, actionable threat of violence directed at specific individuals or groups (such as murder, physical assault, rape, acid attacks, swatting, doxxing with threat, hitman hiring, blackmail/extortion, or mass attacks/bombings)? IMPORTANT: Anti-violence advocacy ("School shooting should be prohibited"), non-targeted misanthropic rants ("everyone should die", "humanity sucks"), sarcasm, or emotional venting are safe.',
           },
           racism_hate: {
             type: 'noul',
             instructions:
-              'Does this message promote racism, racial slurs, white supremacy, neo-nazism, caste discrimination, or dehumanizing hatred against racial, ethnic, or religious groups? IMPORTANT: Anti-racism advocacy (e.g. "We must eliminate racism from society") is safe.',
+              'Does this message promote racism, racial slurs, white supremacy, neo-nazism, caste discrimination, or dehumanizing hatred against racial, ethnic, or religious groups? IMPORTANT: Anti-racism advocacy or historical discussions of genocide/Holocaust ("Nazis murdered millions") are safe.',
           },
           porn_adult: {
             type: 'noul',
@@ -302,15 +117,15 @@ async function evaluateWithJev(text: string, apiKey: string): Promise<Moderation
           illegal_contraband: {
             type: 'noul',
             instructions:
-              'Does this message solicit illegal narcotics (fentanyl, cocaine, meth, heroin), illegal firearms, stolen credit cards/CVV, malware/ransomware, or financial phishing scams? CRITICAL: Digital piracy (torrents, downloading cracked games, pirated movies, FitGirl repacks, PirateBay) is ALLOWED and must be evaluated as safe.',
+              'Does this message solicit, sell, or offer illegal narcotics (fentanyl, cocaine, meth, heroin), illegal firearms, stolen credit cards/CVV, malware/ransomware, or financial phishing scams? IMPORTANT: Anti-drug opinions (e.g. "cocaine should be illegal", "don\'t do drugs", "drugs ruin lives"), discussions of drug laws, or addiction recovery are completely safe and MUST be evaluated as safe. CRITICAL: Digital piracy (torrents, downloading cracked games, pirated movies, FitGirl repacks, PirateBay) is ALLOWED and must be evaluated as safe.',
           },
           category: {
             type: 'choice',
             instructions: 'Classify the message in semantic context.',
             criteria: {
-              safe: 'Safe content, everyday swearing, emotional venting, philosophical misanthropy ("everyone should die", "humanity sucks"), love confessions, flattering romantic compliments ("you look so sexy in lingerie"), anti-violence advocacy ("School shooting should be prohibited"), anti-racism advocacy, or digital piracy/torrents',
-              child_safety: 'Child sexual exploitation, pedophilia, or minor nudes',
-              violence_threats: 'Actionable targeted threats against specific individuals or specific groups (murder, rape, swatting, blackmail, bombing, shooting up a venue). NOT non-targeted venting like "everyone should die".',
+              safe: 'Safe content, everyday swearing, emotional venting, philosophical misanthropy ("everyone should die", "humanity sucks"), anti-drug opinions ("cocaine should be illegal"), love confessions, flattering romantic compliments ("you look so sexy in lingerie"), anti-violence advocacy ("School shooting should be prohibited"), anti-racism advocacy, historical education, or digital piracy/torrents',
+              child_safety: 'Child sexual exploitation, pedophilia, grooming of minors, or minor nudes in any order or phrasing (e.g. child sex, sex child)',
+              violence_threats: 'Actionable targeted threats against specific individuals or specific groups (murder, rape, swatting, hitman, blackmail, bombing, shooting up a venue). NOT non-targeted venting like "everyone should die", and NOT sarcasm.',
               racism_hate: 'Racism, racial slurs, neo-nazism, or severe hate speech',
               porn_adult: 'Hardcore pornography, graphic descriptions of sexual intercourse/acts, or commercial sex/escort/prostitution solicitation',
               illegal_contraband: 'Hard drug sales, illegal weapons, stolen credit cards, malware, or phishing scams',
@@ -410,10 +225,10 @@ async function evaluateWithJev(text: string, apiKey: string): Promise<Moderation
 }
 
 /**
- * Asynchronous content moderation:
- * 1. Executes instant local rule checks first (English-only script + dot/symbol evasion).
- * 2. If clean and Jev (TypeSafe AI) key is configured, evaluates semantic context using Jev.
- * 3. Gracefully falls back to local evaluation if AI service is unconfigured or times out.
+ * Asynchronous content moderation powered by Jev (TypeSafe AI):
+ * 1. Checks English alphabet script.
+ * 2. Calls Jev to evaluate semantic context, harm, and nuance.
+ * 3. Returns Jev's decision.
  */
 export async function validateContentModerationAsync(rawText: string): Promise<ModerationResult> {
   const localCheck = validateContentModeration(rawText)

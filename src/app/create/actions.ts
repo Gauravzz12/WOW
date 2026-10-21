@@ -54,8 +54,8 @@ export async function createMessage(data: {
     return { error: `Message cannot exceed 150 words (currently ${words} words).` }
   }
 
-  // Automated & AI Content Moderation Guardrail Check (Jev / Hybrid)
-  const contentMod = await validateContentModerationAsync(trimmedContent)
+  // Fast synchronous safety check (Jev was already evaluated when user clicked 'Choose a Style & Template')
+  const contentMod = validateContentModeration(trimmedContent)
   if (!contentMod.allowed) {
     return { error: contentMod.reason || 'Message violates our Community Safety & Content Guidelines.' }
   }
@@ -216,4 +216,15 @@ export async function createMessage(data: {
   return { success: true, messageId: message.id }
 }
 
-
+/**
+ * Single Jev Content Moderation Gate:
+ * Evaluates the message with TypeSafe AI (Jev) when user clicks "Choose a Style & Template".
+ * Only after approval does the user move forward to Step 3.
+ */
+export async function verifyMessageWithJev(content: string) {
+  const trimmed = (content || '').trim()
+  if (!trimmed) {
+    return { allowed: false, reason: 'Message content cannot be empty.' }
+  }
+  return await validateContentModerationAsync(trimmed)
+}

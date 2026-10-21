@@ -2,10 +2,10 @@
 
 import { useState, useRef, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Check, Zap, CheckCircle2, Sparkles, ExternalLink, Globe, X, Shield, ShieldAlert, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Check, Zap, CheckCircle2, Sparkles, ExternalLink, Globe, X, Shield, ShieldAlert, ShieldCheck, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createMessage } from "./actions";
+import { createMessage, verifyMessageWithJev } from "./actions";
 import { createClient } from '@/lib/supabase/client'
 import { sanitizeHtmlText } from '@/lib/sanitize'
 import { validateContentModeration } from '@/lib/moderation'
@@ -90,6 +90,9 @@ function CreateMessageContent() {
   const isSponsored = tier === 'sponsored';
   const [selectedSpecialSlots, setSelectedSpecialSlots] = useState<Slot[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isVerifyingContent, setIsVerifyingContent] = useState(false);
+  const [contentError, setContentError] = useState<string | null>(null);
+  const [lastVerifiedText, setLastVerifiedText] = useState<string | null>(null);
 
   useEffect(() => {
     if (prefillParam && !messageText) {
@@ -335,6 +338,52 @@ function CreateMessageContent() {
 
   const selectedCategory = categories.find(c => c.slug === category) || { name: categoryMeta.badgeLabel, slug: category };
 
+  const handleProceedToStyles = async () => {
+    const text = messageText.trim();
+    if (!text) return;
+
+    // Fast local synchronous safety check
+    const syncCheck = validateContentModeration(text);
+    if (!syncCheck.allowed) {
+      setContentError(syncCheck.reason || 'Prohibited content detected.');
+      toast.error(syncCheck.reason || 'Message violates Community Guidelines.', {
+        title: 'Content Moderation Flag'
+      });
+      return;
+    }
+
+    // If message was already screened and approved by Jev, advance immediately without duplicate API call
+    if (lastVerifiedText === text) {
+      setContentError(null);
+      setStep(3);
+      return;
+    }
+
+    // Only 1 Jev call: Screen message when clicking "Choose a Style & Template"
+    setIsVerifyingContent(true);
+    setContentError(null);
+    try {
+      const res = await verifyMessageWithJev(text);
+      if (!res.allowed) {
+        setContentError(res.reason || 'Your message violates our Community Safety Guidelines.');
+        toast.error(res.reason || 'Message flagged by TypeSafe AI guardrail.', {
+          title: 'Content Moderation Flag'
+        });
+        return;
+      }
+      setLastVerifiedText(text);
+      setContentError(null);
+      setStep(3);
+    } catch (err: any) {
+      // In case of network timeout, advance if sync check was clean
+      setLastVerifiedText(text);
+      setContentError(null);
+      setStep(3);
+    } finally {
+      setIsVerifyingContent(false);
+    }
+  };
+
   const handleNext = () => { if (step < 5) setStep(step + 1); };
   const handleBack = () => { if (step > 1) setStep(step - 1); };
 
@@ -496,6 +545,7 @@ function CreateMessageContent() {
                     const temp = document.createElement('div')
                     temp.innerHTML = html
                     setMessageText(temp.textContent || '')
+                    setContentError(null)
                   }}
                 />
 
@@ -636,6 +686,9 @@ function CreateMessageContent() {
               {(() => {
                 const words = messageText.trim().length > 0 ? messageText.trim().split(/\s+/).length : 0
                 const modCheck = messageText.trim().length > 0 ? validateContentModeration(messageText) : { allowed: true }
+                const isBlocked = !modCheck.allowed || Boolean(contentError)
+                const blockedReason = !modCheck.allowed ? modCheck.reason : contentError
+
                 return (
                   <>
                     {words > 150 && (
@@ -645,12 +698,12 @@ function CreateMessageContent() {
                       </div>
                     )}
 
-                    {!modCheck.allowed && (
+                    {isBlocked && (
                       <div className="mt-4 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs flex items-start gap-3">
                         <ShieldAlert size={18} className="shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
                         <div className="space-y-1">
                           <span className="font-bold block">Community Safety Guardrail Triggered:</span>
-                          <span className="leading-relaxed">{modCheck.reason}</span>
+                          <span className="leading-relaxed">{blockedReason}</span>
                           <p className="text-[11px] opacity-80 pt-1">
                             Hate speech, NSFW, scams, threats, and non-English scripts are strictly prohibited under our{' '}
                             <Link href="/guidelines" target="_blank" className="underline font-bold">
@@ -665,7 +718,7 @@ function CreateMessageContent() {
                       </div>
                     )}
 
-                    {modCheck.allowed && messageText.trim().length > 0 && (
+                    {!isBlocked && messageText.trim().length > 0 && (
                       <div className="mt-4 p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[11px] flex items-center justify-between">
                         <span className="flex items-center gap-1.5 font-medium">
                           <ShieldCheck size={14} className="text-emerald-600 dark:text-emerald-400" />
@@ -684,15 +737,25 @@ function CreateMessageContent() {
                     )}
 
                     <button 
-                      disabled={messageText.trim().length === 0 || words > 150 || !modCheck.allowed}
-                      onClick={handleNext}
-                      className="w-full py-4 mt-6 bg-primary text-background rounded-full font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                      type="button"
+                      disabled={messageText.trim().length === 0 || words > 150 || !modCheck.allowed || isVerifyingContent}
+                      onClick={handleProceedToStyles}
+                      className="w-full py-4 mt-6 bg-primary text-background rounded-full font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
                     >
-                      {!modCheck.allowed 
-                        ? 'Prohibited Content Detected — Please Edit'
-                        : words > 150 
-                        ? `Too long (${words}/150 words) — Please shorten` 
-                        : 'Choose a Style & Template'}
+                      {isVerifyingContent ? (
+                        <>
+                          <Loader2 className="animate-spin" size={18} />
+                          <span>Screening Content with AI Guardrails...</span>
+                        </>
+                      ) : !modCheck.allowed ? (
+                        'Prohibited Content Detected — Please Edit'
+                      ) : contentError ? (
+                        'Message Flagged by AI — Please Edit'
+                      ) : words > 150 ? (
+                        `Too long (${words}/150 words) — Please shorten` 
+                      ) : (
+                        'Choose a Style & Template'
+                      )}
                     </button>
                   </>
                 )

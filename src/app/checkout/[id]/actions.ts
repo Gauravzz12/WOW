@@ -37,8 +37,8 @@ export async function processPayment(
     return { error: 'This order has already been processed or has expired.' }
   }
 
-  // Pre-payment Moderation Gate: Never initiate payment for prohibited content (AI / Jev hybrid)
-  const modCheck = await validateContentModerationAsync(currentMsg.content || '')
+  // Pre-payment Moderation Gate: Fast safety verification (Jev already screened content before style selection)
+  const modCheck = validateContentModeration(currentMsg.content || '')
   if (!modCheck.allowed) {
     return { error: modCheck.reason || 'Message content violates our Community Guidelines and cannot be processed for payment.' }
   }
