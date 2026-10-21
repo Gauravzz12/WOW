@@ -97,7 +97,7 @@ async function evaluateWithJev(text: string, apiKey: string): Promise<Moderation
           child_safety: {
             type: 'noul',
             instructions:
-              "CRITICAL ZERO-TOLERANCE: Does this text contain, depict, promote, solicit, or mention child sexual abuse material (CSAM), underage sexual content, child exploitation, grooming of minors, underage sugar babies, pedophilia, or sexual acts involving minors in any order or phrasing (e.g. 'child sex', 'sex child', 'sex with a child', 'c.p', 'underage nudes'), even if disguised with punctuation, symbols, spaces, leetspeak, or inserted into random sentences?",
+              "CRITICAL ZERO-TOLERANCE: Does this text contain, depict, promote, or solicit child sexual abuse material (CSAM), underage sexual content, child exploitation, grooming of minors, underage sugar babies, pedophilia, or sexual acts involving minors in any order or phrasing (e.g. 'child sex', 'sex child', 'sex with a child', 'c.p', 'underage nudes'), even if disguised with punctuation, symbols, spaces, leetspeak, or inserted into random sentences? IMPORTANT: Anti-CSAM advocacy or calls to ban/outlaw child abuse or exploitation (e.g. 'child porn should be banned', 'protect children from exploitation', 'pedophiles should be locked up') are safe opinions and must NOT be flagged as CSAM.",
           },
           violent_threats: {
             type: 'noul',
@@ -123,8 +123,8 @@ async function evaluateWithJev(text: string, apiKey: string): Promise<Moderation
             type: 'choice',
             instructions: 'Classify the message in semantic context.',
             criteria: {
-              safe: 'Safe content, single word or casual drug mentions ("cocaine", "weed"), everyday swearing, emotional venting, philosophical misanthropy ("everyone should die", "humanity sucks"), anti-drug opinions ("cocaine should be illegal"), love confessions, flattering romantic compliments ("you look so sexy in lingerie"), anti-violence advocacy ("School shooting should be prohibited"), anti-racism advocacy, historical education, or digital piracy/torrents',
-              child_safety: 'Child sexual exploitation, pedophilia, grooming of minors, or minor nudes in any order or phrasing (e.g. child sex, sex child)',
+              safe: 'Safe content, single word or casual drug mentions ("cocaine", "weed"), everyday swearing, emotional venting, philosophical misanthropy ("everyone should die", "humanity sucks"), anti-drug opinions ("cocaine should be illegal"), anti-CSAM advocacy ("child porn should be banned", "protect children from abuse"), love confessions, flattering romantic compliments ("you look so sexy in lingerie"), anti-violence advocacy ("School shooting should be prohibited"), anti-racism advocacy, historical education, or digital piracy/torrents',
+              child_safety: 'Actual child sexual exploitation, pedophilia, grooming of minors, or minor nudes in any order or phrasing (e.g. child sex, sex child). NOT anti-CSAM advocacy or calls to ban child abuse.',
               violence_threats: 'Actionable targeted threats against specific individuals or specific groups (murder, rape, swatting, hitman, blackmail, bombing, shooting up a venue). NOT non-targeted venting like "everyone should die", and NOT sarcasm.',
               racism_hate: 'Racism, racial slurs, neo-nazism, or severe hate speech',
               porn_adult: 'Hardcore pornography, graphic descriptions of sexual intercourse/acts, or commercial sex/escort/prostitution solicitation',
