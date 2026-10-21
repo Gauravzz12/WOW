@@ -5,8 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { calculateSpecialPrice, calculateNormalMinBid, SPONSORED_PRICE, SPONSORED_DURATION_SECS } from '@/lib/constants/pricing'
 import { issueSponsorEditToken, sponsorTokenCookieName } from '@/lib/sponsorToken'
-import { checkAndNotifyOutbids } from '@/lib/outbidService'
-import { validateContentModeration, validateContentModerationAsync } from '@/lib/moderation'
+import { validateContentModeration } from '@/lib/moderation'
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 

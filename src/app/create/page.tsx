@@ -702,7 +702,9 @@ function CreateMessageContent() {
                       <div className="mt-4 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs flex items-start gap-3">
                         <ShieldAlert size={18} className="shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
                         <div className="space-y-1">
-                          <span className="font-bold block">Community Safety Guardrail Triggered:</span>
+                          <span className="font-bold block">
+                            {!modCheck.allowed ? 'Language Requirement:' : 'Community Safety Guardrail Triggered:'}
+                          </span>
                           <span className="leading-relaxed">{blockedReason}</span>
                           <p className="text-[11px] opacity-80 pt-1">
                             Hate speech, NSFW, scams, threats, and non-English scripts are strictly prohibited under our{' '}
@@ -722,7 +724,11 @@ function CreateMessageContent() {
                       <div className="mt-4 p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[11px] flex items-center justify-between">
                         <span className="flex items-center gap-1.5 font-medium">
                           <ShieldCheck size={14} className="text-emerald-600 dark:text-emerald-400" />
-                          <span>Screened by automated guardrails • English & compliant</span>
+                          <span>
+                            {lastVerifiedText === messageText.trim()
+                              ? 'Screened & approved by AI • Ready to style'
+                              : 'English alphabet verified • AI screening runs when choosing a style'}
+                          </span>
                         </span>
                         <div className="flex items-center gap-2">
                           <Link href="/guidelines" target="_blank" className="underline text-emerald-700 dark:text-emerald-300 hover:opacity-80">
@@ -748,7 +754,7 @@ function CreateMessageContent() {
                           <span>Screening Content with AI Guardrails...</span>
                         </>
                       ) : !modCheck.allowed ? (
-                        'Prohibited Content Detected — Please Edit'
+                        'Please write using English alphabet'
                       ) : contentError ? (
                         'Message Flagged by AI — Please Edit'
                       ) : words > 150 ? (

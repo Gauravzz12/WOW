@@ -117,18 +117,18 @@ async function evaluateWithJev(text: string, apiKey: string): Promise<Moderation
           illegal_contraband: {
             type: 'noul',
             instructions:
-              'Does this message solicit, sell, or offer illegal narcotics (fentanyl, cocaine, meth, heroin), illegal firearms, stolen credit cards/CVV, malware/ransomware, or financial phishing scams? IMPORTANT: Anti-drug opinions (e.g. "cocaine should be illegal", "don\'t do drugs", "drugs ruin lives"), discussions of drug laws, or addiction recovery are completely safe and MUST be evaluated as safe. CRITICAL: Digital piracy (torrents, downloading cracked games, pirated movies, FitGirl repacks, PirateBay) is ALLOWED and must be evaluated as safe.',
+              'Does this text actively sell, solicit, deal, or offer for purchase illegal narcotics (fentanyl, cocaine, meth, heroin, pills), illegal firearms, stolen credit cards/CVV, malware/ransomware, or financial phishing scams? IMPORTANT: Merely mentioning drug names (e.g. "cocaine", "weed", "heroin"), casual references, anti-drug opinions ("cocaine should be illegal"), discussions of drug laws, or addiction recovery are completely safe and MUST be evaluated as safe. Only commercial dealing, selling, sourcing, or street distribution is prohibited. CRITICAL: Digital piracy (torrents, downloading cracked games, pirated movies, FitGirl repacks, PirateBay) is ALLOWED and must be evaluated as safe.',
           },
           category: {
             type: 'choice',
             instructions: 'Classify the message in semantic context.',
             criteria: {
-              safe: 'Safe content, everyday swearing, emotional venting, philosophical misanthropy ("everyone should die", "humanity sucks"), anti-drug opinions ("cocaine should be illegal"), love confessions, flattering romantic compliments ("you look so sexy in lingerie"), anti-violence advocacy ("School shooting should be prohibited"), anti-racism advocacy, historical education, or digital piracy/torrents',
+              safe: 'Safe content, single word or casual drug mentions ("cocaine", "weed"), everyday swearing, emotional venting, philosophical misanthropy ("everyone should die", "humanity sucks"), anti-drug opinions ("cocaine should be illegal"), love confessions, flattering romantic compliments ("you look so sexy in lingerie"), anti-violence advocacy ("School shooting should be prohibited"), anti-racism advocacy, historical education, or digital piracy/torrents',
               child_safety: 'Child sexual exploitation, pedophilia, grooming of minors, or minor nudes in any order or phrasing (e.g. child sex, sex child)',
               violence_threats: 'Actionable targeted threats against specific individuals or specific groups (murder, rape, swatting, hitman, blackmail, bombing, shooting up a venue). NOT non-targeted venting like "everyone should die", and NOT sarcasm.',
               racism_hate: 'Racism, racial slurs, neo-nazism, or severe hate speech',
               porn_adult: 'Hardcore pornography, graphic descriptions of sexual intercourse/acts, or commercial sex/escort/prostitution solicitation',
-              illegal_contraband: 'Hard drug sales, illegal weapons, stolen credit cards, malware, or phishing scams',
+              illegal_contraband: 'Active commercial drug dealing, selling, sourcing, or distributing hard drugs or illegal weapons, stolen credit cards, malware, or phishing scams. NOT mere mentions of drug words like "cocaine".',
             },
           },
         },
