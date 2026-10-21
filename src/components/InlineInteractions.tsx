@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Heart, MessageCircle, Send, X, ChevronDown, Maximize2 } from 'lucide-react'
+import { Heart, MessageCircle, Send, X, ChevronDown, Maximize2, Flag } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCategoryStyles } from '@/lib/utils/colors'
 import { ShareMenu } from './ShareMenu'
+import { ReportModal } from './ReportModal'
+import { toast } from '@/components/Toast'
 import { getDeviceId, getStoredReactions, setStoredReaction, removeStoredReaction, syncStoredReactions } from '@/lib/deviceId'
 import { addReaction as serverAddReaction, removeReaction as serverRemoveReaction } from '@/app/w/[id]/reactions'
 import { addComment as serverAddComment } from '@/app/w/[id]/comments'
@@ -54,6 +56,7 @@ export function InlineInteractions({
   // 'none' | 'input' | 'list'
   const [commentMode, setCommentMode] = useState<'none' | 'input' | 'list'>('none')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -565,6 +568,16 @@ export function InlineInteractions({
                 isDark={isDark}
                 buttonClassName={buttonClassName}
               />
+
+              <button
+                type="button"
+                onClick={() => setIsReportModalOpen(true)}
+                className={`p-2 rounded-full border transition-all shadow-sm opacity-60 hover:opacity-100 ${btnStyle}`}
+                title="Report prohibited content"
+                aria-label="Report message"
+              >
+                <Flag size={14} />
+              </button>
             </div>
           </div>
         )
@@ -678,6 +691,13 @@ export function InlineInteractions({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Community Report Modal */}
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        messageId={messageId}
+      />
     </div>
   )
 }

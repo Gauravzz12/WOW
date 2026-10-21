@@ -3,43 +3,11 @@ import { getMessageEndTimeMs } from './messageExpiry'
 
 const supabaseAdmin = getSupabaseAdmin()
 
-// Send a reminder email via Resend (falls back silently if not configured)
-async function sendReminderEmail(to: string, messageContent: string) {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) {
-    return
-  }
+import { sendLiveNotificationEmail } from './email'
+
+async function sendReminderEmail(to: string, messageContent: string, messageId?: string) {
   try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: process.env.EMAIL_FROM || 'noreply@words.world',
-        to,
-        subject: '🌍 Your message is now live on Words of the World!',
-        html: `
-          <div style="font-family: Georgia, serif; max-width: 480px; margin: 0 auto; padding: 32px; color: #1a1a1a;">
-            <h1 style="font-size: 24px; font-weight: normal; margin-bottom: 8px;">Your message is live.</h1>
-            <p style="color: #666; font-size: 14px; margin-bottom: 24px;">It's now being displayed to the world.</p>
-            <blockquote style="border-left: 3px solid #000; padding-left: 16px; margin: 24px 0; font-style: italic; color: #333;">
-              "${messageContent?.slice(0, 200)}${(messageContent?.length || 0) > 200 ? '…' : ''}"
-            </blockquote>
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://words.world'}" 
-               style="display: inline-block; background: #000; color: #fff; padding: 12px 24px; border-radius: 999px; text-decoration: none; font-size: 14px; margin-top: 16px;">
-              View it live →
-            </a>
-            <p style="color: #999; font-size: 12px; margin-top: 32px;">Words of the World · <a href="https://words.world" style="color:#999">words.world</a></p>
-          </div>
-        `,
-      }),
-    })
-    if (!res.ok) {
-      const err = await res.text()
-      console.error('[advance] Resend error:', err)
-    }
+    await sendLiveNotificationEmail(to, messageContent, messageId)
   } catch (e) {
     console.error('[advance] Failed to send reminder email:', e)
   }
@@ -169,7 +137,7 @@ export async function runQueueAdvance() {
             : (topNormal[0].style_config || {})
           const reminderTo = (topNormal[0] as any).reminder_email || cfg.reminderEmail
           if (reminderTo) {
-            await sendReminderEmail(reminderTo, topNormal[0].content || '')
+            await sendReminderEmail(reminderTo, topNormal[0].content || '', topNormal[0].id)
           }
         }
       }
@@ -220,7 +188,7 @@ export async function runQueueAdvance() {
             : (sm.style_config || {})
           const reminderTo = (sm as any).reminder_email || cfg.reminderEmail
           if (reminderTo) {
-            await sendReminderEmail(reminderTo, sm.content || '')
+            await sendReminderEmail(reminderTo, sm.content || '', sm.id)
           }
         }
       }
@@ -292,7 +260,7 @@ export async function runQueueAdvance() {
             : (topVip[0].style_config || {})
           const reminderTo = (topVip[0] as any).reminder_email || cfg.reminderEmail
           if (reminderTo) {
-            await sendReminderEmail(reminderTo, topVip[0].content || '')
+            await sendReminderEmail(reminderTo, topVip[0].content || '', topVip[0].id)
           }
         }
       }

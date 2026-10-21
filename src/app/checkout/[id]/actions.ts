@@ -181,11 +181,14 @@ export async function processPayment(
           amount: Math.round(officialVipPrice * 100),
         }],
         return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=SPECIAL`,
+        ...(currentMsg.reminder_email ? { customer: { email: currentMsg.reminder_email } } : {}),
         metadata: {
           messageId,
           isReservedSlot: 'true',
           slotIds: resolvedSlotIds.join(','),
-          usdAmount: officialVipPrice.toString()
+          usdAmount: officialVipPrice.toString(),
+          userEmail: currentMsg.reminder_email || '',
+          userMessage: (currentMsg.content || '').slice(0, 200),
         }
       })
       return { success: true, redirectUrl: session.checkout_url }
@@ -387,6 +390,23 @@ export async function processMockPayment(
       status: 'SUCCESS',
     })
 
+    if (emailTo) {
+      try {
+        const { sendVipReservationEmail } = await import('@/lib/email')
+        await sendVipReservationEmail({
+          to: emailTo,
+          messageId,
+          messageContent: currentMsg.content || '',
+          amountPaid: officialVipPrice,
+          scheduledStart: slots && slots[0] ? slots[0].scheduled_start : null,
+          scheduledEnd: slots && slots.length > 0 ? slots[slots.length - 1].scheduled_end : null,
+          slotCount: targetSlotIds.length,
+        })
+      } catch (vipEmailErr) {
+        console.error('[Mock VIP] Email failed:', vipEmailErr)
+      }
+    }
+
     const { runQueueAdvance } = await import('@/lib/queueAdvance')
     await runQueueAdvance().catch(console.error)
 
@@ -445,6 +465,7 @@ export async function processMockPayment(
         messageId,
         messageContent: currentMsg.content || '',
         sponsorToken,
+        amountPaid: officialTotal,
       })
     } catch (emailErr) {
       console.error('[Mock Sponsor] Email failed:', emailErr)
@@ -513,6 +534,7 @@ export async function processMockPayment(
         bumpToken: initialBumpToken,
         currentBid: officialTotal,
         isUpdated: false,
+        messageId,
       })
     } catch (emailErr) {
       console.error('[Mock Bid] Email failed:', emailErr)
@@ -544,7 +566,7 @@ export async function bumpBid(messageId: string, additionalAmount: number) {
 
   const { data: currentMsg, error: msgFetchError } = await supabaseAdmin
     .from('messages')
-    .select('id, status, is_reserved_slot, bid_amount')
+    .select('id, status, is_reserved_slot, bid_amount, content, reminder_email')
     .eq('id', messageId)
     .single()
 
@@ -564,17 +586,26 @@ export async function bumpBid(messageId: string, additionalAmount: number) {
   })
 
   try {
+    const { generateBumpToken } = await import('@/lib/bumpToken')
+    const newToken = generateBumpToken()
+    const newTotalBid = Math.round(((currentMsg.bid_amount || 0) + additionalAmount) * 100) / 100
+
     const session = await client.checkoutSessions.create({
       product_cart: [{
         product_id: process.env.NEXT_PUBLIC_DODO_PAYMENTS_PRODUCT_ID!,
         quantity: 1,
         amount: Math.round(additionalAmount * 100),
       }],
-      return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/w/${messageId}`,
+      return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=NORMAL&bumpSuccess=1`,
+      ...(currentMsg.reminder_email ? { customer: { email: currentMsg.reminder_email } } : {}),
       metadata: {
         messageId,
         isBump: 'true',
-        usdAmount: additionalAmount.toString()
+        newTotalBid: newTotalBid.toString(),
+        usdAmount: additionalAmount.toString(),
+        newToken,
+        userEmail: currentMsg.reminder_email || '',
+        userMessage: (currentMsg.content || '').slice(0, 200),
       }
     })
     return { success: true, redirectUrl: session.checkout_url }

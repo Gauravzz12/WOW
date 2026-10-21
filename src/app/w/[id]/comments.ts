@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers'
 import { randomUUID } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
+import { validateContentModeration } from '@/lib/moderation'
 
 /**
  * Device-gated comment writes (server-only).
@@ -53,6 +54,12 @@ export async function addComment(messageId: string, content: string) {
   const trimmed = content.trim()
   if (!trimmed || trimmed.length > MAX_LEN) {
     return { error: `Comments must be 1–${MAX_LEN} characters.` }
+  }
+
+  // Content moderation check
+  const modCheck = validateContentModeration(trimmed)
+  if (!modCheck.allowed) {
+    return { error: modCheck.reason || 'Comment violates our Community Guidelines.' }
   }
 
   const deviceId = getOrCreateDeviceId()

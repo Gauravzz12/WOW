@@ -6,6 +6,13 @@
       "env": {
         "DODO_PAYMENTS_API_KEY": "VW_lFihtfE62zI3l.UMLzqUZAlcNwkTfIs7Ig3CLD_pFHzc-oQXxOpOHmnFYQoJFX"
       }
+    },
+    "brevo": {
+      "command": "npx",
+      "args": ["-y", "brevo-mcp"],
+      "env": {
+        "BREVO_API_KEY": "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"
+      }
     }
   }
 }

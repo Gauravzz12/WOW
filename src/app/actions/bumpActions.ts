@@ -132,7 +132,8 @@ export async function createMockBumpAction(token: string, newTotalBid: number): 
           messageContent: msg.content || '',
           bumpToken: newToken,
           currentBid: candidateBid,
-          isUpdated: true
+          isUpdated: true,
+          messageId: msg.id,
         })
       } catch (e) {
         console.error('[Mock Bump] Email error:', e)

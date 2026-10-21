@@ -2,12 +2,13 @@
 
 import { useState, useRef, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Check, Zap, CheckCircle2, Sparkles, ExternalLink, Globe, X } from "lucide-react";
+import { ArrowLeft, Check, Zap, CheckCircle2, Sparkles, ExternalLink, Globe, X, Shield, ShieldAlert, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createMessage } from "./actions";
 import { createClient } from '@/lib/supabase/client'
 import { sanitizeHtmlText } from '@/lib/sanitize'
+import { validateContentModeration } from '@/lib/moderation'
 import { getCategoryStyles, resolveCardStyles, resolveThemeSafeTextColor } from '@/lib/utils/colors'
 import { FrameDecorator } from '@/components/FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
@@ -261,6 +262,16 @@ function CreateMessageContent() {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+
+    const modCheck = validateContentModeration(messageText);
+    if (!modCheck.allowed) {
+      setIsSubmitting(false);
+      toast.error(modCheck.reason || 'Message content violates our Community Guidelines.', {
+        title: 'Content Moderation Flag'
+      });
+      return;
+    }
+
     const specialPricing = isReserved && selectedSpecialSlots.length > 0 
       ? calculateSpecialPrice(selectedSpecialSlots.length) 
       : { finalPrice: SPECIAL_SLOT_PRICE, originalPrice: SPECIAL_SLOT_PRICE };
@@ -624,6 +635,7 @@ function CreateMessageContent() {
 
               {(() => {
                 const words = messageText.trim().length > 0 ? messageText.trim().split(/\s+/).length : 0
+                const modCheck = messageText.trim().length > 0 ? validateContentModeration(messageText) : { allowed: true }
                 return (
                   <>
                     {words > 150 && (
@@ -633,12 +645,54 @@ function CreateMessageContent() {
                       </div>
                     )}
 
+                    {!modCheck.allowed && (
+                      <div className="mt-4 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs flex items-start gap-3">
+                        <ShieldAlert size={18} className="shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
+                        <div className="space-y-1">
+                          <span className="font-bold block">Community Safety Guardrail Triggered:</span>
+                          <span className="leading-relaxed">{modCheck.reason}</span>
+                          <p className="text-[11px] opacity-80 pt-1">
+                            Hate speech, NSFW, scams, threats, and non-English scripts are strictly prohibited under our{' '}
+                            <Link href="/guidelines" target="_blank" className="underline font-bold">
+                              User Guidelines
+                            </Link>{' '}
+                            and{' '}
+                            <Link href="/content-policy" target="_blank" className="underline font-bold">
+                              Content Policy
+                            </Link>.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {modCheck.allowed && messageText.trim().length > 0 && (
+                      <div className="mt-4 p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[11px] flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          <ShieldCheck size={14} className="text-emerald-600 dark:text-emerald-400" />
+                          <span>Screened by automated guardrails • English & compliant</span>
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Link href="/guidelines" target="_blank" className="underline text-emerald-700 dark:text-emerald-300 hover:opacity-80">
+                            Guidelines
+                          </Link>
+                          <span>•</span>
+                          <Link href="/content-policy" target="_blank" className="underline text-emerald-700 dark:text-emerald-300 hover:opacity-80">
+                            Policy
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+
                     <button 
-                      disabled={messageText.trim().length === 0 || words > 150}
+                      disabled={messageText.trim().length === 0 || words > 150 || !modCheck.allowed}
                       onClick={handleNext}
                       className="w-full py-4 mt-6 bg-primary text-background rounded-full font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
                     >
-                      {words > 150 ? `Too long (${words}/150 words) — Please shorten` : 'Choose a Style & Template'}
+                      {!modCheck.allowed 
+                        ? 'Prohibited Content Detected — Please Edit'
+                        : words > 150 
+                        ? `Too long (${words}/150 words) — Please shorten` 
+                        : 'Choose a Style & Template'}
                     </button>
                   </>
                 )
@@ -1195,7 +1249,28 @@ function CreateMessageContent() {
               </div>
               )}
 
-              <div className="w-full mt-8 grid grid-cols-2 gap-4">
+              <div className="w-full mt-6 p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 text-xs text-secondary space-y-2">
+                <div className="flex items-center gap-2 font-bold text-primary">
+                  <ShieldCheck size={16} className="text-rose-500" />
+                  <span>Content Moderation & Strict No-Refund Notice</span>
+                </div>
+                <p className="leading-relaxed text-[11px]">
+                  All messages are screened in real time and monitored 24/7. By proceeding to checkout, you agree to our{' '}
+                  <Link href="/guidelines" target="_blank" className="text-primary underline font-medium">
+                    User Guidelines
+                  </Link>{' '}
+                  and{' '}
+                  <Link href="/content-policy" target="_blank" className="text-primary underline font-medium">
+                    Content Policy
+                  </Link>
+                  . Hate speech, NSFW material, harassment, scams, and non-English text are strictly prohibited.{' '}
+                  <strong className="text-rose-600 dark:text-rose-400">
+                    Any message canceled or removed for violating these criteria is subject to permanent forfeiture of payment with zero refund.
+                  </strong>
+                </p>
+              </div>
+
+              <div className="w-full mt-6 grid grid-cols-2 gap-4">
                 <button 
                   onClick={handleBack}
                   className="w-full py-4 border border-background-elevated rounded-full font-medium hover:bg-background-muted transition-colors"

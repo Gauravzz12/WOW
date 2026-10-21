@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { sanitizeHtmlText } from '@/lib/sanitize'
+import { validateContentModeration } from '@/lib/moderation'
 import {
   BASE_NORMAL_MINS,
   MAX_NORMAL_MINS,
@@ -51,6 +52,26 @@ export async function createMessage(data: {
   const words = trimmedContent.split(/\s+/).filter(Boolean).length
   if (words > 150) {
     return { error: `Message cannot exceed 150 words (currently ${words} words).` }
+  }
+
+  // Automated Content Moderation Guardrail Check
+  const contentMod = validateContentModeration(trimmedContent)
+  if (!contentMod.allowed) {
+    return { error: contentMod.reason || 'Message violates our Community Safety & Content Guidelines.' }
+  }
+
+  if (data.customName) {
+    const sigMod = validateContentModeration(data.customName)
+    if (!sigMod.allowed) {
+      return { error: 'Author signature contains prohibited content.' }
+    }
+  }
+
+  if (data.recipient) {
+    const recMod = validateContentModeration(data.recipient)
+    if (!recMod.allowed) {
+      return { error: 'Recipient name contains prohibited content.' }
+    }
   }
 
   // 12-hour auto-cleanup of stale waiting room entries before checking capacity

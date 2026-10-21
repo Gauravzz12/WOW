@@ -22,6 +22,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Webhook signature verification failed.' }, { status: 400 })
   }
 
+  // Only process successful payment events
+  if (event.type && event.type !== 'payment.succeeded') {
+    console.log('[Dodo Webhook] Ignoring event type:', event.type)
+    return NextResponse.json({ received: true, ignored: event.type })
+  }
+
   // Handle DodoPayments webhook event
   if (event.data?.metadata?.messageId) {
     const payment = event.data;
@@ -64,13 +70,13 @@ export async function POST(req: Request) {
              ? parseFloat(payment.metadata.newTotalBid) 
              : ((currentMsg?.bid_amount || 0) + additionalAmount);
 
-           const newToken = payment.metadata?.newToken;
-           if (newToken) {
-             const { rotateBumpToken } = await import('@/lib/bumpToken')
-             await rotateBumpToken(messageId, targetTotal, newToken)
-           } else {
-             await supabaseAdmin.from('messages').update({ bid_amount: targetTotal }).eq('id', messageId);
+           let newToken = payment.metadata?.newToken;
+           if (!newToken) {
+             const { generateBumpToken } = await import('@/lib/bumpToken')
+             newToken = generateBumpToken()
            }
+           const { rotateBumpToken } = await import('@/lib/bumpToken')
+           await rotateBumpToken(messageId, targetTotal, newToken)
            
            await supabaseAdmin.from('payments').insert({
              message_id: messageId,
@@ -104,7 +110,8 @@ export async function POST(req: Request) {
                  messageContent: currentMsg?.content || payment.metadata?.userMessage || '',
                  bumpToken: newToken,
                  currentBid: targetTotal,
-                 isUpdated: true
+                 isUpdated: true,
+                  messageId,
                })
              } catch (emailErr) {
                console.error('[Bump Webhook] Failed to send email:', emailErr)
@@ -135,6 +142,22 @@ export async function POST(req: Request) {
       try { style = JSON.parse(style) } catch (e) { style = {} }
     }
 
+    // Extract customer email provided to DodoPayments during checkout
+    const dodoCustomerEmail = 
+      payment.customer?.email || 
+      payment.customer_email || 
+      payment.billing?.email || 
+      payment.metadata?.userEmail || 
+      (message as any)?.reminder_email;
+
+    if (dodoCustomerEmail) {
+      await supabaseAdmin
+        .from('messages')
+        .update({ reminder_email: dodoCustomerEmail })
+        .eq('id', messageId);
+    }
+
+    let vipSlots: any[] = []
     if (isReserved && targetSlotIds.length > 0) {
       // VIP RESERVED SLOTS FULFILLMENT
       const { data: slots } = await supabaseAdmin
@@ -142,6 +165,8 @@ export async function POST(req: Request) {
         .select('id, scheduled_start, scheduled_end, status, message_id')
         .in('id', targetSlotIds)
         .order('scheduled_start', { ascending: true })
+
+      vipSlots = slots || []
 
       if (!slots || slots.length !== targetSlotIds.length) {
         return NextResponse.json({ error: 'Slots not found' }, { status: 400 })
@@ -208,10 +233,19 @@ export async function POST(req: Request) {
             .from('messages')
             .update({ status: 'ACTIVE', actual_start: new Date().toISOString() })
             .eq('id', messageId)
+
+          if (dodoCustomerEmail) {
+            try {
+              const { sendLiveNotificationEmail } = await import('@/lib/email')
+              await sendLiveNotificationEmail(dodoCustomerEmail, (message as any)?.content || '', messageId)
+            } catch (liveErr) {
+              console.error('[Dodo Webhook] Failed to send live notification email:', liveErr)
+            }
+          }
         } else {
           const { data: topQueued } = await supabaseAdmin
             .from('messages')
-            .select('id')
+            .select('id, content, reminder_email')
             .eq('status', 'QUEUED')
             .eq('is_reserved_slot', false)
             .gte('bid_amount', 10)
@@ -219,11 +253,21 @@ export async function POST(req: Request) {
             .order('created_at', { ascending: true })
             .limit(1)
 
-          const targetId = (topQueued && topQueued.length > 0) ? topQueued[0].id : messageId
+          const targetMsg = (topQueued && topQueued.length > 0) ? topQueued[0] : message
           await supabaseAdmin
             .from('messages')
             .update({ status: 'ACTIVE', actual_start: new Date().toISOString() })
-            .eq('id', targetId)
+            .eq('id', targetMsg.id)
+
+          const liveEmailTo = targetMsg.id === messageId ? dodoCustomerEmail : (targetMsg as any).reminder_email
+          if (liveEmailTo) {
+            try {
+              const { sendLiveNotificationEmail } = await import('@/lib/email')
+              await sendLiveNotificationEmail(liveEmailTo, targetMsg.content || '', targetMsg.id)
+            } catch (liveErr) {
+              console.error('[Dodo Webhook] Failed to send live notification email:', liveErr)
+            }
+          }
         }
       }
     }
@@ -237,20 +281,7 @@ export async function POST(req: Request) {
       status: 'SUCCESS',
     })
 
-    // Extract customer email provided to DodoPayments during checkout
-    const dodoCustomerEmail = 
-      payment.customer?.email || 
-      payment.customer_email || 
-      payment.billing?.email || 
-      payment.metadata?.userEmail || 
-      (message as any)?.reminder_email;
 
-    if (dodoCustomerEmail) {
-      await supabaseAdmin
-        .from('messages')
-        .update({ reminder_email: dodoCustomerEmail })
-        .eq('id', messageId);
-    }
 
     if (isSponsorMode) {
       // Send sponsor confirmation email to customer email provided to DodoPayments
@@ -262,12 +293,31 @@ export async function POST(req: Request) {
             messageId,
             messageContent: (message as any)?.content || payment.metadata?.userMessage || '',
             sponsorToken: payment.metadata?.sponsorToken || undefined,
+            amountPaid: amountTotal,
           })
         } catch (sponsorEmailErr) {
           console.error('[Dodo Webhook] Failed to send sponsor confirmation email:', sponsorEmailErr)
         }
       }
-    } else if (!isReserved) {
+    } else if (isReserved) {
+      // VIP Reserved slot confirmation email
+      if (dodoCustomerEmail) {
+        try {
+          const { sendVipReservationEmail } = await import('@/lib/email')
+          await sendVipReservationEmail({
+            to: dodoCustomerEmail,
+            messageId,
+            messageContent: (message as any)?.content || payment.metadata?.userMessage || '',
+            amountPaid: amountTotal,
+            scheduledStart: vipSlots && vipSlots[0] ? vipSlots[0].scheduled_start : null,
+            scheduledEnd: vipSlots && vipSlots.length > 0 ? vipSlots[vipSlots.length - 1].scheduled_end : null,
+            slotCount: targetSlotIds.length,
+          })
+        } catch (vipEmailErr) {
+          console.error('[Dodo Webhook] Failed to send VIP confirmation email:', vipEmailErr)
+        }
+      }
+    } else {
       // Standard priority queue message: send secret bump token email
       try {
         let tokenToSend = payment.metadata?.bumpToken || payment.metadata?.initialBumpToken || style?.bumpToken || null
@@ -289,6 +339,7 @@ export async function POST(req: Request) {
             bumpToken: tokenToSend,
             currentBid: amountTotal,
             isUpdated: false,
+            messageId,
           })
         }
 

@@ -275,15 +275,66 @@ export async function POST(req: Request) {
       status: 'SUCCESS',
     })
 
-    // Sponsor edit token for the real-gateway path. A webhook has no browser
-    // context, so the token cannot be cookie-set here: when wiring the
-    // Checkout Session creation, pass the issued token back via the success
-    // URL (e.g. ?st=...) and set the cookie from a server component/action.
+    let sponsorToken: string | undefined = undefined
     if (isSponsorMode) {
       try {
         const { issueSponsorEditToken } = await import('@/lib/sponsorToken')
-        await issueSponsorEditToken(messageId)
+        sponsorToken = await issueSponsorEditToken(messageId)
       } catch {}
+    }
+
+    const customerEmail = session.customer_details?.email || session.customer_email || (message as any)?.reminder_email
+    if (customerEmail) {
+      if (isSponsorMode) {
+        try {
+          const { sendSponsorConfirmationEmail } = await import('@/lib/email')
+          await sendSponsorConfirmationEmail({
+            to: customerEmail,
+            messageId,
+            messageContent: (message as any)?.content || '',
+            sponsorToken,
+            amountPaid: amountTotal,
+          })
+        } catch (e) {
+          console.error('[Stripe Webhook] Sponsor email error:', e)
+        }
+      } else if (isReserved) {
+        try {
+          const { sendVipReservationEmail } = await import('@/lib/email')
+          await sendVipReservationEmail({
+            to: customerEmail,
+            messageId,
+            messageContent: (message as any)?.content || '',
+            amountPaid: amountTotal,
+            slotCount: targetSlotIds.length,
+          })
+        } catch (e) {
+          console.error('[Stripe Webhook] VIP email error:', e)
+        }
+      } else {
+        try {
+          let tokenToSend = (style as any)?.bumpToken
+          if (!tokenToSend) {
+            const { generateBumpToken, hashBumpToken } = await import('@/lib/bumpToken')
+            tokenToSend = generateBumpToken()
+            style.bumpTokenHash = hashBumpToken(tokenToSend)
+            await supabaseAdmin.from('messages').update({ style_config: style }).eq('id', messageId)
+          }
+          const { sendBumpTokenEmail } = await import('@/lib/email')
+          await sendBumpTokenEmail({
+            to: customerEmail,
+            messageContent: (message as any)?.content || '',
+            bumpToken: tokenToSend,
+            currentBid: amountTotal,
+            isUpdated: false,
+            messageId,
+          })
+          const { checkAndNotifyOutbids } = await import('@/lib/outbidService')
+          await checkAndNotifyOutbids(amountTotal)
+        } catch (e) {
+          console.error('[Stripe Webhook] Standard email error:', e)
+        }
+      }
     }
   }
 
