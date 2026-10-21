@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { calculateSpecialPrice, calculateNormalMinBid, SPONSORED_PRICE, SPONSORED_DURATION_SECS } from '@/lib/constants/pricing'
 import { issueSponsorEditToken, sponsorTokenCookieName } from '@/lib/sponsorToken'
 import { checkAndNotifyOutbids } from '@/lib/outbidService'
+import { validateContentModeration, validateContentModerationAsync } from '@/lib/moderation'
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 
@@ -34,6 +35,19 @@ export async function processPayment(
 
   if (currentMsg.status !== 'PENDING_PAYMENT') {
     return { error: 'This order has already been processed or has expired.' }
+  }
+
+  // Pre-payment Moderation Gate: Never initiate payment for prohibited content (AI / Jev hybrid)
+  const modCheck = await validateContentModerationAsync(currentMsg.content || '')
+  if (!modCheck.allowed) {
+    return { error: modCheck.reason || 'Message content violates our Community Guidelines and cannot be processed for payment.' }
+  }
+
+  if (sponsorData?.sponsorNote) {
+    const noteMod = validateContentModeration(sponsorData.sponsorNote)
+    if (!noteMod.allowed) {
+      return { error: 'Sponsor note violates our Community Guidelines.' }
+    }
   }
 
   let style = currentMsg.style_config || {}

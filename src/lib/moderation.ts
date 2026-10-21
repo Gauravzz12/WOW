@@ -1,10 +1,11 @@
 /**
  * Automated Content Moderation & Community Safety Engine
  * 
- * Enforces:
- * 1. English-only language requirement (blocks non-Latin/foreign scripts)
+ * Supports:
+ * 1. Jev by TypeSafe AI (System One calibrated probabilistic guardrail model)
  * 2. Multi-representation de-obfuscation (defeats dots, dashes, leetspeak, zero-width chars, spaces)
- * 3. Visa / Mastercard / DodoPayments legal compliance red lines:
+ * 3. English-only script validation
+ * 4. Visa / Mastercard / DodoPayments legal compliance red lines:
  *    - Child safety & exploitation (CSAM)
  *    - Direct violent threats & suicide incitement
  *    - Severe hate speech & slurs
@@ -104,7 +105,7 @@ function normalizeSpaced(text: string): string {
 }
 
 /**
- * Completely strips all spaces, dots, dashes, and punctuation into a single dense string.
+ * Strips all spaces, dots, dashes, and punctuation into a single dense string.
  * Defeats evasions like "k.i.l.l.y.o.u", "k_y_s", "b.u.y.c.o.c.a.i.n.e", etc.
  */
 function normalizeDense(text: string): string {
@@ -112,7 +113,7 @@ function normalizeDense(text: string): string {
 }
 
 /**
- * Validates text against language requirements and compliance guardrails.
+ * Fast synchronous moderation check: runs locally in 0ms.
  */
 export function validateContentModeration(rawText: string): ModerationResult {
   if (!rawText || typeof rawText !== 'string') {
@@ -238,6 +239,100 @@ export function validateContentModeration(rawText: string): ModerationResult {
         category: 'SCAM_PHISHING',
         reason: 'Deceptive financial solicitation or phishing detected.',
       }
+    }
+  }
+
+  return { allowed: true }
+}
+
+/**
+ * Evaluates state using Jev (TypeSafe AI) System One decision model.
+ * Returns null if the service is unreachable or unconfigured.
+ */
+async function evaluateWithJev(text: string, apiKey: string): Promise<ModerationResult | null> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 2500)
+
+  try {
+    const res = await fetch('https://api.typesafe.ai/v1/systemone', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: 'jev-latest',
+        state: { document: text },
+        questions: {
+          is_violating: {
+            type: 'noul',
+            instructions:
+              'Evaluate if this public billboard message contains illegal content: child sexual exploitation (CSAM), severe hate speech slurs, direct violent threats/murder, illegal narcotics sales, or crypto scams. IMPORTANT: Raw emotional venting, personal confessions, and casual swearing are completely safe and permitted.',
+          },
+          category: {
+            type: 'choice',
+            instructions: 'If violating, choose the category.',
+            criteria: {
+              safe: 'Safe, benign, or harmless emotional venting',
+              hate_speech: 'Hate speech or slurs targeting protected groups',
+              violence: 'Direct violent threats, murder, or terrorism',
+              nsfw: 'Child exploitation or commercial sex',
+              illegal_substances: 'Buying or selling illegal drugs or weapons',
+              scam: 'Crypto scams, phishing links, or wallet drainers',
+            },
+          },
+        },
+      }),
+    })
+
+    clearTimeout(timeoutId)
+    const data = await res.json()
+    const isViolatingProb = data?.answers?.is_violating?.noul ?? data?.answers?.is_violating?.probability ?? 0
+    const category = data?.answers?.category?.choice ?? data?.answers?.category?.value
+
+    const isViolating = (category && category !== 'safe') || isViolatingProb >= 0.50
+
+    if (isViolating && category && category !== 'safe') {
+      const reasonMap: Record<string, string> = {
+        hate_speech: 'Hate speech or targeted slurs are strictly prohibited.',
+        violence: 'Threats of violence, self-harm, or terrorism are strictly prohibited.',
+        nsfw: 'Prohibited adult content or child exploitation detected.',
+        illegal_substances: 'Promotion of illegal drugs or weapons is strictly prohibited.',
+        scam: 'Financial scams, crypto drainers, or phishing links are strictly prohibited.',
+      }
+      return {
+        allowed: false,
+        category: category.toUpperCase() as any,
+        reason: reasonMap[category] || 'Content flagged by TypeSafe AI guardrail.',
+      }
+    }
+
+    return { allowed: true }
+  } catch {
+    clearTimeout(timeoutId)
+    return null
+  }
+}
+
+/**
+ * Asynchronous content moderation:
+ * 1. Executes instant local rule checks first (English-only script + dot/symbol evasion).
+ * 2. If clean and Jev (TypeSafe AI) key is configured, evaluates semantic context using Jev.
+ * 3. Gracefully falls back to local evaluation if AI service is unconfigured or times out.
+ */
+export async function validateContentModerationAsync(rawText: string): Promise<ModerationResult> {
+  const localCheck = validateContentModeration(rawText)
+  if (!localCheck.allowed) {
+    return localCheck
+  }
+
+  // Check if Jev / TypeSafe AI key is available
+  const jevKey = process.env.TYPESAFE_API_KEY || process.env.JEV_API_KEY
+  if (jevKey) {
+    const jevResult = await evaluateWithJev(rawText, jevKey)
+    if (jevResult && !jevResult.allowed) {
+      return jevResult
     }
   }
 

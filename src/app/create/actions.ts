@@ -2,7 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { sanitizeHtmlText } from '@/lib/sanitize'
-import { validateContentModeration } from '@/lib/moderation'
+import { validateContentModeration, validateContentModerationAsync } from '@/lib/moderation'
 import {
   BASE_NORMAL_MINS,
   MAX_NORMAL_MINS,
@@ -54,8 +54,8 @@ export async function createMessage(data: {
     return { error: `Message cannot exceed 150 words (currently ${words} words).` }
   }
 
-  // Automated Content Moderation Guardrail Check
-  const contentMod = validateContentModeration(trimmedContent)
+  // Automated & AI Content Moderation Guardrail Check (Jev / Hybrid)
+  const contentMod = await validateContentModerationAsync(trimmedContent)
   if (!contentMod.allowed) {
     return { error: contentMod.reason || 'Message violates our Community Safety & Content Guidelines.' }
   }
