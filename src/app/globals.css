@@ -243,15 +243,7 @@ html.dark .tiptap [style*="color: black"] {
   border-color: #D4AF37 !important;
 }
 
-/* Postage Stamp — repeating dot pattern edge */
-.frame-postage-stamp {
-  border: none !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Ccircle cx='7' cy='7' r='5.5' fill='none' stroke='%23888888' stroke-opacity='0.55'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Ccircle cx='7' cy='7' r='5.5' fill='none' stroke='%23888888' stroke-opacity='0.55'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Ccircle cx='7' cy='7' r='5.5' fill='none' stroke='%23888888' stroke-opacity='0.55'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Ccircle cx='7' cy='7' r='5.5' fill='none' stroke='%23888888' stroke-opacity='0.55'/%3E%3C/svg%3E");
-  background-size: 14px 14px, 14px 14px, 14px 14px, 14px 14px;
-  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
-  background-position: top, bottom, left, right;
-  opacity: 1;
-}
+/* Postage Stamp is SVG-only (FrameDecorator) — no CSS half. */
 
 /* Stepped Inset — architectural layered rings */
 .frame-stepped-inset {
@@ -270,10 +262,40 @@ html.dark .tiptap [style*="color: black"] {
   border-right: 6px solid rgba(128,128,128,0.08);
 }
 
-/* Dashed Sketch — hand-drawn look via dashed border */
-.frame-dashed-sketch {
-  border-style: dashed !important;
+/* Dashed Sketch is SVG-only (FrameDecorator) — no CSS half. */
+
+/* Double Rule — the Front Page motif: 2px rule + 1px rule just inside it */
+.frame-double-rule {
+  outline: 2px solid currentColor;
+  outline-offset: -6px;
+}
+.frame-double-rule::before {
+  content: '';
+  position: absolute;
+  inset: 11px;
+  border: 1px solid currentColor;
+  opacity: 0.6;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Ledger — dotted rule on all sides, solid double line across the top */
+.frame-ledger {
+  border-style: dotted !important;
   border-width: 2px !important;
   border-color: currentColor !important;
-  opacity: 0.7;
+}
+.frame-ledger::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-top: 2px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 2;
 }
