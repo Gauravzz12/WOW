@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { runQueueAdvance } from '@/lib/queueAdvance'
+import { MIN_NORMAL_BID } from '@/lib/constants/pricing'
 import DodoPayments from 'dodopayments'
 
 const supabaseAdmin = getSupabaseAdmin()
@@ -231,7 +232,7 @@ export async function POST(req: Request) {
         .select('id')
         .eq('status', 'ACTIVE')
         .eq('is_reserved_slot', false)
-        .filter('bid_amount', isGridTier ? 'lt' : 'gte', 10)
+        .filter('bid_amount', isGridTier ? 'lt' : 'gte', MIN_NORMAL_BID)
 
       const canActivate = isGridTier ? (!actives || actives.length < 10) : (!actives || actives.length === 0)
 
@@ -256,7 +257,8 @@ export async function POST(req: Request) {
             .select('id, content, reminder_email')
             .eq('status', 'QUEUED')
             .eq('is_reserved_slot', false)
-            .gte('bid_amount', 10)
+            .gte('bid_amount', MIN_NORMAL_BID)
+            .order('is_promo_free', { ascending: true })
             .order('bid_amount', { ascending: false })
             .order('created_at', { ascending: true })
             .limit(1)
