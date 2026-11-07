@@ -5,6 +5,7 @@ import { runQueueAdvance } from '@/lib/queueAdvance'
 import {
   BASE_NORMAL_MINS,
   MAX_NORMAL_MINS,
+  MIN_NORMAL_BID,
   SPONSORED_PRICE,
   calculateNormalMinBid,
   calculateSpecialPrice,
@@ -119,7 +120,7 @@ export async function POST(req: Request) {
       console.warn('[Stripe Webhook] Unpaid session completed:', session.id)
       return NextResponse.json({ error: 'Session not paid' }, { status: 400 })
     }
-    // Sponsorship is normal-messages only (mirrors the mock payment path).
+    // Sponsorship is normal-messages only (same rule as the standard checkout path).
     if (isSponsorMode && (message as any).is_reserved_slot) {
       return NextResponse.json({ error: 'Reserved messages cannot be sponsored' }, { status: 400 })
     }
@@ -229,7 +230,7 @@ export async function POST(req: Request) {
         .select('id')
         .eq('status', 'ACTIVE')
         .eq('is_reserved_slot', false)
-        .filter('bid_amount', isSponsorMode ? 'lt' : 'gte', 10)
+        .filter('bid_amount', isSponsorMode ? 'lt' : 'gte', MIN_NORMAL_BID)
 
       const canActivate = isSponsorMode ? (!actives || actives.length < 10) : (!actives || actives.length === 0)
 
@@ -246,7 +247,8 @@ export async function POST(req: Request) {
             .select('id')
             .eq('status', 'QUEUED')
             .eq('is_reserved_slot', false)
-            .gte('bid_amount', 10)
+            .gte('bid_amount', MIN_NORMAL_BID)
+            .order('is_promo_free', { ascending: true })
             .order('bid_amount', { ascending: false })
             .order('created_at', { ascending: true })
             .limit(1)
