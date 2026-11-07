@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { getMessageDurationSecs, isMessageExpired } from '@/lib/messageExpiry'
+import { MIN_NORMAL_BID } from '@/lib/constants/pricing'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,7 +38,7 @@ export async function GET() {
 
   // Priority: normal track, then special, then sponsored — mirrors the UI.
   const pick =
-    live.find((m: any) => !m.is_reserved_slot && m.bid_amount >= 10) ||
+    live.find((m: any) => !m.is_reserved_slot && m.bid_amount >= MIN_NORMAL_BID) ||
     live.find((m: any) => m.is_reserved_slot) ||
     live[0]
 
