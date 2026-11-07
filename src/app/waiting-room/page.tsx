@@ -4,6 +4,12 @@ import { ArrowLeft, Lock } from 'lucide-react'
 import { getCategoryStyles } from '@/lib/utils/colors'
 import { toLockedSponsoredCard } from '@/lib/masking'
 import { WaitingRoomTimer } from '@/components/WaitingRoomTimer'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Waiting Room',
+  description: 'Messages waiting for a sponsor. Sponsor a voice and put it on the world stage.',
+}
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -76,9 +82,9 @@ export default async function WaitingRoomPage() {
           const { borderClass, bgClass, badgeClass } = getCategoryStyles(categorySlug)
 
           return (
-            <div key={msg.id} className={`flex flex-col border ${borderClass} bg-background-elevated rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all min-h-[320px]`}>
+            <div key={msg.id} className={`flex flex-col border ${borderClass} bg-background-elevated rounded-lg p-6 shadow-lg hover:shadow-sm transition-all min-h-[320px]`}>
               <div className="flex justify-between items-start mb-4">
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border shadow-sm backdrop-blur-md ${badgeClass}`}>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border shadow-sm ${badgeClass}`}>
                   {categoryName}
                 </span>
                 <WaitingRoomTimer createdAt={msg.created_at} />
@@ -112,7 +118,7 @@ export default async function WaitingRoomPage() {
         })}
 
         {maskedMessages.length === 0 && (
-          <div className="col-span-full py-20 text-center text-secondary border border-dashed border-primary/20 rounded-3xl">
+          <div className="col-span-full py-20 text-center text-secondary border border-dashed border-primary/20 rounded-lg">
             <p>The waiting room is empty.</p>
           </div>
         )}
