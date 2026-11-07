@@ -823,8 +823,8 @@ function CreateMessageContent() {
                             </div>
                           )}
 
-                          <p 
-                            className={`text-xs sm:text-sm leading-relaxed text-center line-clamp-3 font-medium select-none ${t.font} ${tStyles.textColor}`}
+                          <p
+                            className={`text-[10px] leading-snug sm:text-sm sm:leading-relaxed text-center font-medium select-none [overflow-wrap:anywhere] ${t.font} ${tStyles.textColor}`}
                             style={{ color: tStyles.inlineColor !== 'inherit' ? tStyles.inlineColor : undefined }}
                           >
                             &ldquo;{dummyMessage}&rdquo;
