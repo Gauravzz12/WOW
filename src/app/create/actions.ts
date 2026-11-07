@@ -10,10 +10,12 @@ import {
   PROMO_FREE_LIMIT,
   calculateNormalMinBid,
   calculateSpecialPrice,
+  isCanonicalSlotWindow,
   SPONSORED_PRICE,
   SPONSORED_DURATION_SECS,
 } from '@/lib/constants/pricing'
 import { STANDARD_TEMPLATES, VIP_SPECIAL_TEMPLATES } from '@/lib/constants/templates'
+import { FRAMES } from '@/lib/constants/frames'
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 
@@ -58,10 +60,19 @@ export async function createMessage(data: {
     return { error: `Message cannot exceed 150 words (currently ${words} words).` }
   }
 
-  // Fast synchronous safety check (Jev was already evaluated when user clicked 'Choose a Style & Template')
+  // Fast synchronous safety check (script/charset level).
   const contentMod = validateContentModeration(trimmedContent)
   if (!contentMod.allowed) {
     return { error: contentMod.reason || 'Message violates our Community Safety & Content Guidelines.' }
+  }
+
+  // CRE-2: semantic (Jev) moderation is enforced HERE, server-side, for
+  // every create. It used to run only in the browser wizard, so a direct
+  // action call skipped it entirely — and promo rows go straight to
+  // QUEUED with no later gate. The wizard check remains as UX only.
+  const jevMod = await validateContentModerationAsync(trimmedContent)
+  if (!jevMod.allowed) {
+    return { error: jevMod.reason || 'Message violates our Community Safety & Content Guidelines.' }
   }
 
   if (data.customName) {
@@ -80,11 +91,21 @@ export async function createMessage(data: {
 
   // 12-hour auto-cleanup of stale waiting room entries before checking capacity
   const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
-  await supabaseAdmin
+  const { data: staleRows } = await supabaseAdmin
     .from('messages')
     .update({ status: 'EXPIRED' })
     .eq('status', 'PENDING_PAYMENT')
     .lt('created_at', twelveHoursAgo)
+    .select('id')
+  // PAY-3: expiring a PENDING message must also release any Special slots
+  // it booked at checkout start, or they stay BOOKED forever.
+  if (staleRows && staleRows.length > 0) {
+    await supabaseAdmin
+      .from('reserved_slots')
+      .update({ status: 'AVAILABLE', message_id: null, bid_amount: 0 })
+      .in('message_id', staleRows.map(r => r.id))
+      .eq('status', 'BOOKED')
+  }
 
   // Enforce max waiting list count of 100
   const { count: waitingCount } = await supabaseAdmin
@@ -167,6 +188,32 @@ export async function createMessage(data: {
       ? data.templateId
       : 'a'
 
+  // CRE-3: the renderer re-derives VIP status and styling from the stored
+  // style_config, so allowlisting template_id alone was not enough — a
+  // direct caller could store a VIP bg/isVip/vipBadge at Normal price.
+  // Re-derive every visual field from the allowlisted template definition
+  // and drop client-supplied copies. Honest wizard submissions carry
+  // exactly these values, so nothing changes for them.
+  const templateDef =
+    STANDARD_TEMPLATES.find(t => t.id === templateId) ||
+    VIP_SPECIAL_TEMPLATES.find(t => t.id === templateId)
+  if (templateDef) {
+    parsedStyle.bg = templateDef.bg
+    parsedStyle.font = templateDef.font
+    parsedStyle.textColor = templateDef.textColor
+    if (templateDef.cardBorder) parsedStyle.cardBorder = templateDef.cardBorder
+    else delete parsedStyle.cardBorder
+    if (templateDef.accent) parsedStyle.accent = templateDef.accent
+    else delete parsedStyle.accent
+    if (templateDef.isVip) parsedStyle.isVip = true
+    else delete parsedStyle.isVip
+    if (templateDef.vipBadge) parsedStyle.vipBadge = templateDef.vipBadge
+    else delete parsedStyle.vipBadge
+    if (templateDef.vipIcon) parsedStyle.vipIcon = templateDef.vipIcon
+    else delete parsedStyle.vipIcon
+    parsedStyle.templateId = templateId
+  }
+
   // Server-side pricing: never trust the client bid. Reserved messages are
   // priced exactly from the selected slot count (and must carry selected
   // slots); self-served Sponsored messages are a flat $3 for 30 minutes;
@@ -183,26 +230,51 @@ export async function createMessage(data: {
     if (selectedSlots.length === 0) {
       return { error: 'Select at least one time slot for Special messages.' }
     }
+    if (selectedSlots.length > 3) {
+      return { error: 'Special messages are limited to 3 slots.' }
+    }
+    // SLOT-1: slot windows must be canonical fixed 3-hour windows —
+    // never price or store client-forged times.
+    const seenStarts = new Set<string>()
+    for (const s of selectedSlots) {
+      if (!isCanonicalSlotWindow(s?.scheduled_start, s?.scheduled_end) || seenStarts.has(s.scheduled_start)) {
+        return { error: 'Invalid time slot selection.' }
+      }
+      seenStarts.add(s.scheduled_start)
+    }
+    parsedStyle.selectedSlots = selectedSlots.map((s: any) => ({
+      scheduled_start: s.scheduled_start,
+      scheduled_end: s.scheduled_end,
+    }))
     bidAmount = calculateSpecialPrice(Math.min(selectedSlots.length, 3)).finalPrice
   } else if (isSponsored) {
     bidAmount = SPONSORED_PRICE
     parsedStyle.isSponsored = true
     parsedStyle.durationSecs = SPONSORED_DURATION_SECS
     delete parsedStyle.stickers
+    delete parsedStyle.frameId
   } else {
     const durationSecs = Number(parsedStyle.durationSecs) || BASE_NORMAL_MINS * 60
     const durationMins = Math.max(
       BASE_NORMAL_MINS,
       Math.min(MAX_NORMAL_MINS, Math.round(durationSecs / 60))
     )
+    // CRE-1: write the clamped duration back — expiry/display consume
+    // style_config.durationSecs raw, so pricing from a clamped copy
+    // while storing the client's value sold unbounded airtime for $17.
+    parsedStyle.durationSecs = durationMins * 60
     const minBid = calculateNormalMinBid(durationMins)
     const candidate = Number(data.bidAmount)
     bidAmount = !isNaN(candidate) && candidate > minBid ? candidate : minBid
 
     // Launch promo — first 500 Normal broadcasts free. Eligibility is
     // re-validated here, never trusted from the client: Normal tier, base
-    // duration only (no extensions), no raised bid, global cap not yet
-    // reached, and no earlier promo broadcast from the same device.
+    // duration only (no extensions), no raised bid, no earlier promo from
+    // the same device, and (CRE-5 mitigation) none from the same reminder
+    // email when one is supplied. The counts below are only a fast path:
+    // enforcement is the atomic claim_promo_slot() counter plus the
+    // unique partial indexes on device_id / reminder_email (migration
+    // 20261107000001), because count-then-insert races (CRE-4).
     // Ineligible requests silently fall through to the paid path.
     if (
       data.usePromoFree === true &&
@@ -212,53 +284,98 @@ export async function createMessage(data: {
       data.deviceId.trim().length > 0
     ) {
       const deviceId = data.deviceId.trim().slice(0, 100)
-      const [{ count: promoCount }, { count: deviceCount }] = await Promise.all([
-        supabaseAdmin
+      const isZeroCount = (count: number | null) =>
+        typeof count === 'number' && Number.isFinite(count) && count === 0
+      const { count: deviceCount } = await supabaseAdmin
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_promo_free', true)
+        .eq('device_id', deviceId)
+        .neq('status', 'REJECTED')
+      let emailClear = true
+      if (reminderEmail) {
+        const { count: emailCount } = await supabaseAdmin
           .from('messages')
           .select('id', { count: 'exact', head: true })
           .eq('is_promo_free', true)
-          .neq('status', 'REJECTED'),
-        supabaseAdmin
-          .from('messages')
-          .select('id', { count: 'exact', head: true })
-          .eq('is_promo_free', true)
-          .eq('device_id', deviceId)
-          .neq('status', 'REJECTED'),
-      ])
+          .ilike('reminder_email', reminderEmail)
+          .neq('status', 'REJECTED')
+        emailClear = isZeroCount(emailCount)
+      }
       // Fail closed on unreadable counts: no promo without proof of room.
-      if (
-        typeof promoCount === 'number' && Number.isFinite(promoCount) && promoCount < PROMO_FREE_LIMIT &&
-        typeof deviceCount === 'number' && Number.isFinite(deviceCount) && deviceCount === 0
-      ) {
+      if (isZeroCount(deviceCount) && emailClear) {
         promoApplied = true
         promoDeviceId = deviceId
       }
     }
   }
 
+  // CRE-6: frame gating was picker-only. Validate frameId against the
+  // registry by tier: unknown ids and retired picker-hidden frames are
+  // dropped, Special-only frames (Laurel) require a reserved submission,
+  // and Sponsored messages carry no frame (handled above).
+  if (typeof parsedStyle.frameId === 'string' && parsedStyle.frameId) {
+    const frame = FRAMES.find(f => f.id === parsedStyle.frameId)
+    if (!frame || (frame as any).pickerHidden || (frame.specialOnly && !isReserved) || isSponsored) {
+      delete parsedStyle.frameId
+    }
+  }
+
+  // CRE-4: claim the promo slot atomically BEFORE inserting. The counter
+  // (migration 20261107000001) increments only while claimed <
+  // PROMO_FREE_LIMIT, so parallel creates cannot overshoot the cap. If
+  // the claim fails, the request silently becomes a paid one.
+  let promoClaimed = false
+  if (promoApplied) {
+    const { data: claimed, error: claimError } = await supabaseAdmin.rpc('claim_promo_slot')
+    if (!claimError && claimed === true) {
+      promoClaimed = true
+    } else {
+      promoApplied = false
+      promoDeviceId = null
+    }
+  }
+
   // Insert message. Promo broadcasts skip payment entirely: they enter the
   // queue directly (QUEUED) with bid_amount = BASE_NORMAL_PRICE so bid-based
   // tier classification keeps reading them as Normal, flagged is_promo_free.
-  const { data: message, error: msgError } = await supabaseAdmin
-    .from('messages')
-    .insert({
-      category_id: category.id,
-      template_id: templateId,
-      content: trimmedContent,
-      signature: signature,
-      recipient: recipient,
-      status: promoApplied ? 'QUEUED' : 'PENDING_PAYMENT',
-      bid_amount: promoApplied ? BASE_NORMAL_PRICE : bidAmount,
-      is_reserved_slot: isReserved,
-      is_promo_free: promoApplied,
-      device_id: promoDeviceId,
-      style_config: parsedStyle,
-      reminder_email: reminderEmail,
-    })
-    .select('id')
-    .single()
+  const insertRow = (asPromo: boolean) =>
+    supabaseAdmin
+      .from('messages')
+      .insert({
+        category_id: category.id,
+        template_id: templateId,
+        content: trimmedContent,
+        signature: signature,
+        recipient: recipient,
+        status: asPromo ? 'QUEUED' : 'PENDING_PAYMENT',
+        bid_amount: asPromo ? BASE_NORMAL_PRICE : bidAmount,
+        is_reserved_slot: isReserved,
+        is_promo_free: asPromo,
+        device_id: asPromo ? promoDeviceId : null,
+        style_config: parsedStyle,
+        reminder_email: reminderEmail,
+      })
+      .select('id')
+      .single()
 
-  if (msgError) {
+  let { data: message, error: msgError } = await insertRow(promoApplied)
+
+  if (msgError && promoClaimed) {
+    // Release the claim either way; a unique violation (23505) means a
+    // racing create won this device/email — fall through to a paid row.
+    await supabaseAdmin.rpc('release_promo_slot')
+    promoClaimed = false
+    if ((msgError as any).code === '23505') {
+      promoApplied = false
+      promoDeviceId = null
+      const retry = await insertRow(false)
+      message = retry.data
+      msgError = retry.error
+    }
+  }
+
+  if (msgError || !message) {
     console.error('Error creating message:', msgError)
     return { error: 'Failed to create message' }
   }
@@ -267,9 +384,10 @@ export async function createMessage(data: {
 }
 
 /**
- * Single Jev Content Moderation Gate:
- * Evaluates the message with TypeSafe AI (Jev) when user clicks "Choose a Style & Template".
- * Only after approval does the user move forward to Step 3.
+ * Jev Content Moderation pre-check (UX): evaluates the message when the
+ * user clicks "Choose a Style & Template" so the wizard can stop early.
+ * This is NOT the enforcement point — createMessage re-runs the same
+ * evaluation server-side on every submission (CRE-2).
  */
 export async function verifyMessageWithJev(content: string) {
   const trimmed = (content || '').trim()
