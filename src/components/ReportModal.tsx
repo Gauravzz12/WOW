@@ -98,13 +98,13 @@ export function ReportModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 12 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="relative w-full max-w-lg bg-background border border-primary/15 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[min(90vh,660px)] my-auto"
+            className="relative w-full max-w-lg bg-background border border-primary/15 rounded-lg sm:rounded-lg shadow-none overflow-hidden flex flex-col max-h-[min(90vh,660px)] my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Sticky Header */}
-            <div className="flex items-center justify-between px-5 py-4 sm:px-6 sm:py-5 border-b border-primary/10 bg-background/95 backdrop-blur-sm shrink-0">
+            <div className="flex items-center justify-between px-5 py-4 sm:px-6 sm:py-5 border-b border-primary/10 bg-background/95 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-500/20 shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-500/20 shrink-0">
                   <ShieldAlert size={20} />
                 </div>
                 <div>
@@ -177,7 +177,7 @@ export function ReportModal({
                       placeholder="Explain why this content should be removed..."
                       maxLength={500}
                       rows={3}
-                      className="w-full bg-background-elevated/40 border border-primary/15 rounded-xl sm:rounded-2xl p-3 text-xs text-primary focus:outline-none focus:border-rose-500 transition-colors resize-none placeholder:text-secondary/60"
+                      className="w-full bg-background-elevated/40 border border-primary/15 rounded-xl sm:rounded-lg p-3 text-xs text-primary focus:outline-none focus:border-rose-500 transition-colors resize-none placeholder:text-secondary/60"
                     />
                     <div className="text-[10px] text-secondary text-right pt-1">
                       {details.length}/500
@@ -186,7 +186,7 @@ export function ReportModal({
                 </div>
 
                 {/* Sticky Footer with Action Buttons */}
-                <div className="flex items-center justify-end gap-3 px-5 py-3.5 sm:px-6 sm:py-4 border-t border-primary/10 bg-background/95 backdrop-blur-sm shrink-0">
+                <div className="flex items-center justify-end gap-3 px-5 py-3.5 sm:px-6 sm:py-4 border-t border-primary/10 bg-background/95 shrink-0">
                   <button
                     type="button"
                     onClick={handleResetAndClose}

@@ -10,11 +10,13 @@ import { toast } from '@/components/Toast'
 export function BumpBidModal({
   isOpen,
   onClose,
-  initialToken = ''
+  initialToken = '',
+  allowMock = false
 }: {
   isOpen: boolean
   onClose: () => void
   initialToken?: string
+  allowMock?: boolean
 }) {
   const [tokenInput, setTokenInput] = useState(initialToken)
   const [isVerifying, setIsVerifying] = useState(false)
@@ -128,7 +130,7 @@ export function BumpBidModal({
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ duration: 0.2 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-lg bg-background-elevated border border-primary/20 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col space-y-6 text-left"
+            className="relative w-full max-w-lg bg-background-elevated border border-primary/20 rounded-lg p-6 md:p-8 shadow-none flex flex-col space-y-6 text-left"
           >
             {/* Top Close Button */}
             <button
@@ -142,7 +144,7 @@ export function BumpBidModal({
 
             {/* Modal Header */}
             <div className="flex items-center gap-3 pr-8">
-              <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-500 flex items-center justify-center shrink-0 shadow-sm">
+              <div className="w-11 h-11 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-500 flex items-center justify-center shrink-0 shadow-sm">
                 <Zap size={22} className="fill-amber-500/50" />
               </div>
               <div>
@@ -206,7 +208,7 @@ export function BumpBidModal({
               /* STEP 2: VERIFIED MESSAGE & BID SELECTION */
               <div className="space-y-5">
                 {/* Message & Current Stats Card */}
-                <div className="p-4 rounded-2xl bg-background border border-primary/10 space-y-3">
+                <div className="p-4 rounded-lg bg-background border border-primary/10 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-secondary">
                       {verifiedMsg.categoryName} • Rank #{verifiedMsg.currentRank}
@@ -312,7 +314,7 @@ export function BumpBidModal({
                 </div>
 
                 {/* Calculation Summary */}
-                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-between text-xs">
+                <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/25 flex items-center justify-between text-xs">
                   <div>
                     <span className="text-secondary block text-[11px]">Total You Pay Today (Difference):</span>
                     <span className="text-[10px] text-secondary/70">
@@ -357,7 +359,8 @@ export function BumpBidModal({
                   </button>
                 </div>
 
-                {/* Instant Mock Bump for Testing */}
+                {/* Instant Mock Bump for Testing — gated by ALLOW_MOCK_PAYMENTS */}
+                {allowMock && (
                 <button
                   type="button"
                   onClick={handleMockBump}
@@ -368,9 +371,10 @@ export function BumpBidModal({
                   <span>
                     {isMockCheckingOut
                       ? 'Processing Mock Bump...'
-                      : `⚡ Instant Mock Bump (+${difference.toFixed(2)} Test Mode)`}
+                      : `Instant Mock Bump (+${difference.toFixed(2)} Test Mode)`}
                   </span>
                 </button>
+                )}
               </div>
             )}
           </motion.div>

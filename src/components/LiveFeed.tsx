@@ -4,13 +4,14 @@ import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Heart, MessageCircle, Share2 } from 'lucide-react'
+import { Heart, MessageCircle, Share2, Sparkles } from 'lucide-react'
 import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { SpecialMomentOverlay } from './SpecialMomentOverlay'
 import { InlineInteractions } from './InlineInteractions'
 import { FullscreenMessage } from './MessageFullscreen'
 import { FrameDecorator } from './FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
+import { sanitizeHtmlText } from '@/lib/sanitize'
 
 export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL' }: { initialMessage: any, compact?: boolean, activeTab?: 'NORMAL' | 'SPECIAL' | 'SPONSORED' }) {
   const message = initialMessage
@@ -193,7 +194,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ duration: 0.5 }}
-                className="bg-black/40 backdrop-blur-md border border-white/20 text-white/90 px-8 py-4 rounded-full text-xl font-medium shadow-2xl max-w-2xl truncate"
+                className="bg-black/40 border border-white/20 text-white/90 px-8 py-4 rounded-full text-xl font-medium shadow-none max-w-2xl truncate"
               >
                 {comment.content}
               </motion.div>
@@ -212,7 +213,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
               animate={{ opacity: 1, scale: categorySlug === 'love' ? 1.05 : 1, filter: 'blur(0px)' }}
               exit={{ opacity: 0, scale: categorySlug === 'love' ? 1.1 : 1.05, filter: 'blur(10px)' }}
               transition={{ duration: 1.5, ease: "easeInOut" }}
-              className={`w-full ${compact ? 'max-w-xl aspect-[4/3] p-4 md:p-6' : 'max-w-4xl aspect-square md:aspect-video p-6 md:p-12'} mx-auto border ${cardBorder || message.style_config?.cardBorder || borderClass} rounded-2xl flex flex-col relative overflow-hidden shadow-2xl backdrop-blur-md ${bg || bgClass} hover:border-primary/50 transition-all duration-700 group ${getFrameClass(message.style_config?.frameId)}`}
+              className={`w-full ${compact ? 'max-w-xl aspect-[4/3] p-4 md:p-6' : 'max-w-4xl aspect-square md:aspect-video p-6 md:p-12'} mx-auto border ${cardBorder || message.style_config?.cardBorder || borderClass} rounded-lg flex flex-col relative overflow-hidden shadow-none ${bg || bgClass} hover:border-primary/50 transition-all duration-700 group ${getFrameClass(message.style_config?.frameId)}`}
             >
               <FrameDecorator frameId={message.style_config?.frameId} />
 
@@ -236,7 +237,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
 
               <div className="flex justify-between items-center mb-2 relative z-10 shrink-0">
                 <div className="flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-full text-[10px] md:text-xs uppercase tracking-widest font-bold border shadow-sm backdrop-blur-md ${
+                  <span className={`px-3 py-1 rounded-full text-[10px] md:text-xs uppercase tracking-widest font-bold border shadow-sm ${
                     isVip
                       ? 'bg-amber-400/20 border-amber-400/40 text-amber-300'
                       : badgeClass
@@ -245,7 +246,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
                   </span>
 
                   {message.style_config?.vipBadge && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] md:text-xs font-bold tracking-widest uppercase bg-amber-400/20 border border-amber-400/40 text-amber-300 shadow-md backdrop-blur-md">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] md:text-xs font-bold tracking-widest uppercase bg-amber-400/20 border border-amber-400/40 text-amber-300 shadow-md">
                       <span>{message.style_config.vipIcon || '✦'}</span>
                       <span>{message.style_config.vipBadge}</span>
                     </span>
@@ -253,7 +254,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
                 </div>
 
                 <div className="flex items-center gap-2">
-                <div className={`flex items-center gap-2 px-3 py-1 rounded-full border shadow-sm backdrop-blur-md ${timerStyle}`}>
+                <div className={`flex items-center gap-2 px-3 py-1 rounded-full border shadow-sm ${timerStyle}`}>
                   <span className="relative flex h-2 w-2">
                     <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-red-400`}></span>
                     <span className={`relative inline-flex rounded-full h-2 w-2 bg-red-500`}></span>
@@ -320,7 +321,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
                           : 'text-2xl md:text-3xl'
                       } ${compact ? '!text-base md:!text-lg' : ''} ${message.style_config?.font || ''} ${textColor}`}
                       style={{ color: inlineColor }}
-                      dangerouslySetInnerHTML={{ __html: message.style_config.html }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtmlText(message.style_config.html) }}
                     />
                   ) : (
                     <p className={`font-serif text-center leading-relaxed ${
@@ -354,8 +355,8 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
 
               {/* Sponsor Attribution if present */}
               {(message?.style_config?.sponsorName || message?.style_config?.sponsorNote) && (
-                <div className={`mb-2 relative z-10 mx-auto flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-1.5 rounded-2xl border shadow-sm text-xs backdrop-blur-md max-w-xl text-center ${sponsorStyle}`}>
-                  <span className="text-amber-500 shrink-0">✨</span>
+                <div className={`mb-2 relative z-10 mx-auto flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-1.5 rounded-lg border shadow-sm text-xs max-w-xl text-center ${sponsorStyle}`}>
+                  <Sparkles size={13} className="text-amber-500 shrink-0 mt-0.5" />
                   <span className={`${sponsorLabelStyle} text-[10px] uppercase font-bold tracking-wider shrink-0`}>Sponsored by</span>
                   <span className={`font-semibold shrink-0 ${sponsorNameStyle}`}>{message.style_config.sponsorName || 'Community'}</span>
                   {message.style_config.sponsorNote && (
@@ -386,10 +387,10 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 1 }}
-            className="w-full max-w-2xl md:max-w-3xl aspect-[16/10] md:aspect-[16/9] border border-primary/10 rounded-3xl flex flex-col items-center justify-center p-6 md:p-10 text-center bg-background-elevated/30 backdrop-blur-md relative overflow-hidden shadow-xl"
+            className="w-full max-w-2xl md:max-w-3xl aspect-[16/10] md:aspect-[16/9] border border-primary/10 rounded-lg flex flex-col items-center justify-center p-6 md:p-10 text-center bg-background-elevated/30 relative overflow-hidden shadow-sm"
           >
             {/* Subtle animated ring */}
-            <div className="absolute inset-0 rounded-3xl border border-primary/5 animate-pulse" />
+            <div className="absolute inset-0 rounded-lg border border-primary/5 animate-pulse" />
             
             <div className="relative z-10 flex flex-col items-center gap-4 md:gap-5">
               {/* Icon */}
@@ -407,7 +408,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
               </div>
 
               <Link href="/create">
-                <button className="px-6 py-2.5 md:py-3 bg-primary text-background rounded-full text-xs md:text-sm font-medium hover:opacity-90 transition-all shadow-lg hover:shadow-xl active:scale-95">
+                <button className="px-6 py-2.5 md:py-3 bg-primary text-background rounded-full text-xs md:text-sm font-medium hover:opacity-90 transition-all shadow-lg hover:shadow-sm active:scale-95">
                   Be the first to speak
                 </button>
               </Link>
@@ -424,7 +425,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
         className="md:hidden w-full max-w-md mt-12"
       >
         <Link href="/create">
-          <button className="w-full py-4 bg-primary text-background rounded-full font-medium shadow-[0_0_30px_rgba(0,0,0,0.15)] active:scale-95 transition-all">
+          <button className="w-full py-4 bg-primary text-background rounded-full font-medium active:scale-95 transition-all">
             Speak to the World
           </button>
         </Link>

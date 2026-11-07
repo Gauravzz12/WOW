@@ -22,7 +22,8 @@ export function MainFeedContainer({
   initialNormalQueue,
   initialSpecialQueue,
   initialSponsoredQueue,
-  initialLeaderboardQueue
+  initialLeaderboardQueue,
+  allowMock = false
 }: {
   initialNormalMsg: any,
   initialSpecialMsg: any,
@@ -30,7 +31,8 @@ export function MainFeedContainer({
   initialNormalQueue: any[],
   initialSpecialQueue: any[],
   initialSponsoredQueue: any[],
-  initialLeaderboardQueue: any[]
+  initialLeaderboardQueue: any[],
+  allowMock?: boolean
 }) {
   const searchParams = useSearchParams()
   
@@ -329,10 +331,8 @@ export function MainFeedContainer({
     <>
       <LeftSidebar isOpen={isLeftOpen} onClose={() => setIsLeftOpen(false)} />
 
-      <div className="flex-1 h-[100dvh] flex flex-col items-center pt-6 md:pt-12 px-4 relative w-full overflow-hidden bg-background dark:bg-grid-white/[0.03] bg-grid-black/[0.03]">
+      <div className="flex-1 h-[100dvh] flex flex-col items-center pt-6 md:pt-12 px-4 relative w-full overflow-hidden bg-background">
         
-        {/* Clean architectural backdrop — zero gradients */}
-        <div className="fixed inset-0 pointer-events-none opacity-5 bg-grid z-0" />
 
         {/* Mobile Header */}
         <div className="w-full flex items-center justify-between mb-6 md:hidden shrink-0 z-30">
@@ -366,7 +366,7 @@ export function MainFeedContainer({
         </div>
 
         {/* Tab Selection */}
-        <div className="z-30 bg-background-elevated/90 backdrop-blur-md rounded-full p-1.5 flex items-center gap-1 border border-primary/10 shadow-sm scale-90 md:scale-100 shrink-0 mb-8 md:mb-12 mt-2 md:mt-4">
+        <div className="z-30 bg-background-elevated/90 rounded-full p-1.5 flex items-center gap-1 border border-primary/10 shadow-sm scale-90 md:scale-100 shrink-0 mb-8 md:mb-12 mt-2 md:mt-4">
           <button 
             onClick={() => setActiveTab('NORMAL')}
             className={`px-5 py-2 rounded-full text-xs font-mono font-medium tracking-wider uppercase transition-all ${
@@ -399,7 +399,11 @@ export function MainFeedContainer({
         <div className="w-full max-w-7xl flex-1 relative z-10 flex flex-col items-center overflow-y-auto custom-scrollbar pt-2 md:pt-4 pb-16">
           <div className="w-full flex-1 flex flex-col items-center justify-start min-h-[400px]">
             {activeTab === 'SPONSORED' ? (
-              <SponsoredGrid messages={sponsoredMsgs} waitingCount={sponsoredQueue.length} />
+              <SponsoredGrid
+                messages={sponsoredMsgs}
+                awaitingCount={sponsoredQueue.filter((m: any) => m.isLocked !== false && (!m.content || m.teaser || m.isLocked)).length}
+                inQueueCount={sponsoredQueue.filter((m: any) => !(m.isLocked !== false && (!m.content || m.teaser || m.isLocked))).length}
+              />
             ) : activeTab === 'SPECIAL' ? (
               <VipSpecialView activeSpecialMsg={specialMsg} upcomingVipQueue={specialQueue} />
             ) : (
@@ -409,7 +413,8 @@ export function MainFeedContainer({
         </div>
       </div>
 
-      <QueueTabs 
+      <QueueTabs
+        allowMock={allowMock}
         globalQueue={normalQueue} 
         specialQueue={specialQueue} 
         sponsoredQueue={sponsoredQueue}

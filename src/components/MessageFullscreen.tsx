@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Maximize2, X } from 'lucide-react'
+import { Maximize2, X, Sparkles } from 'lucide-react'
 import { FrameDecorator } from './FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
+import { sanitizeHtmlText } from '@/lib/sanitize'
 
 export interface FullscreenMessageData {
   content: string
@@ -110,7 +111,7 @@ export function FullscreenMessage({
       </button>
 
       {/* Portalled to document.body: message cards live under transformed /
-          blurred ancestors (framer-motion + backdrop-blur), which would
+          blurred ancestors (framer-motion +), which would
           otherwise trap `fixed` positioning and distort/crop the overlay. */}
       {typeof document !== 'undefined' && createPortal(
       <AnimatePresence>
@@ -127,7 +128,7 @@ export function FullscreenMessage({
             aria-label={message.categoryName || 'Message fullscreen view'}
           >
             <div
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              className="absolute inset-0 bg-black/80"
               onClick={() => setIsOpen(false)}
             />
 
@@ -136,7 +137,7 @@ export function FullscreenMessage({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 8 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              className={`relative w-[94vw] ${widthClass} ${aspectClass} ${paddingClass} ${bg} border ${cardBorder || 'border-primary/20'} rounded-3xl flex flex-col overflow-hidden shadow-2xl max-h-[90dvh] ${getFrameClass(message.frameId)}`}
+              className={`relative w-[94vw] ${widthClass} ${aspectClass} ${paddingClass} ${bg} border ${cardBorder || 'border-primary/20'} rounded-lg flex flex-col overflow-hidden shadow-none max-h-[90dvh] ${getFrameClass(message.frameId)}`}
             >
               <FrameDecorator frameId={message.frameId} />
 
@@ -182,7 +183,7 @@ export function FullscreenMessage({
                     <div
                       className={htmlTextClass}
                       style={{ color: inlineColor }}
-                      dangerouslySetInnerHTML={{ __html: message.html }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtmlText(message.html) }}
                     />
                   ) : (
                     <p className={plainTextClass} style={{ color: inlineColor }}>
@@ -207,8 +208,8 @@ export function FullscreenMessage({
               )}
 
               {(message.sponsorName || message.sponsorNote) && (
-                <div className={`mt-4 relative z-10 mx-auto flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-1.5 rounded-2xl border text-xs max-w-xl text-center shrink-0 ${isDarkCard ? 'bg-black/50 border-white/15 text-white/90' : 'bg-black/5 dark:bg-white/10 border-black/10 dark:border-white/15'}`}>
-                  <span className="text-amber-500 shrink-0">✨</span>
+                <div className={`mt-4 relative z-10 mx-auto flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-1.5 rounded-lg border text-xs max-w-xl text-center shrink-0 ${isDarkCard ? 'bg-black/50 border-white/15 text-white/90' : 'bg-black/5 dark:bg-white/10 border-black/10 dark:border-white/15'}`}>
+                  <Sparkles size={13} className="text-amber-500 shrink-0 mt-0.5" />
                   <span className="font-semibold shrink-0">{message.sponsorName || 'Community'}</span>
                   {message.sponsorNote && (
                     <span className="italic break-words">&mdash; &ldquo;{message.sponsorNote}&rdquo;</span>

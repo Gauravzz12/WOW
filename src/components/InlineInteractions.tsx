@@ -11,6 +11,7 @@ import { toast } from '@/components/Toast'
 import { getDeviceId, getStoredReactions, setStoredReaction, removeStoredReaction, syncStoredReactions } from '@/lib/deviceId'
 import { addReaction as serverAddReaction, removeReaction as serverRemoveReaction } from '@/app/w/[id]/reactions'
 import { addComment as serverAddComment } from '@/app/w/[id]/comments'
+import { SITE_URL } from '@/lib/site'
 
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -330,7 +331,7 @@ export function InlineInteractions({
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.5 }}
               onClick={() => setIsModalOpen(true)}
-              className="px-6 py-3 bg-black/60 backdrop-blur-md border border-white/10 text-white rounded-full text-sm font-medium shadow-xl truncate max-w-[90%] hover:bg-black/80 transition-colors text-left"
+              className="px-6 py-3 bg-black/60 border border-white/10 text-white rounded-full text-sm font-medium shadow-sm truncate max-w-[90%] hover:bg-black/80 transition-colors text-left"
             >
               {currentCycle[commentIndex]?.content}
             </motion.button>
@@ -346,7 +347,7 @@ export function InlineInteractions({
             initial={{ opacity: 0, y: 10, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.9 }}
-            className="absolute bottom-full mb-4 left-0 bg-neutral-900/95 dark:bg-neutral-900/95 border border-white/20 rounded-full shadow-2xl p-2 flex gap-2 z-50 backdrop-blur-xl"
+            className="absolute bottom-full mb-4 left-0 bg-neutral-900/95 dark:bg-neutral-900/95 border border-white/20 rounded-full shadow-none p-2 flex gap-2 z-50"
           >
             {REACTIONS.map(r => (
               <button
@@ -378,7 +379,7 @@ export function InlineInteractions({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ duration: 0.2 }}
-            className="absolute bottom-full mb-4 left-0 w-full bg-background-elevated border border-primary/20 rounded-2xl shadow-2xl z-50 overflow-hidden"
+            className="absolute bottom-full mb-4 left-0 w-full bg-background-elevated border border-primary/20 rounded-lg shadow-none z-50 overflow-hidden"
           >
             {/* Panel Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-primary/10">
@@ -482,12 +483,12 @@ export function InlineInteractions({
             <div className="flex gap-2 items-center flex-wrap">
               <button 
                 onClick={handleReactClick}
-                className={`flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-3.5 md:py-1.5 rounded-full border transition-all backdrop-blur-md active:scale-95 ${
+                className={`flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-3.5 md:py-1.5 rounded-full border transition-all active:scale-95 ${
                   hasReacted 
                     ? (isDarkCard
                         ? (isLoved 
-                            ? 'border-red-500/60 bg-red-500/25 hover:bg-red-500/35 text-white font-semibold shadow-lg shadow-red-500/20' 
-                            : 'border-amber-400/60 bg-amber-500/25 hover:bg-amber-500/35 text-white font-semibold shadow-lg shadow-amber-500/20'
+                            ? 'border-red-500/60 bg-red-500/25 hover:bg-red-500/35 text-white font-semibold shadow-lg shadow-black/10' 
+                            : 'border-amber-400/60 bg-amber-500/25 hover:bg-amber-500/35 text-white font-semibold shadow-lg shadow-black/10'
                           )
                         : (isLoved 
                             ? 'border-red-500/50 bg-red-100 hover:bg-red-200/80 text-red-700 font-semibold shadow-sm' 
@@ -539,7 +540,7 @@ export function InlineInteractions({
               {/* Comment button shows count + opens panel / modal */}
               <button 
                 onClick={toggleCommentPanel}
-                className={`flex items-center gap-2 transition-all px-3 py-1.5 md:px-4 md:py-2 rounded-full border shadow-sm backdrop-blur-md active:scale-95 ${commentMode !== 'none' || isModalOpen ? 'bg-primary text-background border-primary' : btnStyle}`}
+                className={`flex items-center gap-2 transition-all px-3 py-1.5 md:px-4 md:py-2 rounded-full border shadow-sm active:scale-95 ${commentMode !== 'none' || isModalOpen ? 'bg-primary text-background border-primary' : btnStyle}`}
               >
                 <MessageCircle size={16} />
                 {!compact && (
@@ -562,7 +563,7 @@ export function InlineInteractions({
               )}
               
               <ShareMenu 
-                url={`${typeof window !== 'undefined' ? window.location.origin : 'https://words.world'}/w/${messageId}`} 
+                url={`${typeof window !== 'undefined' ? window.location.origin : SITE_URL}/w/${messageId}`} 
                 text="Check out this message on Words of the World" 
                 isVip={isVip}
                 isDark={isDark}
@@ -593,7 +594,7 @@ export function InlineInteractions({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-black/75 backdrop-blur-md"
+              className="absolute inset-0 bg-black/75"
             />
 
             {/* Modal Card */}
@@ -602,7 +603,7 @@ export function InlineInteractions({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
-              className="relative z-10 w-full max-w-xl max-h-[85vh] bg-background-elevated border border-primary/20 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-left"
+              className="relative z-10 w-full max-w-xl max-h-[85vh] bg-background-elevated border border-primary/20 rounded-lg shadow-none flex flex-col overflow-hidden text-left"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-primary/10 bg-background/50">
@@ -640,7 +641,7 @@ export function InlineInteractions({
                   comments.map((c, i) => (
                     <div 
                       key={c.id} 
-                      className="p-4 rounded-2xl border border-primary/10 bg-background/60 hover:bg-background/80 transition-colors flex gap-3.5"
+                      className="p-4 rounded-lg border border-primary/10 bg-background/60 hover:bg-background/80 transition-colors flex gap-3.5"
                     >
                       <div className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center text-xs font-bold font-mono bg-primary/10 text-primary border border-primary/20">
                         {String.fromCharCode(65 + (i % 26))}
@@ -671,12 +672,12 @@ export function InlineInteractions({
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   maxLength={280}
-                  className="flex-1 bg-background-elevated rounded-2xl px-4 py-3 text-sm outline-none border border-primary/15 placeholder:text-secondary focus:border-primary/40 transition-colors text-primary"
+                  className="flex-1 bg-background-elevated rounded-lg px-4 py-3 text-sm outline-none border border-primary/15 placeholder:text-secondary focus:border-primary/40 transition-colors text-primary"
                 />
                 <button
                   type="submit"
                   disabled={!commentText.trim() || isSubmitting}
-                  className={`px-5 py-3 rounded-2xl font-semibold text-xs tracking-wider uppercase flex items-center gap-1.5 transition-all shrink-0 ${
+                  className={`px-5 py-3 rounded-lg font-semibold text-xs tracking-wider uppercase flex items-center gap-1.5 transition-all shrink-0 ${
                     commentText.trim() && !isSubmitting
                       ? 'bg-primary text-background shadow-md hover:opacity-90 active:scale-95'
                       : 'bg-primary/10 text-secondary cursor-not-allowed'

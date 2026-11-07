@@ -9,7 +9,7 @@ interface FramePickerProps {
 
 export function FramePicker({ selectedId, onChange }: FramePickerProps) {
   return (
-    <div className="flex flex-col h-full bg-background-elevated/30 rounded-2xl overflow-hidden border border-background-elevated shadow-sm">
+    <div className="flex flex-col h-full bg-background-elevated/30 rounded-lg overflow-hidden border border-background-elevated shadow-sm">
       <div className="flex items-center gap-2 p-3 sm:px-4 sm:py-3 border-b border-background-elevated bg-background-elevated/50">
         <Frame size={16} className="text-secondary" />
         <h3 className="text-sm font-semibold text-primary">Frame Decoration</h3>
