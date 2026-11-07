@@ -11,9 +11,6 @@ export default function ContentPolicyPage() {
   return (
     <div className="min-h-[100dvh] bg-background text-primary relative flex flex-col pt-16 px-6 pb-24 overflow-x-hidden">
       
-      {/* Background radial gradient */}
-      <div className="absolute pointer-events-none inset-0 flex items-center justify-center bg-background [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]" />
-
       <div className="max-w-3xl mx-auto w-full relative z-10 space-y-12">
         
         {/* Navigation Back */}
@@ -46,7 +43,7 @@ export default function ContentPolicyPage() {
 
         {/* Core Principles */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-5 rounded-2xl bg-background-elevated/40 border border-primary/10 space-y-2">
+          <div className="p-5 rounded-lg bg-background-elevated/40 border border-primary/10 space-y-2">
             <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center">
               <Eye size={18} />
             </div>
@@ -56,7 +53,7 @@ export default function ContentPolicyPage() {
             </p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-background-elevated/40 border border-primary/10 space-y-2">
+          <div className="p-5 rounded-lg bg-background-elevated/40 border border-primary/10 space-y-2">
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
               <Lock size={18} />
             </div>
@@ -66,7 +63,7 @@ export default function ContentPolicyPage() {
             </p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-background-elevated/40 border border-primary/10 space-y-2">
+          <div className="p-5 rounded-lg bg-background-elevated/40 border border-primary/10 space-y-2">
             <div className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center">
               <Ban size={18} />
             </div>
@@ -168,7 +165,7 @@ export default function ContentPolicyPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-5 rounded-2xl bg-background-elevated/30 border border-primary/10 space-y-2">
+            <div className="p-5 rounded-lg bg-background-elevated/30 border border-primary/10 space-y-2">
               <div className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-500">
                 Layer 1: Real-time Ingestion Filter
               </div>
@@ -178,7 +175,7 @@ export default function ContentPolicyPage() {
               </p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-background-elevated/30 border border-primary/10 space-y-2">
+            <div className="p-5 rounded-lg bg-background-elevated/30 border border-primary/10 space-y-2">
               <div className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-500">
                 Layer 2: XSS & HTML Sanitization
               </div>
@@ -188,7 +185,7 @@ export default function ContentPolicyPage() {
               </p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-background-elevated/30 border border-primary/10 space-y-2">
+            <div className="p-5 rounded-lg bg-background-elevated/30 border border-primary/10 space-y-2">
               <div className="text-xs font-mono font-bold uppercase tracking-wider text-violet-500">
                 Layer 3: 24/7 Admin Takedown Engine
               </div>
@@ -198,7 +195,7 @@ export default function ContentPolicyPage() {
               </p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-background-elevated/30 border border-primary/10 space-y-2">
+            <div className="p-5 rounded-lg bg-background-elevated/30 border border-primary/10 space-y-2">
               <div className="text-xs font-mono font-bold uppercase tracking-wider text-amber-500">
                 Layer 4: Community Fast-Track SLA
               </div>
@@ -211,7 +208,7 @@ export default function ContentPolicyPage() {
         </section>
 
         {/* Section 3: Enforcement & No-Refund Policy */}
-        <section className="space-y-4 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-6">
+        <section className="space-y-4 rounded-lg border border-rose-500/20 bg-rose-500/5 p-6">
           <h2 className="text-lg font-bold text-rose-800 dark:text-rose-300 flex items-center gap-2">
             <AlertTriangle size={18} />
             <span>3. Zero-Refund Policy for Violations</span>
@@ -228,7 +225,7 @@ export default function ContentPolicyPage() {
         </section>
 
         {/* Section 4: Notice, Takedown & Contact */}
-        <section className="space-y-4 rounded-2xl border border-primary/15 bg-background-elevated/40 p-6 md:p-8">
+        <section className="space-y-4 rounded-lg border border-primary/15 bg-background-elevated/40 p-6 md:p-8">
           <div className="flex items-center gap-2">
             <Mail className="text-primary" size={20} />
             <h2 className="text-lg font-bold">4. Report a Violation or Request a Takedown</h2>
