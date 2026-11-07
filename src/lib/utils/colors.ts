@@ -1,10 +1,10 @@
 /**
  * Detects whether a background string is inherently dark in ALL themes
- * (i.e. dark VIP gradients that never switch to a light variant).
+ * (i.e. dark VIP card backgrounds that never switch to a light variant).
  */
 function isBgAlwaysDark(bg: string): boolean {
   if (!bg || bg.includes('dark:bg-')) return false
-  if (bg.includes('from-[#') || bg.includes('bg-gradient')) {
+  if (bg.includes('bg-[#') || bg.includes('from-[#')) {
     const hexes = bg.match(/#[0-9A-Fa-f]{6}/g) || []
     if (hexes.length === 0) return false
     return hexes.every(hex => {
@@ -187,45 +187,45 @@ export const CANONICAL_TEMPLATES: Record<string, {
     cardBorder: 'border-neutral-400 dark:border-neutral-700'
   },
 
-  // ── VIP Luxury (always-dark gradients → always-bright text) ─────────────
+  // ── VIP Luxury (always-dark solids → always-bright text) ─────────────
   'vip-birthday': {
-    bg: 'bg-gradient-to-br from-[#1C1304] via-[#0E0A02] to-[#2B1D06]',
+    bg: 'bg-[#1C1304]',
     textColor: 'text-[#FEF3C7]',
     lightHex: '#FEF3C7',
     darkHex: '#FEF3C7',
-    cardBorder: 'border-amber-400/50 shadow-[0_0_40px_rgba(251,191,36,0.25)]',
+    cardBorder: 'border-amber-400/50',
     isVip: true
   },
   'vip-romance': {
-    bg: 'bg-gradient-to-br from-[#290714] via-[#140209] to-[#3B0A1D]',
+    bg: 'bg-[#290714]',
     textColor: 'text-[#FFE4E6]',
     lightHex: '#FFE4E6',
     darkHex: '#FFE4E6',
-    cardBorder: 'border-rose-400/50 shadow-[0_0_40px_rgba(244,63,94,0.25)]',
+    cardBorder: 'border-rose-400/50',
     isVip: true
   },
   'vip-brand': {
-    bg: 'bg-gradient-to-br from-[#031326] via-[#010914] to-[#06203D]',
+    bg: 'bg-[#031326]',
     textColor: 'text-[#E0F2FE]',
     lightHex: '#E0F2FE',
     darkHex: '#E0F2FE',
-    cardBorder: 'border-cyan-400/50 shadow-[0_0_40px_rgba(6,182,212,0.25)]',
+    cardBorder: 'border-cyan-400/50',
     isVip: true
   },
   'vip-wisdom': {
-    bg: 'bg-gradient-to-br from-[#081C13] via-[#040D09] to-[#0E2C1E]',
+    bg: 'bg-[#081C13]',
     textColor: 'text-[#ECFDF5]',
     lightHex: '#ECFDF5',
     darkHex: '#ECFDF5',
-    cardBorder: 'border-emerald-400/50 shadow-[0_0_40px_rgba(16,185,129,0.25)]',
+    cardBorder: 'border-emerald-400/50',
     isVip: true
   },
   'vip-noir': {
-    bg: 'bg-gradient-to-b from-[#0C0B12] via-[#020204] to-[#0A0910]',
+    bg: 'bg-[#0C0B12]',
     textColor: 'text-[#F3E8FF]',
     lightHex: '#F3E8FF',
     darkHex: '#F3E8FF',
-    cardBorder: 'border-purple-400/50 shadow-[0_0_40px_rgba(168,85,247,0.25)]',
+    cardBorder: 'border-purple-400/50',
     isVip: true
   }
 }
