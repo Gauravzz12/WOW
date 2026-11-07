@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer'
+import { SITE_URL } from './site'
 
 // SMTP Transporter Fallback
 const transporter = process.env.SMTP_HOST
@@ -218,7 +219,7 @@ export async function sendBumpTokenEmail({
   isUpdated?: boolean
   messageId?: string
 }) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'
+  const siteUrl = SITE_URL
   const bumpUrl = `${siteUrl}/?bumpToken=${encodeURIComponent(bumpToken)}`
   const broadcastUrl = messageId ? `${siteUrl}/w/${messageId}` : `${siteUrl}`
 
@@ -242,7 +243,7 @@ export async function sendBumpTokenEmail({
               
               <!-- Header Bar -->
               <tr>
-                <td style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 24px 32px; text-align: center;">
+                <td style="background: #f59e0b; padding: 24px 32px; text-align: center;">
                   <span style="display: inline-block; font-size: 28px; line-height: 1;">⚡</span>
                   <h1 style="margin: 8px 0 0; color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">
                     Words of the World
@@ -288,7 +289,7 @@ export async function sendBumpTokenEmail({
               <!-- Secret Bump Token Section -->
               <tr>
                 <td style="padding: 0 32px 24px;">
-                  <div style="background: linear-gradient(180deg, #2d2616 0%, #1e1e1a 100%); border: 1px solid #78350f; border-radius: 12px; padding: 20px; text-align: center;">
+                  <div style="background: #2d2616; border: 1px solid #78350f; border-radius: 12px; padding: 20px; text-align: center;">
                     <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #fbbf24; display: block; margin-bottom: 8px;">
                       🔒 ${isUpdated ? 'YOUR NEW SECRET BUMP TOKEN (OLD TOKEN VOID)' : 'YOUR SECRET BUMP TOKEN'}
                     </span>
@@ -307,7 +308,7 @@ export async function sendBumpTokenEmail({
                 <td style="padding: 0 32px 28px; text-align: center;">
                   <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 auto;">
                     <tr>
-                      <td style="border-radius: 9999px; background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);">
+                      <td style="border-radius: 9999px; background: #f59e0b;;">
                         <a href="${bumpUrl}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 9999px;">
                           ⚡ Boost Queue Rank (1-Click)
                         </a>
@@ -365,7 +366,7 @@ export async function sendSponsorConfirmationEmail({
   sponsorToken?: string
   amountPaid?: number
 }) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'
+  const siteUrl = SITE_URL
   const shoutoutUrl = sponsorToken
     ? `${siteUrl}/sponsor/${messageId}?token=${encodeURIComponent(sponsorToken)}`
     : `${siteUrl}/sponsor/${messageId}`
@@ -389,7 +390,7 @@ export async function sendSponsorConfirmationEmail({
               
               <!-- Header Bar -->
               <tr>
-                <td style="background: linear-gradient(135deg, #ec4899, #8b5cf6); padding: 24px 32px; text-align: center;">
+                <td style="background: #ec4899; padding: 24px 32px; text-align: center;">
                   <span style="display: inline-block; font-size: 28px; line-height: 1;">✨</span>
                   <h1 style="margin: 8px 0 0; color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">
                     Thank You for Sponsoring a Voice!
@@ -436,7 +437,7 @@ export async function sendSponsorConfirmationEmail({
               ${sponsorToken ? `
               <tr>
                 <td style="padding: 0 32px 24px;">
-                  <div style="background: linear-gradient(180deg, #271a2e 0%, #1a1622 100%); border: 1px solid #86198f; border-radius: 12px; padding: 20px; text-align: center;">
+                  <div style="background: #271a2e; border: 1px solid #86198f; border-radius: 12px; padding: 20px; text-align: center;">
                     <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #f472b6; display: block; margin-bottom: 8px;">
                       🎟️ YOUR SECRET SPONSOR EDIT TOKEN
                     </span>
@@ -456,7 +457,7 @@ export async function sendSponsorConfirmationEmail({
                 <td style="padding: 0 32px 28px; text-align: center;">
                   <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 auto;">
                     <tr>
-                      <td style="border-radius: 9999px; background: linear-gradient(135deg, #ec4899, #8b5cf6); box-shadow: 0 4px 12px rgba(236, 72, 153, 0.35);">
+                      <td style="border-radius: 9999px; background: #ec4899;;">
                         <a href="${shoutoutUrl}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 9999px;">
                           ✨ Add Your Sponsor Dedication & Name
                         </a>
@@ -509,7 +510,7 @@ export async function sendVipReservationEmail({
   scheduledEnd?: string | null
   slotCount?: number
 }) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'
+  const siteUrl = SITE_URL
   const broadcastUrl = `${siteUrl}/w/${messageId}`
 
   const startDateFormatted = scheduledStart
@@ -538,7 +539,7 @@ export async function sendVipReservationEmail({
               
               <!-- Header Bar -->
               <tr>
-                <td style="background: linear-gradient(135deg, #0284c7, #2563eb); padding: 24px 32px; text-align: center;">
+                <td style="background: #0284c7; padding: 24px 32px; text-align: center;">
                   <span style="display: inline-block; font-size: 28px; line-height: 1;">💎</span>
                   <h1 style="margin: 8px 0 0; color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">
                     VIP Billboard Slot Confirmed!
@@ -603,7 +604,7 @@ export async function sendVipReservationEmail({
                 <td style="padding: 0 32px 28px; text-align: center;">
                   <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 auto;">
                     <tr>
-                      <td style="border-radius: 9999px; background: linear-gradient(135deg, #0284c7, #2563eb); box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);">
+                      <td style="border-radius: 9999px; background: #0284c7;;">
                         <a href="${broadcastUrl}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 9999px;">
                           💎 View Broadcast & Memory Page
                         </a>
@@ -637,7 +638,7 @@ export async function sendVipReservationEmail({
  * Live Broadcast Notification Email (When message goes live on screen)
  */
 export async function sendLiveNotificationEmail(to: string, messageContent: string, messageId?: string) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'
+  const siteUrl = SITE_URL
   const viewUrl = messageId ? `${siteUrl}/w/${messageId}` : siteUrl
   const subject = '🔥 Your message is LIVE right now on Words of the World!'
 
@@ -656,7 +657,7 @@ export async function sendLiveNotificationEmail(to: string, messageContent: stri
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 600px; background-color: #18181b; border-radius: 16px; border: 1px solid #27272a; overflow: hidden;">
               
               <tr>
-                <td style="background: linear-gradient(135deg, #ef4444, #f97316); padding: 24px 32px; text-align: center;">
+                <td style="background: #ef4444; padding: 24px 32px; text-align: center;">
                   <span style="font-size: 32px;">🔥</span>
                   <h1 style="margin: 8px 0 0; color: #ffffff; font-size: 24px; font-weight: 800;">
                     Look Up! You're Live Worldwide!
@@ -676,7 +677,7 @@ export async function sendLiveNotificationEmail(to: string, messageContent: stri
                   </div>
 
                   <div style="text-align: center;">
-                    <a href="${viewUrl}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #ef4444, #f97316); color: #ffffff; padding: 14px 32px; border-radius: 9999px; text-decoration: none; font-weight: 700; font-size: 14px;">
+                    <a href="${viewUrl}" target="_blank" style="display: inline-block; background: #ef4444; color: #ffffff; padding: 14px 32px; border-radius: 9999px; text-decoration: none; font-weight: 700; font-size: 14px;">
                       🌍 Watch Live Screen Now →
                     </a>
                   </div>
@@ -704,7 +705,7 @@ export async function sendLiveNotificationEmail(to: string, messageContent: stri
  * Outbid Notification Email (When queue position drops)
  */
 export async function sendOutbidEmail(to: string, messageContent: string, newRank: number, messageId: string) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'
+  const siteUrl = SITE_URL
   const bumpUrl = `${siteUrl}/w/${messageId}`
   const subject = `⚠️ You've been outbid! (New Rank: #${newRank})`
 
@@ -723,7 +724,7 @@ export async function sendOutbidEmail(to: string, messageContent: string, newRan
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 600px; background-color: #1e293b; border-radius: 16px; border: 1px solid #334155; overflow: hidden;">
               
               <tr>
-                <td style="background: linear-gradient(135deg, #f59e0b, #ef4444); padding: 24px 32px; text-align: center;">
+                <td style="background: #f59e0b; padding: 24px 32px; text-align: center;">
                   <span style="font-size: 32px;">⚠️</span>
                   <h1 style="margin: 8px 0 0; color: #ffffff; font-size: 22px; font-weight: 800;">
                     Your Queue Position Dropped
@@ -749,7 +750,7 @@ export async function sendOutbidEmail(to: string, messageContent: string, newRan
                   </div>
 
                   <div style="text-align: center; margin-bottom: 12px;">
-                    <a href="${bumpUrl}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff; padding: 14px 32px; border-radius: 9999px; text-decoration: none; font-weight: 700; font-size: 14px; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);">
+                    <a href="${bumpUrl}" target="_blank" style="display: inline-block; background: #f59e0b; color: #ffffff; padding: 14px 32px; border-radius: 9999px; text-decoration: none; font-weight: 700; font-size: 14px;;">
                       ⚡ Bump My Bid & Reclaim Top Rank
                     </a>
                   </div>

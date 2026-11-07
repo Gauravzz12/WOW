@@ -2,12 +2,19 @@ import { cookies } from 'next/headers'
 
 const COOKIE_NAME = 'admin_session'
 
+// Fail closed: there are NO fallback credentials. If ADMIN_PASSWORD or
+// ADMIN_SESSION_SECRET is not configured, admin login is disabled entirely
+// (verifyAdminPassword always returns false and no session token can match).
 export function getAdminPassword(): string {
-  return process.env.ADMIN_PASSWORD || 'admin123'
+  return process.env.ADMIN_PASSWORD || ''
 }
 
 export function getAdminSecret(): string {
-  return process.env.ADMIN_SESSION_SECRET || 'wow_admin_secret_salt_2026'
+  return process.env.ADMIN_SESSION_SECRET || ''
+}
+
+export function isAdminConfigured(): boolean {
+  return Boolean(process.env.ADMIN_PASSWORD && process.env.ADMIN_SESSION_SECRET)
 }
 
 /**
@@ -34,6 +41,7 @@ export async function getExpectedAdminToken(): Promise<string> {
  */
 export async function verifyAdminSessionToken(token?: string | null): Promise<boolean> {
   if (!token) return false
+  if (!isAdminConfigured()) return false
   const expected = await getExpectedAdminToken()
   return token === expected
 }
@@ -43,6 +51,7 @@ export async function verifyAdminSessionToken(token?: string | null): Promise<bo
  */
 export function verifyAdminPassword(password: string): boolean {
   if (!password) return false
+  if (!isAdminConfigured()) return false
   return password === getAdminPassword()
 }
 
