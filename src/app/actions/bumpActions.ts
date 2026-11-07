@@ -1,6 +1,7 @@
 'use server'
 
 import { verifyBumpToken, generateBumpToken, hashBumpToken, type VerifiedBumpMessage } from '@/lib/bumpToken'
+import { SITE_URL } from '@/lib/site'
 
 export async function verifyTokenAction(token: string): Promise<{
   error?: string
@@ -47,7 +48,7 @@ export async function createBumpCheckoutAction(token: string, newTotalBid: numbe
       environment: 'test_mode'
     })
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'
+    const siteUrl = SITE_URL
     const returnUrl = `${siteUrl}/?tab=NORMAL&bumpSuccess=1`
 
     const session = await client.checkoutSessions.create({
@@ -87,6 +88,10 @@ export async function createMockBumpAction(token: string, newTotalBid: number): 
   error?: string
   difference?: number
 }> {
+  // Kill-switch: same gate as processMockPayment.
+  if (process.env.ALLOW_MOCK_PAYMENTS !== 'true') {
+    return { error: 'Test payments are disabled.' }
+  }
   try {
     const verification = await verifyBumpToken(token)
     if (verification.error || !verification.message) {
@@ -123,7 +128,8 @@ export async function createMockBumpAction(token: string, newTotalBid: number): 
       status: 'SUCCESS',
     })
 
-    const bumpRecipient = msg.reminder_email || process.env.TEST_EMAIL_FALLBACK || 'gthakurzzz424@gmail.com'
+    // No personal-inbox fallback — skip the email when no recipient exists.
+    const bumpRecipient = msg.reminder_email || process.env.TEST_EMAIL_FALLBACK || null
     if (bumpRecipient) {
       try {
         const { sendBumpTokenEmail } = await import('@/lib/email')

@@ -1,6 +1,7 @@
 'use server'
 
 import { sendEmail } from '@/lib/email'
+import { SITE_URL } from '@/lib/site'
 
 export interface ReportPayload {
   messageId: string
@@ -15,7 +16,7 @@ export async function submitContentReport(payload: ReportPayload) {
     return { error: 'Message ID and reason are required.' }
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://words.world'
+  const appUrl = SITE_URL
   const messageUrl = `${appUrl}/w/${messageId}`
   const adminUrl = `${appUrl}/admin`
   const timestamp = new Date().toUTCString()
