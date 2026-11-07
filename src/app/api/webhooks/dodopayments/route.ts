@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { runQueueAdvance } from '@/lib/queueAdvance'
-import { MIN_NORMAL_BID } from '@/lib/constants/pricing'
+import {
+  MIN_NORMAL_BID,
+  SPONSORED_PRICE,
+  calculateNormalMinBid,
+  calculateSpecialPrice,
+  BASE_NORMAL_MINS,
+  MAX_NORMAL_MINS,
+} from '@/lib/constants/pricing'
 import DodoPayments from 'dodopayments'
 
 const supabaseAdmin = getSupabaseAdmin()
@@ -68,16 +75,16 @@ export async function POST(req: Request) {
 
     if ((message as any).status !== 'PENDING_PAYMENT') {
        if (payment.metadata?.isBump === 'true' && (message as any).status === 'QUEUED') {
-           const additionalAmount = payment.metadata?.usdAmount ? parseFloat(payment.metadata.usdAmount) : (payment.total_amount / 100);
+           // PAY-1 (bump path): account from what was ACTUALLY paid
+           // (total_amount), never from caller-supplied metadata amounts.
+           const additionalAmount = Math.round((payment.total_amount || 0)) / 100;
            const { data: currentMsg } = await supabaseAdmin
              .from('messages')
              .select('bid_amount, reminder_email, content, style_config')
              .eq('id', messageId)
              .single();
 
-           const targetTotal = payment.metadata?.newTotalBid 
-             ? parseFloat(payment.metadata.newTotalBid) 
-             : ((currentMsg?.bid_amount || 0) + additionalAmount);
+           const targetTotal = Math.round(((currentMsg?.bid_amount || 0) + additionalAmount) * 100) / 100;
 
            let newToken = payment.metadata?.newToken;
            if (!newToken) {
@@ -96,20 +103,14 @@ export async function POST(req: Request) {
              status: 'SUCCESS',
            });
 
-           // Extract customer email provided to DodoPayments during checkout
-           const emailTo = 
-             payment.customer?.email || 
-             payment.customer_email || 
-             payment.billing?.email || 
-             currentMsg?.reminder_email || 
-             payment.metadata?.userEmail;
-
-           if (emailTo) {
-             await supabaseAdmin
-               .from('messages')
-               .update({ reminder_email: emailTo })
-               .eq('id', messageId);
-           }
+           // PAY-2: the rotated bump token belongs to the message OWNER.
+           // It is emailed only to the reminder address already on file —
+           // never to the payer's checkout email, and the stored
+           // reminder_email is never overwritten from payer data. (With
+           // the tokenless bumpBid action deleted, bumps originate from
+           // the token-verified action, whose payer already holds a
+           // token; this keeps any residual path from hijacking one.)
+           const emailTo = currentMsg?.reminder_email || null;
 
            if (emailTo && newToken) {
              try {
@@ -144,11 +145,46 @@ export async function POST(req: Request) {
     const isSponsorMode = payment.metadata?.isSponsorMode === 'true'
     const isReserved = payment.metadata?.isReservedSlot === 'true'
     const targetSlotIds = payment.metadata?.slotIds ? payment.metadata.slotIds.split(',') : []
-    const amountTotal = payment.metadata?.usdAmount ? parseFloat(payment.metadata.usdAmount) : ((payment.total_amount || 0) / 100)
+    // Display/audit amount = what was actually paid (PAY-1: metadata
+    // amounts are caller-influenced and never authoritative).
+    const amountTotal = (payment.total_amount || 0) / 100
     
     let style = message.style_config || {}
     if (typeof style === 'string') {
       try { style = JSON.parse(style) } catch (e) { style = {} }
+    }
+
+    // PAY-1: bind the amount ACTUALLY paid (payment.total_amount, set by
+    // the provider) to this message's price before any state changes.
+    // Metadata amounts are caller-influenced and were previously the only
+    // check — combined with processPayment overwriting bid_amount on each
+    // call, paying a stale $5 session fulfilled a later $100 stored bid.
+    // Normal therefore requires paid == CURRENT stored bid (and >= the
+    // duration minimum); sponsor/reserved require their exact prices.
+    const paidCents = Math.round(payment.total_amount || 0)
+    let amountError: string | null = null
+    if (isSponsorMode) {
+      if (paidCents !== Math.round(SPONSORED_PRICE * 100)) {
+        amountError = `Sponsor amount must be exactly $${SPONSORED_PRICE.toFixed(2)}.`
+      }
+    } else if (isReserved) {
+      const count = targetSlotIds.length
+      const official = calculateSpecialPrice(Math.min(Math.max(count, 1), 3)).finalPrice
+      if (count < 1 || count > 3 || paidCents !== Math.round(official * 100)) {
+        amountError = `Reserved amount must be exactly $${official.toFixed(2)} for ${count} slot(s).`
+      }
+    } else {
+      const dSecs = Number(style.durationSecs) || BASE_NORMAL_MINS * 60
+      const dMins = Math.max(BASE_NORMAL_MINS, Math.min(MAX_NORMAL_MINS, Math.round(dSecs / 60)))
+      const minCents = Math.round(calculateNormalMinBid(dMins) * 100)
+      const bidCents = Math.round((Number((message as any).bid_amount) || 0) * 100)
+      if (paidCents < minCents || paidCents !== bidCents) {
+        amountError = `Paid $${(paidCents / 100).toFixed(2)} does not match the current bid of $${(bidCents / 100).toFixed(2)}.`
+      }
+    }
+    if (amountError) {
+      console.error('[Dodo Webhook] Amount verification failed:', amountError, 'message:', messageId)
+      return NextResponse.json({ error: amountError }, { status: 400 })
     }
 
     // Extract customer email provided to DodoPayments during checkout
