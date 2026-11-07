@@ -269,7 +269,7 @@ export function SponsoredGrid({
           ))}
         </div>
       ) : (
-        <div className="w-full max-w-xl aspect-[16/10] border border-primary/10 rounded-lg flex flex-col items-center justify-center p-8 text-center bg-background-elevated/30 relative overflow-hidden shadow-sm my-6">
+        <div className="w-full max-w-xl border border-primary/10 rounded-lg flex flex-col items-center justify-center px-5 py-10 sm:p-8 text-center bg-background-elevated/30 relative shadow-sm my-6">
           <div className="w-14 h-14 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
             <HeartHandshake size={24} />
           </div>
