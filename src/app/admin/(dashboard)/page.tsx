@@ -36,7 +36,7 @@ export default async function AdminDashboard() {
   const queuedCount = messages.filter(m => m.status === 'QUEUED').length
   const servedCount = messages.filter(m => m.status === 'COMPLETED').length
   // Revenue from actual bid amounts on paid messages
-  const mockRevenue = messages
+  const grossRevenue = messages
     .filter(m => m.status === 'ACTIVE' || m.status === 'QUEUED' || m.status === 'COMPLETED')
     .reduce((sum, msg) => sum + (msg.bid_amount || 0), 0)
 
@@ -63,7 +63,7 @@ export default async function AdminDashboard() {
         </div>
         <div className="bg-background-elevated border border-primary/10 rounded-lg p-6 shadow-sm">
           <div className="text-xs text-secondary font-semibold uppercase tracking-wider mb-2">Gross Revenue</div>
-          <div className="text-4xl font-serif font-bold text-green-600">${mockRevenue.toFixed(2)}</div>
+          <div className="text-4xl font-serif font-bold text-green-600">${grossRevenue.toFixed(2)}</div>
         </div>
       </div>
 

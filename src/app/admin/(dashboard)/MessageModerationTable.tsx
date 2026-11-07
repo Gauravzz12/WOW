@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useTransition } from 'react'
 import { removeMessage } from '@/app/admin/actions'
+import { MIN_NORMAL_BID } from '@/lib/constants/pricing'
 import { 
   Search, 
   X, 
@@ -380,7 +381,7 @@ export function MessageModerationTable({ initialMessages }: { initialMessages: A
                         </span>
                         {msg.is_reserved_slot ? (
                           <span className="text-[10px] text-purple-600 dark:text-purple-400">Fixed Slot</span>
-                        ) : msg.bid_amount < 10 ? (
+                        ) : msg.bid_amount < MIN_NORMAL_BID ? (
                           <span className="text-[10px] text-amber-600 dark:text-amber-400">Sponsored $3</span>
                         ) : (
                           <span className="text-[10px] text-secondary">Priority Bid</span>
