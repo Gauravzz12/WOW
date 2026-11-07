@@ -45,8 +45,7 @@ export function QueueTabs({
   activeTab,
   activeMsg,
   isOpen = false,
-  onClose,
-  allowMock = false
+  onClose
 }: {
   globalQueue?: QueueItem[],
   specialQueue?: QueueItem[],
@@ -54,8 +53,7 @@ export function QueueTabs({
   activeTab: 'NORMAL' | 'SPECIAL' | 'SPONSORED',
   activeMsg?: any,
   isOpen?: boolean,
-  onClose?: () => void,
-  allowMock?: boolean
+  onClose?: () => void
 }) {
   const searchParams = useSearchParams()
   const [userTz, setUserTz] = useState('Local')
@@ -453,7 +451,6 @@ export function QueueTabs({
       </aside>
 
       <BumpBidModal
-        allowMock={allowMock}
         isOpen={isBumpModalOpen}
         onClose={() => setIsBumpModalOpen(false)}
         initialToken={initialBumpToken}

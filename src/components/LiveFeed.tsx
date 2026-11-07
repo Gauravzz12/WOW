@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { Heart, MessageCircle, Share2, Sparkles } from 'lucide-react'
-import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
+import { getCategoryHex, getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { SpecialMomentOverlay } from './SpecialMomentOverlay'
 import { InlineInteractions } from './InlineInteractions'
 import { FullscreenMessage } from './MessageFullscreen'
@@ -215,7 +215,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
               transition={{ duration: 1.5, ease: "easeInOut" }}
               className={`w-full ${compact ? 'max-w-xl aspect-[4/3] p-4 md:p-6' : 'max-w-4xl aspect-square md:aspect-video p-6 md:p-12'} mx-auto border ${cardBorder || message.style_config?.cardBorder || borderClass} rounded-lg flex flex-col relative overflow-hidden shadow-none ${bg || bgClass} hover:border-primary/50 transition-all duration-700 group ${getFrameClass(message.style_config?.frameId)}`}
             >
-              <FrameDecorator frameId={message.style_config?.frameId} />
+              <FrameDecorator frameId={message.style_config?.frameId} accentHex={getCategoryHex(categorySlug)} />
 
               {/* Custom placed stickers if present */}
               {Array.isArray(message?.style_config?.stickers) && message.style_config.stickers.map((sticker: any) => (
@@ -276,6 +276,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
                     sponsorNote: message.style_config?.sponsorNote,
                     stickers: message.style_config?.stickers,
                     frameId: message.style_config?.frameId,
+                    categorySlug,
                   }}
                   appearance={{
                     bg: bg || bgClass,

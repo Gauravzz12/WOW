@@ -9,7 +9,7 @@ import {
   formatLocalSlotTime,
   getFixedSlotsForUtcDate
 } from '@/lib/constants/pricing'
-import { resolveCardStyles } from '@/lib/utils/colors'
+import { getCategoryHex, resolveCardStyles } from '@/lib/utils/colors'
 import { InlineInteractions } from './InlineInteractions'
 import { FullscreenMessage } from './MessageFullscreen'
 import { FrameDecorator } from './FrameDecorator'
@@ -279,7 +279,7 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
           <article
             className={`relative overflow-hidden rounded-none ${stageBg} px-5 py-9 sm:px-10 sm:py-12 ${getFrameClass(activeSpecialMsg.style_config?.frameId)}`}
           >
-            <FrameDecorator frameId={activeSpecialMsg.style_config?.frameId} />
+            <FrameDecorator frameId={activeSpecialMsg.style_config?.frameId} accentHex={getCategoryHex(activeSpecialMsg?.category?.slug || 'general')} />
 
             {/* Stickers as backdrop décor — always behind text */}
             {Array.isArray(activeSpecialMsg?.style_config?.stickers) && activeSpecialMsg.style_config.stickers.map((sticker: any) => (
@@ -378,6 +378,7 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
                     sponsorNote: activeSpecialMsg.style_config?.sponsorNote,
                     stickers: activeSpecialMsg.style_config?.stickers,
                     frameId: activeSpecialMsg.style_config?.frameId,
+                    categorySlug: activeSpecialMsg?.category?.slug || 'general',
                   }}
                   appearance={{
                     bg: stageBg,

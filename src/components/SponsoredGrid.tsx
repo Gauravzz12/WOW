@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Clock, HeartHandshake, Sparkles, ChevronRight } from 'lucide-react'
-import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
+import { getCategoryHex, getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { InlineInteractions } from './InlineInteractions'
 import { FullscreenMessage } from './MessageFullscreen'
 import { FrameDecorator } from './FrameDecorator'
@@ -61,7 +61,7 @@ function SponsoredCard({ message }: { message: any }) {
       transition={{ duration: 0.4 }}
       className={`w-full rounded-lg border ${cardBorder || message?.style_config?.cardBorder || borderClass} ${bg || bgClass} p-5 flex flex-col justify-between shadow-lg hover:shadow-none hover:border-primary/40 transition-all duration-300 relative overflow-hidden min-h-[300px] group ${getFrameClass(message?.style_config?.frameId)}`}
     >
-      <FrameDecorator frameId={message?.style_config?.frameId} />
+      <FrameDecorator frameId={message?.style_config?.frameId} accentHex={getCategoryHex(categorySlug)} />
 
       {/* Custom placed stickers if present */}
       {Array.isArray(message?.style_config?.stickers) && message.style_config.stickers.map((sticker: any) => (
@@ -122,6 +122,7 @@ function SponsoredCard({ message }: { message: any }) {
             sponsorNote: message?.style_config?.sponsorNote,
             stickers: message?.style_config?.stickers,
             frameId: message?.style_config?.frameId,
+            categorySlug,
           }}
           appearance={{
             bg: bg || bgClass,

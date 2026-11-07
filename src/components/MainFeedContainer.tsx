@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Menu, List } from 'lucide-react'
 import Link from 'next/link'
 import { getMessageDurationSecs, isMessageExpired } from '@/lib/messageExpiry'
+import { BASE_NORMAL_MINS, MIN_NORMAL_BID } from '@/lib/constants/pricing'
 import { getCategoryStyles } from '@/lib/utils/colors'
 
 type TabType = 'NORMAL' | 'SPECIAL' | 'SPONSORED'
@@ -22,8 +23,7 @@ export function MainFeedContainer({
   initialNormalQueue,
   initialSpecialQueue,
   initialSponsoredQueue,
-  initialLeaderboardQueue,
-  allowMock = false
+  initialLeaderboardQueue
 }: {
   initialNormalMsg: any,
   initialSpecialMsg: any,
@@ -31,8 +31,7 @@ export function MainFeedContainer({
   initialNormalQueue: any[],
   initialSpecialQueue: any[],
   initialSponsoredQueue: any[],
-  initialLeaderboardQueue: any[],
-  allowMock?: boolean
+  initialLeaderboardQueue: any[]
 }) {
   const searchParams = useSearchParams()
   
@@ -100,11 +99,11 @@ export function MainFeedContainer({
         const nowMs = Date.now()
         const isNotExpired = (msg: any) => !isMessageExpired(msg, nowMs)
 
-        // Consistent threshold: >= 10 everywhere (matches client queue fetch)
-        const nMsg = actives.find(m => !m.is_reserved_slot && m.bid_amount >= 10 && isNotExpired(m))
+        // Consistent threshold: >= MIN_NORMAL_BID everywhere (matches client queue fetch)
+        const nMsg = actives.find(m => !m.is_reserved_slot && m.bid_amount >= MIN_NORMAL_BID && isNotExpired(m))
         activeNormal = nMsg
         sMsg = actives.find(m => m.is_reserved_slot && isNotExpired(m))
-        const spMsgs = actives.filter(m => !m.is_reserved_slot && m.bid_amount < 10 && isNotExpired(m)).slice(0, 10)
+        const spMsgs = actives.filter(m => !m.is_reserved_slot && m.bid_amount < MIN_NORMAL_BID && isNotExpired(m)).slice(0, 10)
 
         // Always explicitly set — prevents stale messages staying on screen
         setNormalMsg(nMsg ? (() => {
@@ -137,8 +136,9 @@ export function MainFeedContainer({
         .select('id, created_at, bid_amount, template_id, style_config, category:categories(name, slug, base_duration)')
         .eq('status', 'QUEUED')
         .eq('is_reserved_slot', false)
-        .gte('bid_amount', 10) // Normal
-        // Show highest bids first — matches the actual advance() promotion order
+        .gte('bid_amount', MIN_NORMAL_BID) // Normal
+        // Paid before free, then highest bids first — matches the actual advance() promotion order
+        .order('is_promo_free', { ascending: true })
         .order('bid_amount', { ascending: false })
         .order('created_at', { ascending: true })
         .limit(5)
@@ -153,7 +153,7 @@ export function MainFeedContainer({
         .limit(5)
       if (sQueue) setSpecialQueue(sQueue)
 
-      // Sponsored: paid-but-low-bid (QUEUED, bid < 10) have full content (safe — paid).
+      // Sponsored: paid-but-low-bid (QUEUED, bid < MIN_NORMAL_BID) have full content (safe — paid).
       // Unpaid PENDING_PAYMENT must NEVER be fetched with full `content` via anon —
       // anon RLS now blocks them. Load locked teasers via the masked API instead.
       const { data: spPaidQueue } = await supabase
@@ -161,7 +161,7 @@ export function MainFeedContainer({
         .select('id, content, created_at, bid_amount, template_id, style_config, category:categories(name, slug, base_duration)')
         .eq('status', 'QUEUED')
         .eq('is_reserved_slot', false)
-        .lt('bid_amount', 10)
+        .lt('bid_amount', MIN_NORMAL_BID)
         .order('created_at', { ascending: true })
         .limit(25)
       let spPendingTeasers: any[] = []
@@ -194,12 +194,12 @@ export function MainFeedContainer({
               .order('actual_start', { ascending: false })
 
             if (freshActives) {
-              const freshNormal = freshActives.find(m => !m.is_reserved_slot && m.bid_amount >= 10)
+              const freshNormal = freshActives.find(m => !m.is_reserved_slot && m.bid_amount >= MIN_NORMAL_BID)
               const freshSpecial = freshActives.find(m => m.is_reserved_slot)
               if (freshNormal) {
                 const cat = Array.isArray(freshNormal.category) ? freshNormal.category[0] : freshNormal.category
                 const config = typeof freshNormal.style_config === 'string' ? JSON.parse(freshNormal.style_config || '{}') : (freshNormal.style_config || {})
-                setNormalMsg({ ...freshNormal, category: cat, durationSecs: config.durationSecs || cat?.base_duration || 3600 })
+                setNormalMsg({ ...freshNormal, category: cat, durationSecs: config.durationSecs || cat?.base_duration || BASE_NORMAL_MINS * 60 })
               }
               if (freshSpecial) {
                 const cat = Array.isArray(freshSpecial.category) ? freshSpecial.category[0] : freshSpecial.category
@@ -414,7 +414,6 @@ export function MainFeedContainer({
       </div>
 
       <QueueTabs
-        allowMock={allowMock}
         globalQueue={normalQueue} 
         specialQueue={specialQueue} 
         sponsoredQueue={sponsoredQueue}

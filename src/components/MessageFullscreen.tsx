@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Maximize2, X, Sparkles } from 'lucide-react'
 import { FrameDecorator } from './FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
+import { getCategoryHex } from '@/lib/utils/colors'
 import { sanitizeHtmlText } from '@/lib/sanitize'
 
 export interface FullscreenMessageData {
@@ -19,6 +20,7 @@ export interface FullscreenMessageData {
   sponsorNote?: string
   stickers?: any[]
   frameId?: string
+  categorySlug?: string
 }
 
 export interface FullscreenMessageAppearance {
@@ -139,7 +141,7 @@ export function FullscreenMessage({
               transition={{ duration: 0.3, ease: 'easeOut' }}
               className={`relative w-[94vw] ${widthClass} ${aspectClass} ${paddingClass} ${bg} border ${cardBorder || 'border-primary/20'} rounded-lg flex flex-col overflow-hidden shadow-none max-h-[90dvh] ${getFrameClass(message.frameId)}`}
             >
-              <FrameDecorator frameId={message.frameId} />
+              <FrameDecorator frameId={message.frameId} accentHex={message.categorySlug ? getCategoryHex(message.categorySlug) : undefined} />
 
               {Array.isArray(message.stickers) && message.stickers.map((sticker: any) => (
                 <span

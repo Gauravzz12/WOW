@@ -5,9 +5,12 @@ import { Frame } from 'lucide-react'
 interface FramePickerProps {
   selectedId: string | null
   onChange: (id: string | null) => void
+  /** Delivery tier — Special-only frames (Laurel) appear only for 'special'. */
+  tier?: 'normal' | 'special' | 'sponsored'
 }
 
-export function FramePicker({ selectedId, onChange }: FramePickerProps) {
+export function FramePicker({ selectedId, onChange, tier }: FramePickerProps) {
+  const visibleFrames = FRAMES.filter(f => !f.pickerHidden && (!f.specialOnly || tier === 'special'))
   return (
     <div className="flex flex-col h-full bg-background-elevated/30 rounded-lg overflow-hidden border border-background-elevated shadow-sm">
       <div className="flex items-center gap-2 p-3 sm:px-4 sm:py-3 border-b border-background-elevated bg-background-elevated/50">
@@ -16,7 +19,7 @@ export function FramePicker({ selectedId, onChange }: FramePickerProps) {
       </div>
       
       <div className="p-3 sm:p-4 grid grid-cols-2 gap-3 max-h-[300px] overflow-y-auto custom-scrollbar">
-        {FRAMES.map((frame) => {
+        {visibleFrames.map((frame) => {
           const isSelected = selectedId === frame.id || (frame.id === 'none' && !selectedId)
           
           return (
