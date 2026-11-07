@@ -161,7 +161,6 @@ export default async function CheckoutPage({
 
           return (
             <CheckoutForm
-              allowMock={process.env.ALLOW_MOCK_PAYMENTS === 'true'}
               messageId={message.id}
               baseAmount={message.bid_amount}
               isReservedSlot={message.is_reserved_slot}
