@@ -15,326 +15,219 @@ export interface Template {
   accent?: string
 }
 
-export const VIP_SPECIAL_TEMPLATES: Template[] = [
+/**
+ * Unified, curated templates for all broadcast modes (Normal, Special, Sponsored).
+ * All templates are available to everyone — no separate VIP or tier-gated restrictions.
+ */
+export const ALL_TEMPLATES: Template[] = [
+  // 1. Clean & Modern
   {
-    id: 'vip-birthday',
-    name: 'Celebration Gala',
-    bg: 'bg-[#FFF8E7] dark:bg-[#1C1304]',
-    font: 'font-serif tracking-wide',
-    textColor: 'text-[#5C3D00] dark:text-[#FEF3C7]',
-    cardBorder: 'border-amber-400/50',
-    accent: 'bg-amber-400',
-    isVip: true,
-    vipBadge: '✦ CELEBRATION GALA ✦',
-    vipIcon: '🎂',
-    vipTagline: 'Luxury Champagne & Midnight Gold',
-    categoryFit: ['celebration'],
-    dummyText: 'Wishing the happiest 25th Birthday to my favorite human! May this year bring endless magic, health, and laughter.'
+    id: "a",
+    name: "Clean Slate",
+    bg: "bg-white dark:bg-[#0A0A0A]",
+    font: "font-sans font-normal",
+    textColor: "text-[#171717] dark:text-[#F3F3F3]",
+    cardBorder: "border-neutral-200 dark:border-neutral-800",
+    accent: "bg-neutral-500",
+    categoryFit: ['general', 'announcement'],
+    dummyText: "Sometimes the simplest words carry the most weight."
   },
+  // 2. Vintage Letter
   {
-    id: 'vip-romance',
-    name: 'Velvet Romance',
-    bg: 'bg-[#FFF0F3] dark:bg-[#290714]',
-    font: 'font-serif italic',
-    textColor: 'text-[#6B0F2A] dark:text-[#FFE4E6]',
-    cardBorder: 'border-rose-400/50',
-    accent: 'bg-rose-400',
-    isVip: true,
-    vipBadge: '✦ LOVE DECLARATION ✦',
-    vipIcon: '💖',
-    vipTagline: 'Deep Midnight Rose & Starlight',
-    categoryFit: ['love'],
-    dummyText: 'To the love of my life: wherever the world takes us, you will always be my home and my greatest adventure.'
-  },
-  {
-    id: 'vip-brand',
-    name: 'Cyber Showcase',
-    bg: 'bg-[#EDF7FF] dark:bg-[#031326]',
-    font: 'font-sans font-medium tracking-tight',
-    textColor: 'text-[#0C3B66] dark:text-[#E0F2FE]',
-    cardBorder: 'border-cyan-400/50',
-    accent: 'bg-cyan-400',
-    isVip: true,
-    vipBadge: '✦ OFFICIAL SHOWCASE ✦',
-    vipIcon: '🚀',
-    vipTagline: 'High-Tech Obsidian & Electric Cyan',
-    categoryFit: ['promotion', 'announcement'],
-    dummyText: 'We are officially live! Meet the next generation of creative tools built for dreamers, founders, and creators worldwide.'
-  },
-  {
-    id: 'vip-wisdom',
-    name: 'Timeless Heritage',
-    bg: 'bg-[#EDFAF3] dark:bg-[#081C13]',
-    font: 'font-serif',
-    textColor: 'text-[#0F4D2E] dark:text-[#ECFDF5]',
-    cardBorder: 'border-emerald-400/50',
-    accent: 'bg-emerald-400',
-    isVip: true,
-    vipBadge: '✦ WORDS OF WISDOM ✦',
-    vipIcon: '📜',
-    vipTagline: 'Gilded Antique & Emerald Forest',
-    categoryFit: ['general', 'gratitude'],
-    dummyText: 'The best time to plant a tree was twenty years ago. The second best time is right now. Never fear starting over.'
-  },
-  {
-    id: 'vip-noir',
-    name: 'Midnight Spotlight',
-    bg: 'bg-[#F3F0FF] dark:bg-[#0C0B12]',
-    font: 'font-mono',
-    textColor: 'text-[#3B1F6E] dark:text-[#F3E8FF]',
-    cardBorder: 'border-purple-400/50',
-    accent: 'bg-purple-400',
-    isVip: true,
-    vipBadge: '✦ RAW SPOTLIGHT ✦',
-    vipIcon: '🌙',
-    vipTagline: 'OLED Obsidian & Velvet Amethyst',
-    categoryFit: ['confession', 'rant'],
-    dummyText: 'I have spent a lifetime waiting for permission that was never going to come. Today, I grant it to myself.'
-  },
-  {
-    id: 'night-edition',
-    name: 'Night Edition',
-    bg: 'bg-[#141118]',
-    font: 'font-playfair',
-    textColor: 'text-[#F5EFE6]',
-    cardBorder: 'border-amber-400/50',
-    accent: 'bg-[#F59E0B]',
-    isVip: true,
-    vipBadge: '✦ NIGHT EDITION ✦',
-    vipIcon: '🌌',
-    vipTagline: 'The Night Stage — Cream on Ink',
-    categoryFit: ['general', 'celebration', 'announcement'],
-    dummyText: 'When the world goes quiet, one voice remains. Tonight, it is yours.'
-  }
-]
-
-export const STANDARD_TEMPLATES: Template[] = [
-  // Page 1
-  { 
-    id: "a", 
-    name: "Clean Slate", 
-    bg: "bg-white dark:bg-[#0A0A0A]", 
-    font: "font-sans font-normal", 
-    textColor: "text-[#1A1A1A] dark:text-[#F0F0F0]", 
-    cardBorder: "border-neutral-200 dark:border-neutral-800", 
-    accent: "bg-neutral-400",
-    dummyText: "Sometimes the simplest words carry the most weight." 
-  },
-  { 
-    id: "b", 
-    name: "Old Letter", 
-    bg: "bg-[#FDFBF7] dark:bg-[#1C1613] bg-dot-amber-900/[0.08] dark:bg-dot-amber-500/[0.05]", 
-    font: "font-serif italic", 
-    textColor: "text-[#3D2C24] dark:text-[#F5EBE6]", 
+    id: "b",
+    name: "Old Letter",
+    bg: "bg-[#FDFBF7] dark:bg-[#1A1612] bg-dot-amber-900/[0.08] dark:bg-dot-amber-500/[0.05]",
+    font: "font-serif italic",
+    textColor: "text-[#3D2C24] dark:text-[#F5EBE6]",
     cardBorder: "border-amber-900/15 dark:border-amber-500/25",
     accent: "bg-amber-700 dark:bg-amber-500",
-    dummyText: "My dearest friend, I've been meaning to tell you..." 
+    categoryFit: ['love', 'gratitude', 'confession'],
+    dummyText: "My dearest friend, I've been meaning to tell you..."
   },
-  { 
-    id: "f", 
-    name: "Console", 
-    bg: "bg-[#EBF7EE] dark:bg-[#051109]", 
-    font: "font-mono", 
-    textColor: "text-[#064E22] dark:text-[#6ee7b7]", 
-    cardBorder: "border-emerald-300 dark:border-emerald-500/30 rounded-[4px]",
-    accent: "bg-emerald-500",
-    dummyText: "> print('Hello world');" 
-  },
-  { 
-    id: "h", 
-    name: "Marquee", 
-    bg: "bg-neutral-100 dark:bg-black", 
-    font: "font-serif uppercase tracking-[0.2em]", 
-    textColor: "text-[#171717] dark:text-[#f5f5f5]", 
-    cardBorder: "border-neutral-300 dark:border-neutral-800 border-4",
-    accent: "bg-neutral-800 dark:bg-neutral-200",
-    dummyText: "BASED ON A TRUE STORY." 
-  },
-  {
-    id: "n",
-    name: "Twilight",
-    bg: "bg-[#F5F3FF] dark:bg-[#0D0B1A]",
-    font: "font-outfit font-light tracking-wide",
-    textColor: "text-[#4C1D95] dark:text-[#E8DAFF]",
-    cardBorder: "border-violet-300 dark:border-violet-400/30 rounded-[2rem]",
-    accent: "bg-violet-500",
-    dummyText: "In the vast silence between stars, your name is what I hear."
-  },
-  {
-    id: "l",
-    name: "Mainframe",
-    bg: "bg-[#F0F4F8] dark:bg-[#0A0E14]",
-    font: "font-mono font-bold tracking-widest uppercase",
-    textColor: "text-[#1B2838] dark:text-[#CBD5E1]",
-    cardBorder: "border-slate-300 dark:border-slate-600 shadow-[4px_4px_0px_0px_rgba(148,163,184,0.3)] dark:shadow-[4px_4px_0px_0px_rgba(71,85,105,0.3)] rounded-none",
-    accent: "bg-slate-500",
-    dummyText: "SYS.MSG // BROADCAST INITIATED // STAND BY"
-  },
-  
-  // Page 2
-  {
-    id: "journal",
-    name: "Journal",
-    bg: "bg-[#FFFDF5] dark:bg-[#1A1813]",
-    font: "font-caveat text-xl",
-    textColor: "text-[#4A3D2C] dark:text-[#E2D5C3]",
-    cardBorder: "border-l-4 border-l-amber-400 border-y-amber-200 border-r-amber-200 dark:border-y-amber-900/50 dark:border-r-amber-900/50",
-    accent: "bg-amber-600",
-    dummyText: "Dear diary, today something incredible happened..."
-  },
-  {
-    id: "blueprint",
-    name: "Blueprint",
-    bg: "bg-[#E6F0FA] dark:bg-[#0A1929]",
-    font: "font-outfit font-medium",
-    textColor: "text-[#1E3A8A] dark:text-[#93C5FD]",
-    cardBorder: "border-blue-300 dark:border-blue-800/50 rounded-sm",
-    accent: "bg-blue-500",
-    dummyText: "Architecture of a thought. Draft v1.0.1"
-  },
-  {
-    id: "botanical",
-    name: "Meadow",
-    bg: "bg-[#F2F7F2] dark:bg-[#0A120A] bg-dot-green-800/[0.08] dark:bg-dot-green-500/[0.05]",
-    font: "font-serif",
-    textColor: "text-[#14532D] dark:text-[#A7F3D0]",
-    cardBorder: "border-green-300 dark:border-green-900/50",
-    accent: "bg-green-600",
-    dummyText: "Like a tree, let your roots grow deep and strong."
-  },
-  {
-    id: "typewriter",
-    name: "Typewriter",
-    bg: "bg-[#F5F5F5] dark:bg-[#121212]",
-    font: "font-mono font-medium",
-    textColor: "text-[#262626] dark:text-[#D4D4D4]",
-    cardBorder: "border-neutral-300 dark:border-neutral-800 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.1)] dark:shadow-[6px_6px_0px_0px_rgba(255,255,255,0.05)] rounded-[2px]",
-    accent: "bg-neutral-600",
-    dummyText: "Keystrokes echoing in an empty room."
-  },
-  {
-    id: "valentine",
-    name: "Valentine",
-    bg: "bg-[#FFF0F2] dark:bg-[#2B0E15]",
-    font: "font-caveat text-2xl",
-    textColor: "text-[#9F1239] dark:text-[#FDA4AF]",
-    cardBorder: "border-rose-200 dark:border-rose-900/40 rounded-[2.5rem]",
-    accent: "bg-rose-500",
-    dummyText: "You have my whole heart, for my whole life."
-  },
-  {
-    id: "monument",
-    name: "Monument",
-    bg: "bg-[#FAFAFA] dark:bg-[#111111]",
-    font: "font-cinzel",
-    textColor: "text-[#333333] dark:text-[#CCCCCC]",
-    cardBorder: "border-b-[6px] border-gray-300 dark:border-gray-700 rounded-b-none",
-    accent: "bg-gray-400",
-    dummyText: "CARVED IN STONE. A LEGACY TO REMEMBER."
-  },
-
-  // Page 3
-  {
-    id: "midnight",
-    name: "Slate",
-    bg: "bg-[#EBF0F5] dark:bg-[#050B14]",
-    font: "font-playfair",
-    textColor: "text-[#0F172A] dark:text-[#94A3B8]",
-    cardBorder: "border-slate-300 dark:border-slate-800",
-    accent: "bg-slate-700 dark:bg-slate-400",
-    dummyText: "The quietest hour holds the loudest thoughts."
-  },
-  {
-    id: "oceanic",
-    name: "Oceanic",
-    bg: "bg-[#F0FDFA] dark:bg-[#042F2E]",
-    font: "font-outfit",
-    textColor: "text-[#0F766E] dark:text-[#5EEAD4]",
-    cardBorder: "border-teal-200 dark:border-teal-900/50 rounded-tl-[3rem] rounded-br-[3rem]",
-    accent: "bg-teal-500",
-    dummyText: "Deep currents and quiet ripples."
-  },
-  {
-    id: "golden-age",
-    name: "Golden Age",
-    bg: "bg-[#FFFAF0] dark:bg-[#1A160C] bg-dot-yellow-900/[0.05] dark:bg-dot-yellow-500/[0.05]",
-    font: "font-playfair italic",
-    textColor: "text-[#B45309] dark:text-[#FCD34D]",
-    cardBorder: "border-yellow-200 dark:border-yellow-900/50 rounded-[2px]",
-    accent: "bg-yellow-500",
-    dummyText: "A nostalgic memory from a brighter era."
-  },
-
-  // Page 4 — Editorial additions
-  {
-    id: "broadsheet",
-    name: "Broadsheet",
-    bg: "bg-[#FBFAF7] dark:bg-[#121212]",
-    font: "font-playfair",
-    textColor: "text-[#141414] dark:text-[#EDEDE6]",
-    cardBorder: "border-neutral-300 dark:border-neutral-700",
-    accent: "bg-[#B91C1C]",
-    categoryFit: ['announcement', 'general'],
-    dummyText: "Extra! Extra! Read all about it — the headline is you."
-  },
+  // 3. Romantic Vow
   {
     id: "vow",
-    name: "Vow",
-    bg: "bg-[#FDF2F4] dark:bg-[#20060D]",
-    font: "font-playfair italic",
-    textColor: "text-[#701A2E] dark:text-[#FBDCE2]",
-    cardBorder: "border-rose-300 dark:border-rose-400/30",
+    name: "Velvet Romance",
+    bg: "bg-[#FFF0F3] dark:bg-[#20060D]",
+    font: "font-serif italic font-medium",
+    textColor: "text-[#881337] dark:text-[#FFE4E6]",
+    cardBorder: "border-rose-300 dark:border-rose-500/40",
     accent: "bg-[#E11D48]",
     categoryFit: ['love'],
     dummyText: "I choose you, in every lifetime, in every universe, always."
   },
+  // 4. Celebration Gala
   {
-    id: "first-light",
-    name: "First Light",
-    bg: "bg-[#FDF6EC] dark:bg-[#1D1508]",
-    font: "font-serif",
-    textColor: "text-[#6B4423] dark:text-[#F3E3C2]",
-    cardBorder: "border-amber-300 dark:border-amber-500/30",
-    accent: "bg-[#D97706]",
-    categoryFit: ['gratitude', 'celebration'],
-    dummyText: "Thank you for being the first light in my darkest season."
+    id: "gala",
+    name: "Champagne Gala",
+    bg: "bg-[#FFFDF5] dark:bg-[#1A1508]",
+    font: "font-playfair font-semibold tracking-wide",
+    textColor: "text-[#78350F] dark:text-[#FEF3C7]",
+    cardBorder: "border-amber-300 dark:border-amber-500/50",
+    accent: "bg-[#F59E0B]",
+    categoryFit: ['celebration', 'promotion'],
+    dummyText: "To the milestones behind us and the brilliant adventures ahead. Cheers!"
   },
+  // 5. Midnight Twilight
+  {
+    id: "twilight",
+    name: "Midnight Starlight",
+    bg: "bg-[#F5F3FF] dark:bg-[#0B0916]",
+    font: "font-outfit font-light tracking-wide",
+    textColor: "text-[#4C1D95] dark:text-[#E9D5FF]",
+    cardBorder: "border-violet-300 dark:border-violet-500/40",
+    accent: "bg-[#7C3AED]",
+    categoryFit: ['confession', 'general'],
+    dummyText: "In the vast silence between stars, your name is what I hear."
+  },
+  // 6. The Broadsheet
+  {
+    id: "broadsheet",
+    name: "The Broadsheet",
+    bg: "bg-[#FAF9F5] dark:bg-[#121214]",
+    font: "font-playfair font-bold",
+    textColor: "text-[#141414] dark:text-[#EDEDE6]",
+    cardBorder: "border-neutral-300 dark:border-neutral-700",
+    accent: "bg-[#B91C1C]",
+    categoryFit: ['announcement', 'general'],
+    dummyText: "EXTRA! EXTRA! Read all about it — the headline is you."
+  },
+  // 7. Cyber Pulse
+  {
+    id: "cyber",
+    name: "Cyber Pulse",
+    bg: "bg-[#F0F9FF] dark:bg-[#030F1A]",
+    font: "font-mono font-medium tracking-tight",
+    textColor: "text-[#0369A1] dark:text-[#38BDF8]",
+    cardBorder: "border-cyan-300 dark:border-cyan-500/50",
+    accent: "bg-[#06B6D4]",
+    categoryFit: ['promotion', 'announcement'],
+    dummyText: "SYSTEM BROADCAST: Build the future. It's officially live."
+  },
+  // 8. Botanical Meadow
+  {
+    id: "botanical",
+    name: "Botanical Meadow",
+    bg: "bg-[#F2F8F4] dark:bg-[#06150D] bg-dot-green-800/[0.08] dark:bg-dot-green-500/[0.05]",
+    font: "font-serif",
+    textColor: "text-[#14532D] dark:text-[#A7F3D0]",
+    cardBorder: "border-emerald-300 dark:border-emerald-600/40",
+    accent: "bg-[#10B981]",
+    categoryFit: ['gratitude', 'general'],
+    dummyText: "Like a tree, let your roots grow deep and reach for the light."
+  },
+  // 9. Molten Ember
   {
     id: "ember",
-    name: "Ember",
-    bg: "bg-[#FFF4ED] dark:bg-[#1C0B03]",
-    font: "font-sans font-semibold",
+    name: "Molten Ember",
+    bg: "bg-[#FFF5ED] dark:bg-[#1A0A03]",
+    font: "font-sans font-bold tracking-tight",
     textColor: "text-[#7C2D12] dark:text-[#FCD9B8]",
-    cardBorder: "border-orange-300 dark:border-orange-500/30",
+    cardBorder: "border-orange-300 dark:border-orange-500/40",
     accent: "bg-[#EA580C]",
     categoryFit: ['rant'],
     dummyText: "Enough. Some truths refuse to stay quiet any longer."
   },
+  // 10. Personal Journal
   {
-    id: "confessional",
-    name: "Confessional",
-    bg: "bg-[#F4F1FA] dark:bg-[#0E0A1A]",
-    font: "font-serif italic",
-    textColor: "text-[#3B2764] dark:text-[#DDD0F5]",
-    cardBorder: "border-violet-300 dark:border-violet-400/30",
-    accent: "bg-[#7C3AED]",
-    categoryFit: ['confession'],
+    id: "journal",
+    name: "Personal Journal",
+    bg: "bg-[#FFFDF5] dark:bg-[#1A1813]",
+    font: "font-caveat text-xl sm:text-2xl",
+    textColor: "text-[#4A3D2C] dark:text-[#E2D5C3]",
+    cardBorder: "border-l-4 border-l-amber-400 border-amber-200 dark:border-amber-900/40",
+    accent: "bg-[#D97706]",
+    categoryFit: ['confession', 'gratitude'],
+    dummyText: "Dear diary, today something incredible happened..."
+  },
+  // 11. Sweet Valentine
+  {
+    id: "valentine",
+    name: "Sweet Valentine",
+    bg: "bg-[#FFF0F3] dark:bg-[#250A14]",
+    font: "font-caveat text-2xl",
+    textColor: "text-[#9F1239] dark:text-[#FDA4AF]",
+    cardBorder: "border-rose-200 dark:border-rose-500/35",
+    accent: "bg-[#F43F5E]",
+    categoryFit: ['love'],
+    dummyText: "You make the ordinary moments feel like poetry."
+  },
+  // 12. Golden Monument
+  {
+    id: "monument",
+    name: "Golden Monument",
+    bg: "bg-[#FAFAFA] dark:bg-[#111112]",
+    font: "font-cinzel uppercase tracking-widest",
+    textColor: "text-[#292524] dark:text-[#E7E5E4]",
+    cardBorder: "border-b-[4px] border-stone-400 dark:border-stone-600",
+    accent: "bg-stone-500",
+    categoryFit: ['celebration', 'general'],
+    dummyText: "CARVED IN STONE. A LEGACY TO BE REMEMBERED."
+  },
+  // 13. Retro Terminal
+  {
+    id: "f",
+    name: "Retro Terminal",
+    bg: "bg-[#EBF7EE] dark:bg-[#051109]",
+    font: "font-mono",
+    textColor: "text-[#064E22] dark:text-[#6EE7B7]",
+    cardBorder: "border-emerald-300 dark:border-emerald-500/40",
+    accent: "bg-[#059669]",
+    categoryFit: ['promotion', 'announcement'],
+    dummyText: "> print('Hello world. We are finally live.');"
+  },
+  // 14. Oceanic Depths
+  {
+    id: "oceanic",
+    name: "Oceanic Depths",
+    bg: "bg-[#F0FDFA] dark:bg-[#031E1D]",
+    font: "font-outfit",
+    textColor: "text-[#0F766E] dark:text-[#5EEAD4]",
+    cardBorder: "border-teal-200 dark:border-teal-500/40",
+    accent: "bg-[#14B8A6]",
+    categoryFit: ['gratitude', 'general'],
+    dummyText: "Deep currents and quiet ripples. Peace is a choice."
+  },
+  // 15. Vintage Typewriter
+  {
+    id: "typewriter",
+    name: "Vintage Typewriter",
+    bg: "bg-[#F6F5F2] dark:bg-[#141413]",
+    font: "font-mono font-medium",
+    textColor: "text-[#262626] dark:text-[#D4D4D4]",
+    cardBorder: "border-neutral-300 dark:border-neutral-700 shadow-[3px_3px_0px_0px_rgba(0,0,0,0.08)] dark:shadow-[3px_3px_0px_0px_rgba(255,255,255,0.05)]",
+    accent: "bg-neutral-600",
+    categoryFit: ['confession', 'general'],
+    dummyText: "Keystrokes echoing in an empty room at midnight."
+  },
+  // 16. Golden Dawn
+  {
+    id: "first-light",
+    name: "Golden Dawn",
+    bg: "bg-[#FDF6EC] dark:bg-[#1A1306]",
+    font: "font-serif",
+    textColor: "text-[#6B4423] dark:text-[#F3E3C2]",
+    cardBorder: "border-amber-300 dark:border-amber-500/40",
+    accent: "bg-[#D97706]",
+    categoryFit: ['gratitude', 'celebration'],
+    dummyText: "Thank you for being the first light in my darkest season."
+  },
+  // 17. Celestial Twilight
+  {
+    id: "celestial",
+    name: "Celestial Twilight",
+    bg: "bg-[#FAF5FF] dark:bg-[#0E061E]",
+    font: "font-outfit font-light tracking-wide",
+    textColor: "text-[#6B21A8] dark:text-[#DDD0F5]",
+    cardBorder: "border-violet-300 dark:border-violet-500/40",
+    accent: "bg-[#9333EA]",
+    categoryFit: ['confession', 'love'],
     dummyText: "There is something I have never told anyone, until now."
   },
-  {
-    id: "summit",
-    name: "Summit",
-    bg: "bg-[#EEF4F6] dark:bg-[#061419]",
-    font: "font-outfit font-medium",
-    textColor: "text-[#123B4F] dark:text-[#CFE8EF]",
-    cardBorder: "border-cyan-600/30 dark:border-cyan-500/40",
-    accent: "bg-[#0891B2]",
-    categoryFit: ['promotion', 'announcement'],
-    dummyText: "We climbed quietly. Today, the view is for everyone."
-  },
+  // 18. Telegram Wire
   {
     id: "telegram",
-    name: "Telegram",
+    name: "Telegram Wire",
     bg: "bg-[#F7F3E8] dark:bg-[#161410]",
     font: "font-mono uppercase tracking-wider",
     textColor: "text-[#33302A] dark:text-[#E8E2D2]",
@@ -345,10 +238,11 @@ export const STANDARD_TEMPLATES: Template[] = [
   }
 ]
 
-export const ALL_TEMPLATES: Template[] = [
-  ...VIP_SPECIAL_TEMPLATES,
-  ...STANDARD_TEMPLATES
-]
+/** Backward compatibility alias */
+export const STANDARD_TEMPLATES: Template[] = ALL_TEMPLATES
+
+/** Backward compatibility: no separate VIP templates */
+export const VIP_SPECIAL_TEMPLATES: Template[] = []
 
 export interface CategoryMeta {
   icon: string

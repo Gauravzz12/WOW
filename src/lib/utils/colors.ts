@@ -122,21 +122,135 @@ export const CANONICAL_TEMPLATES: Record<string, {
   cardBorder: string
   isVip?: boolean
 }> = {
-  // ── Classic Editorial ────────────────────────────────────────────────────
+  // ── Unified Master Templates ─────────────────────────────────────────
   'a': {
-    bg: 'bg-background',
-    textColor: 'text-primary',
-    lightHex: '#111111',
-    darkHex: '#f0f0f0',
-    cardBorder: 'border-primary/15'
+    bg: 'bg-white dark:bg-[#0A0A0A]',
+    textColor: 'text-[#171717] dark:text-[#F3F3F3]',
+    lightHex: '#171717',
+    darkHex: '#F3F3F3',
+    cardBorder: 'border-neutral-200 dark:border-neutral-800'
   },
   'b': {
-    bg: 'bg-[#FDFBF7] dark:bg-[#1C1613]',
+    bg: 'bg-[#FDFBF7] dark:bg-[#1A1612]',
     textColor: 'text-[#3D2C24] dark:text-[#F5EBE6]',
     lightHex: '#3D2C24',
     darkHex: '#F5EBE6',
     cardBorder: 'border-amber-900/15 dark:border-amber-500/25'
   },
+  'vow': {
+    bg: 'bg-[#FFF0F3] dark:bg-[#20060D]',
+    textColor: 'text-[#881337] dark:text-[#FFE4E6]',
+    lightHex: '#881337',
+    darkHex: '#FFE4E6',
+    cardBorder: 'border-rose-300 dark:border-rose-500/40'
+  },
+  'gala': {
+    bg: 'bg-[#FFFDF5] dark:bg-[#1A1508]',
+    textColor: 'text-[#78350F] dark:text-[#FEF3C7]',
+    lightHex: '#78350F',
+    darkHex: '#FEF3C7',
+    cardBorder: 'border-amber-300 dark:border-amber-500/50'
+  },
+  'twilight': {
+    bg: 'bg-[#F5F3FF] dark:bg-[#0B0916]',
+    textColor: 'text-[#4C1D95] dark:text-[#E9D5FF]',
+    lightHex: '#4C1D95',
+    darkHex: '#E9D5FF',
+    cardBorder: 'border-violet-300 dark:border-violet-500/40'
+  },
+  'broadsheet': {
+    bg: 'bg-[#FAF9F5] dark:bg-[#121214]',
+    textColor: 'text-[#141414] dark:text-[#EDEDE6]',
+    lightHex: '#141414',
+    darkHex: '#EDEDE6',
+    cardBorder: 'border-neutral-300 dark:border-neutral-700'
+  },
+  'cyber': {
+    bg: 'bg-[#F0F9FF] dark:bg-[#030F1A]',
+    textColor: 'text-[#0369A1] dark:text-[#38BDF8]',
+    lightHex: '#0369A1',
+    darkHex: '#38BDF8',
+    cardBorder: 'border-cyan-300 dark:border-cyan-500/50'
+  },
+  'botanical': {
+    bg: 'bg-[#F2F8F4] dark:bg-[#06150D]',
+    textColor: 'text-[#14532D] dark:text-[#A7F3D0]',
+    lightHex: '#14532D',
+    darkHex: '#A7F3D0',
+    cardBorder: 'border-emerald-300 dark:border-emerald-600/40'
+  },
+  'ember': {
+    bg: 'bg-[#FFF5ED] dark:bg-[#1A0A03]',
+    textColor: 'text-[#7C2D12] dark:text-[#FCD9B8]',
+    lightHex: '#7C2D12',
+    darkHex: '#FCD9B8',
+    cardBorder: 'border-orange-300 dark:border-orange-500/40'
+  },
+  'journal': {
+    bg: 'bg-[#FFFDF5] dark:bg-[#1A1813]',
+    textColor: 'text-[#4A3D2C] dark:text-[#E2D5C3]',
+    lightHex: '#4A3D2C',
+    darkHex: '#E2D5C3',
+    cardBorder: 'border-amber-200 dark:border-amber-900/40'
+  },
+  'valentine': {
+    bg: 'bg-[#FFF0F3] dark:bg-[#250A14]',
+    textColor: 'text-[#9F1239] dark:text-[#FDA4AF]',
+    lightHex: '#9F1239',
+    darkHex: '#FDA4AF',
+    cardBorder: 'border-rose-200 dark:border-rose-500/35'
+  },
+  'monument': {
+    bg: 'bg-[#FAFAFA] dark:bg-[#111112]',
+    textColor: 'text-[#292524] dark:text-[#E7E5E4]',
+    lightHex: '#292524',
+    darkHex: '#E7E5E4',
+    cardBorder: 'border-stone-400 dark:border-stone-600'
+  },
+  'f': {
+    bg: 'bg-[#EBF7EE] dark:bg-[#051109]',
+    textColor: 'text-[#064E22] dark:text-[#6ee7b7]',
+    lightHex: '#064E22',
+    darkHex: '#6ee7b7',
+    cardBorder: 'border-emerald-300 dark:border-emerald-500/40'
+  },
+  'oceanic': {
+    bg: 'bg-[#F0FDFA] dark:bg-[#031E1D]',
+    textColor: 'text-[#0F766E] dark:text-[#5EEAD4]',
+    lightHex: '#0F766E',
+    darkHex: '#5EEAD4',
+    cardBorder: 'border-teal-200 dark:border-teal-500/40'
+  },
+  'typewriter': {
+    bg: 'bg-[#F6F5F2] dark:bg-[#141413]',
+    textColor: 'text-[#262626] dark:text-[#D4D4D4]',
+    lightHex: '#262626',
+    darkHex: '#D4D4D4',
+    cardBorder: 'border-neutral-300 dark:border-neutral-700'
+  },
+  'first-light': {
+    bg: 'bg-[#FDF6EC] dark:bg-[#1A1306]',
+    textColor: 'text-[#6B4423] dark:text-[#F3E3C2]',
+    lightHex: '#6B4423',
+    darkHex: '#F3E3C2',
+    cardBorder: 'border-amber-300 dark:border-amber-500/40'
+  },
+  'celestial': {
+    bg: 'bg-[#FAF5FF] dark:bg-[#0E061E]',
+    textColor: 'text-[#6B21A8] dark:text-[#DDD0F5]',
+    lightHex: '#6B21A8',
+    darkHex: '#DDD0F5',
+    cardBorder: 'border-violet-300 dark:border-violet-500/40'
+  },
+  'telegram': {
+    bg: 'bg-[#F7F3E8] dark:bg-[#161410]',
+    textColor: 'text-[#33302A] dark:text-[#E8E2D2]',
+    lightHex: '#33302A',
+    darkHex: '#E8E2D2',
+    cardBorder: 'border-stone-300 dark:border-stone-600'
+  },
+
+  // ── Legacy support for existing messages ──────────────────────────────
   'c': {
     bg: 'bg-[#F4F4F5] dark:bg-[#0E0E11]',
     textColor: 'text-[#18181B] dark:text-[#F4F4F5]',
@@ -150,13 +264,6 @@ export const CANONICAL_TEMPLATES: Record<string, {
     lightHex: '#1e3a5f',
     darkHex: '#bfdbfe',
     cardBorder: 'border-blue-200 dark:border-blue-900/40'
-  },
-  'f': {
-    bg: 'bg-[#EBF7EE] dark:bg-[#051109]',
-    textColor: 'text-[#064E22] dark:text-[#6ee7b7]',
-    lightHex: '#064E22',
-    darkHex: '#6ee7b7',
-    cardBorder: 'border-emerald-300 dark:border-emerald-500/30'
   },
   'g': {
     bg: 'bg-[#F4ECD8] dark:bg-[#1E1914]',
@@ -186,85 +293,47 @@ export const CANONICAL_TEMPLATES: Record<string, {
     darkHex: '#e5e5e5',
     cardBorder: 'border-neutral-400 dark:border-neutral-700'
   },
-
-  // ── VIP Luxury (always-dark solids → always-bright text) ─────────────
   'vip-birthday': {
-    bg: 'bg-[#1C1304]',
-    textColor: 'text-[#FEF3C7]',
-    lightHex: '#FEF3C7',
+    bg: 'bg-[#FFFDF5] dark:bg-[#1A1508]',
+    textColor: 'text-[#78350F] dark:text-[#FEF3C7]',
+    lightHex: '#78350F',
     darkHex: '#FEF3C7',
-    cardBorder: 'border-amber-400/50',
-    isVip: true
+    cardBorder: 'border-amber-400/50'
   },
   'vip-romance': {
-    bg: 'bg-[#290714]',
-    textColor: 'text-[#FFE4E6]',
-    lightHex: '#FFE4E6',
+    bg: 'bg-[#FFF0F3] dark:bg-[#20060D]',
+    textColor: 'text-[#881337] dark:text-[#FFE4E6]',
+    lightHex: '#881337',
     darkHex: '#FFE4E6',
-    cardBorder: 'border-rose-400/50',
-    isVip: true
+    cardBorder: 'border-rose-400/50'
   },
   'vip-brand': {
-    bg: 'bg-[#031326]',
-    textColor: 'text-[#E0F2FE]',
-    lightHex: '#E0F2FE',
-    darkHex: '#E0F2FE',
-    cardBorder: 'border-cyan-400/50',
-    isVip: true
+    bg: 'bg-[#F0F9FF] dark:bg-[#030F1A]',
+    textColor: 'text-[#0369A1] dark:text-[#38BDF8]',
+    lightHex: '#0369A1',
+    darkHex: '#38BDF8',
+    cardBorder: 'border-cyan-400/50'
   },
   'vip-wisdom': {
-    bg: 'bg-[#081C13]',
-    textColor: 'text-[#ECFDF5]',
-    lightHex: '#ECFDF5',
-    darkHex: '#ECFDF5',
-    cardBorder: 'border-emerald-400/50',
-    isVip: true
+    bg: 'bg-[#F2F8F4] dark:bg-[#06150D]',
+    textColor: 'text-[#14532D] dark:text-[#A7F3D0]',
+    lightHex: '#14532D',
+    darkHex: '#A7F3D0',
+    cardBorder: 'border-emerald-400/50'
   },
   'vip-noir': {
-    bg: 'bg-[#0C0B12]',
-    textColor: 'text-[#F3E8FF]',
-    lightHex: '#F3E8FF',
-    darkHex: '#F3E8FF',
-    cardBorder: 'border-purple-400/50',
-    isVip: true
+    bg: 'bg-[#F5F3FF] dark:bg-[#0B0916]',
+    textColor: 'text-[#4C1D95] dark:text-[#E9D5FF]',
+    lightHex: '#4C1D95',
+    darkHex: '#E9D5FF',
+    cardBorder: 'border-purple-400/50'
   },
   'night-edition': {
     bg: 'bg-[#141118]',
     textColor: 'text-[#F5EFE6]',
     lightHex: '#F5EFE6',
     darkHex: '#F5EFE6',
-    cardBorder: 'border-amber-400/50',
-    isVip: true
-  },
-
-  // ── Editorial additions (dual-theme, contrast-guaranteed) ────────────
-  'broadsheet': {
-    bg: 'bg-[#FBFAF7] dark:bg-[#121212]',
-    textColor: 'text-[#141414] dark:text-[#EDEDE6]',
-    lightHex: '#141414',
-    darkHex: '#EDEDE6',
-    cardBorder: 'border-neutral-300 dark:border-neutral-700'
-  },
-  'vow': {
-    bg: 'bg-[#FDF2F4] dark:bg-[#20060D]',
-    textColor: 'text-[#701A2E] dark:text-[#FBDCE2]',
-    lightHex: '#701A2E',
-    darkHex: '#FBDCE2',
-    cardBorder: 'border-rose-300 dark:border-rose-400/30'
-  },
-  'first-light': {
-    bg: 'bg-[#FDF6EC] dark:bg-[#1D1508]',
-    textColor: 'text-[#6B4423] dark:text-[#F3E3C2]',
-    lightHex: '#6B4423',
-    darkHex: '#F3E3C2',
-    cardBorder: 'border-amber-300 dark:border-amber-500/30'
-  },
-  'ember': {
-    bg: 'bg-[#FFF4ED] dark:bg-[#1C0B03]',
-    textColor: 'text-[#7C2D12] dark:text-[#FCD9B8]',
-    lightHex: '#7C2D12',
-    darkHex: '#FCD9B8',
-    cardBorder: 'border-orange-300 dark:border-orange-500/30'
+    cardBorder: 'border-amber-400/50'
   },
   'confessional': {
     bg: 'bg-[#F4F1FA] dark:bg-[#0E0A1A]',
@@ -279,13 +348,6 @@ export const CANONICAL_TEMPLATES: Record<string, {
     lightHex: '#123B4F',
     darkHex: '#CFE8EF',
     cardBorder: 'border-cyan-600/30 dark:border-cyan-500/40'
-  },
-  'telegram': {
-    bg: 'bg-[#F7F3E8] dark:bg-[#161410]',
-    textColor: 'text-[#33302A] dark:text-[#E8E2D2]',
-    lightHex: '#33302A',
-    darkHex: '#E8E2D2',
-    cardBorder: 'border-stone-300 dark:border-stone-600'
   }
 }
 
@@ -402,6 +464,16 @@ export function resolveCardStyles(styleConfig?: any, templateId?: string): {
     else if (rawBg.includes('neutral-100') || (rawBg.includes('black') && !rawBg.includes('black/'))) tid = 'h'
     else if (rawBg.includes('#FFF1F2') || rawBg.includes('#200D13')) tid = 'i'
     else if (rawBg.includes('#ECE6D8') || rawBg.includes('#151517')) tid = 'j'
+    else if (rawBg.includes('#FFFDF5') && rawBg.includes('#1A1508')) tid = 'gala'
+    else if (rawBg.includes('#F5F3FF') && rawBg.includes('#0B0916')) tid = 'twilight'
+    else if (rawBg.includes('#F0F9FF') && rawBg.includes('#030F1A')) tid = 'cyber'
+    else if (rawBg.includes('#F2F8F4') || rawBg.includes('#06150D')) tid = 'botanical'
+    else if (rawBg.includes('#FFF0F3') && rawBg.includes('#250A14')) tid = 'valentine'
+    else if (rawBg.includes('#FAFAFA') && rawBg.includes('#111112')) tid = 'monument'
+    else if (rawBg.includes('#F0FDFA') || rawBg.includes('#031E1D')) tid = 'oceanic'
+    else if (rawBg.includes('#F6F5F2') || rawBg.includes('#141413')) tid = 'typewriter'
+    else if (rawBg.includes('#FAF5FF') && rawBg.includes('#0E061E')) tid = 'celestial'
+    else if (rawBg.includes('#FFFDF5')) tid = 'journal'
     else if (rawBg.includes('#1C1304')) tid = 'vip-birthday'
     else if (rawBg.includes('#290714')) tid = 'vip-romance'
     else if (rawBg.includes('#031326')) tid = 'vip-brand'

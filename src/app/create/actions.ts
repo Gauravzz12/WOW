@@ -14,7 +14,7 @@ import {
   SPONSORED_PRICE,
   SPONSORED_DURATION_SECS,
 } from '@/lib/constants/pricing'
-import { STANDARD_TEMPLATES, VIP_SPECIAL_TEMPLATES } from '@/lib/constants/templates'
+import { ALL_TEMPLATES } from '@/lib/constants/templates'
 import { FRAMES } from '@/lib/constants/frames'
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
@@ -177,26 +177,13 @@ export async function createMessage(data: {
   }
   delete (parsedStyle as any).reminderEmail
 
-  // Template allowlist: classic styles for everyone; VIP stage styles only
-  // on reserved (Special) submissions — anything else is forced back to the
-  // default so premium styling can't be claimed at normal price via direct
-  // action calls.
-  const isVipTemplate = VIP_SPECIAL_TEMPLATES.some(t => t.id === data.templateId)
-  const templateId = STANDARD_TEMPLATES.some(t => t.id === data.templateId)
+  // Template allowlist: unified templates for all modes (Normal, Special, Sponsored)
+  const templateId = ALL_TEMPLATES.some(t => t.id === data.templateId)
     ? data.templateId
-    : isVipTemplate && data.isReservedSlot
-      ? data.templateId
-      : 'a'
+    : 'a'
 
-  // CRE-3: the renderer re-derives VIP status and styling from the stored
-  // style_config, so allowlisting template_id alone was not enough — a
-  // direct caller could store a VIP bg/isVip/vipBadge at Normal price.
-  // Re-derive every visual field from the allowlisted template definition
-  // and drop client-supplied copies. Honest wizard submissions carry
-  // exactly these values, so nothing changes for them.
-  const templateDef =
-    STANDARD_TEMPLATES.find(t => t.id === templateId) ||
-    VIP_SPECIAL_TEMPLATES.find(t => t.id === templateId)
+  // Re-derive visual fields from the allowlisted template definition
+  const templateDef = ALL_TEMPLATES.find(t => t.id === templateId)
   if (templateDef) {
     parsedStyle.bg = templateDef.bg
     parsedStyle.font = templateDef.font
@@ -205,12 +192,10 @@ export async function createMessage(data: {
     else delete parsedStyle.cardBorder
     if (templateDef.accent) parsedStyle.accent = templateDef.accent
     else delete parsedStyle.accent
-    if (templateDef.isVip) parsedStyle.isVip = true
-    else delete parsedStyle.isVip
-    if (templateDef.vipBadge) parsedStyle.vipBadge = templateDef.vipBadge
-    else delete parsedStyle.vipBadge
-    if (templateDef.vipIcon) parsedStyle.vipIcon = templateDef.vipIcon
-    else delete parsedStyle.vipIcon
+    delete parsedStyle.isVip
+    delete parsedStyle.vipBadge
+    delete parsedStyle.vipIcon
+    delete parsedStyle.vipTagline
     parsedStyle.templateId = templateId
   }
 
@@ -310,13 +295,11 @@ export async function createMessage(data: {
     }
   }
 
-  // CRE-6: frame gating was picker-only. Validate frameId against the
-  // registry by tier: unknown ids and retired picker-hidden frames are
-  // dropped, Special-only frames (Laurel) require a reserved submission,
-  // and Sponsored messages carry no frame (handled above).
+  // Frame validation: unknown ids and retired picker-hidden frames are dropped
+  // All active occasion frames are unlocked for everyone.
   if (typeof parsedStyle.frameId === 'string' && parsedStyle.frameId) {
     const frame = FRAMES.find(f => f.id === parsedStyle.frameId)
-    if (!frame || (frame as any).pickerHidden || (frame.specialOnly && !isReserved) || isSponsored) {
+    if (!frame || (frame as any).pickerHidden || isSponsored) {
       delete parsedStyle.frameId
     }
   }

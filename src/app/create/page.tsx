@@ -45,8 +45,6 @@ import {
 
 import {
   ALL_TEMPLATES,
-  STANDARD_TEMPLATES,
-  VIP_SPECIAL_TEMPLATES,
   CATEGORY_METADATA,
   Template
 } from '@/lib/constants/templates';
@@ -271,12 +269,12 @@ function CreateMessageContent() {
   // Minimum bid is derived from 2 hour base + 10-minute extensions (+$2/10m)
   const minBid = calculateNormalMinBid(normalDuration);
 
-  const selectedTemplate = ALL_TEMPLATES.find(t => t.id === template) || STANDARD_TEMPLATES[0];
+  const selectedTemplate = ALL_TEMPLATES.find(t => t.id === template) || ALL_TEMPLATES[0];
   const cardStyles = resolveCardStyles({
     bg: selectedTemplate.bg,
     textColor: selectedTemplate.textColor,
     cardBorder: selectedTemplate.cardBorder,
-    isVip: selectedTemplate.isVip || false,
+    isVip: false,
   }, selectedTemplate.id);
   const categoryMeta = CATEGORY_METADATA[category] || CATEGORY_METADATA.general;
   const dummyMessage = CATEGORY_DUMMY_MESSAGES[category] || CATEGORY_DUMMY_MESSAGES.general;
@@ -284,21 +282,12 @@ function CreateMessageContent() {
 
   const handleSelectTemplate = (t: Template) => {
     setTemplate(t.id);
-    if (t.isVip) {
-      // Suggest / unlock special slot automatically when picking a VIP template
-      setTier('special');
-    }
   };
 
-  /** Shared Step-3 preview card — used by both the Special stage styles and the classic grid. */
+  /** Shared Step-3 preview card — unified for all templates and all modes. */
   const renderTemplateCard = (t: Template) => {
     const isSelected = template === t.id;
-    // VIP templates render always-dark on stage (CANONICAL_TEMPLATES), in both site
-    // themes. Preview them with the canonical dark bg so the picker shows the true
-    // stage colours — the templates.ts light variant (pale bg) under the canonical
-    // bright text washes out to near-invisible in light theme.
-    const canonical = t.isVip ? CANONICAL_TEMPLATES[t.id] : undefined;
-    const tStyles = resolveCardStyles({ bg: canonical ? canonical.bg : t.bg, textColor: t.textColor, cardBorder: t.cardBorder, isVip: t.isVip || false }, t.id);
+    const tStyles = resolveCardStyles({ bg: t.bg, textColor: t.textColor, cardBorder: t.cardBorder, isVip: false }, t.id);
     return (
       <button
         key={t.id}
@@ -383,9 +372,9 @@ function CreateMessageContent() {
         bg: cardStyles.bg,
         font: selectedTemplate.font,
         textColor: cardStyles.textColor,
-        isVip: selectedTemplate.isVip || false,
-        vipBadge: selectedTemplate.vipBadge || undefined,
-        vipIcon: selectedTemplate.vipIcon || undefined,
+        isVip: false,
+        vipBadge: undefined,
+        vipIcon: undefined,
         cardBorder: cardStyles.cardBorder || undefined,
         accent: selectedTemplate.accent || undefined,
         brandName: brandName.trim().slice(0, 40) || undefined,
@@ -864,49 +853,46 @@ function CreateMessageContent() {
             </motion.div>
           )}
 
-          {/* STEP 3: TEMPLATES (CLASSIC) */}
+          {/* STEP 3: TEMPLATES (UNIFIED) */}
           {step === 3 && (
             <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex flex-col h-full">
               <div className="mb-6">
                 <span className="text-xs uppercase tracking-widest font-bold text-secondary">Step 3 of 5</span>
                 <h2 className="text-2xl sm:text-3xl font-serif mt-1 mb-2">Select Your Visual Style</h2>
-                <p className="text-secondary text-sm">{isReserved ? 'Your Special broadcast unlocks the stage styles below.' : 'Pick a classic style.'}</p>
+                <p className="text-secondary text-sm">Choose a visual aesthetic that fits your message's mood.</p>
               </div>
 
-              {/* SPECIAL STAGE STYLES — VIP templates, unlocked by the Special tier */}
-              {isReserved && (
-                <div className="mb-8">
-                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-3">
-                    <h3 className="text-xs uppercase tracking-widest font-bold text-secondary">
-                      ✦ Special Stage Styles
-                    </h3>
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-violet-600 dark:text-violet-400">Special only</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    {VIP_SPECIAL_TEMPLATES.map(t => renderTemplateCard(t))}
-                  </div>
-                </div>
-              )}
-
-              {/* CLASSIC EDITORIAL TEMPLATES */}
+              {/* UNIFIED TEMPLATES GRID */}
               <div className="mb-8">
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-3">
-                  <h3 className="text-xs uppercase tracking-widest font-bold text-secondary">
-                    Classic Editorial Styles
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => setTemplatePage(p => (p + 1) % Math.ceil(STANDARD_TEMPLATES.length / 6))}
-                    className="shrink-0 text-xs font-semibold text-primary hover:text-primary/70 bg-background-elevated px-2.5 py-1 rounded-full transition-colors flex items-center gap-1.5 shadow-sm border border-primary/10"
-                  >
-                    More Templates
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 22v-6h6"/></svg>
-                  </button>
+                  <span className="text-xs font-semibold text-secondary">
+                    Showing {templatePage * 6 + 1}–{Math.min((templatePage + 1) * 6, ALL_TEMPLATES.length)} of {ALL_TEMPLATES.length} styles
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={templatePage === 0}
+                      onClick={() => setTemplatePage(p => Math.max(0, p - 1))}
+                      className="text-xs font-semibold text-primary disabled:opacity-30 hover:text-primary/70 bg-background-elevated px-2.5 py-1 rounded-full transition-colors shadow-sm border border-primary/10"
+                    >
+                      Prev
+                    </button>
+                    <span className="text-xs text-secondary px-1 font-mono">
+                      {templatePage + 1} / {Math.ceil(ALL_TEMPLATES.length / 6)}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={templatePage >= Math.ceil(ALL_TEMPLATES.length / 6) - 1}
+                      onClick={() => setTemplatePage(p => Math.min(Math.ceil(ALL_TEMPLATES.length / 6) - 1, p + 1))}
+                      className="text-xs font-semibold text-primary disabled:opacity-30 hover:text-primary/70 bg-background-elevated px-2.5 py-1 rounded-full transition-colors shadow-sm border border-primary/10"
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  {STANDARD_TEMPLATES.slice(templatePage * 6, (templatePage + 1) * 6).map(t => renderTemplateCard(t))}
+                  {ALL_TEMPLATES.slice(templatePage * 6, (templatePage + 1) * 6).map(t => renderTemplateCard(t))}
                 </div>
               </div>
 
