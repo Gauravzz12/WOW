@@ -5,13 +5,15 @@ import { sanitizeHtmlText } from '@/lib/sanitize'
 import { validateContentModeration, validateContentModerationAsync } from '@/lib/moderation'
 import {
   BASE_NORMAL_MINS,
+  BASE_NORMAL_PRICE,
   MAX_NORMAL_MINS,
+  PROMO_FREE_LIMIT,
   calculateNormalMinBid,
   calculateSpecialPrice,
   SPONSORED_PRICE,
   SPONSORED_DURATION_SECS,
 } from '@/lib/constants/pricing'
-import { STANDARD_TEMPLATES } from '@/lib/constants/templates'
+import { STANDARD_TEMPLATES, VIP_SPECIAL_TEMPLATES } from '@/lib/constants/templates'
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 
@@ -28,6 +30,8 @@ export async function createMessage(data: {
   isReservedSlot?: boolean
   isSponsored?: boolean
   styleConfig?: string
+  usePromoFree?: boolean
+  deviceId?: string
 }) {
   // Find category by slug (active only — inactive slugs are rejected)
   const { data: category, error: catError } = await supabaseAdmin
@@ -152,12 +156,16 @@ export async function createMessage(data: {
   }
   delete (parsedStyle as any).reminderEmail
 
-  // Template allowlist: only classic styles are offered in the UI. VIP and
-  // unknown ids are forced back to the default so premium styling can't be
-  // claimed at normal price via direct action calls.
+  // Template allowlist: classic styles for everyone; VIP stage styles only
+  // on reserved (Special) submissions — anything else is forced back to the
+  // default so premium styling can't be claimed at normal price via direct
+  // action calls.
+  const isVipTemplate = VIP_SPECIAL_TEMPLATES.some(t => t.id === data.templateId)
   const templateId = STANDARD_TEMPLATES.some(t => t.id === data.templateId)
     ? data.templateId
-    : 'a'
+    : isVipTemplate && data.isReservedSlot
+      ? data.templateId
+      : 'a'
 
   // Server-side pricing: never trust the client bid. Reserved messages are
   // priced exactly from the selected slot count (and must carry selected
@@ -166,6 +174,8 @@ export async function createMessage(data: {
   const isReserved = data.isReservedSlot || false
   const isSponsored = !isReserved && (data.isSponsored === true || parsedStyle.isSponsored === true)
   let bidAmount: number
+  let promoApplied = false
+  let promoDeviceId: string | null = null
   if (isReserved) {
     const selectedSlots = Array.isArray(parsedStyle.selectedSlots)
       ? parsedStyle.selectedSlots
@@ -188,9 +198,47 @@ export async function createMessage(data: {
     const minBid = calculateNormalMinBid(durationMins)
     const candidate = Number(data.bidAmount)
     bidAmount = !isNaN(candidate) && candidate > minBid ? candidate : minBid
+
+    // Launch promo — first 500 Normal broadcasts free. Eligibility is
+    // re-validated here, never trusted from the client: Normal tier, base
+    // duration only (no extensions), no raised bid, global cap not yet
+    // reached, and no earlier promo broadcast from the same device.
+    // Ineligible requests silently fall through to the paid path.
+    if (
+      data.usePromoFree === true &&
+      durationMins === BASE_NORMAL_MINS &&
+      bidAmount === minBid &&
+      typeof data.deviceId === 'string' &&
+      data.deviceId.trim().length > 0
+    ) {
+      const deviceId = data.deviceId.trim().slice(0, 100)
+      const [{ count: promoCount }, { count: deviceCount }] = await Promise.all([
+        supabaseAdmin
+          .from('messages')
+          .select('id', { count: 'exact', head: true })
+          .eq('is_promo_free', true)
+          .neq('status', 'REJECTED'),
+        supabaseAdmin
+          .from('messages')
+          .select('id', { count: 'exact', head: true })
+          .eq('is_promo_free', true)
+          .eq('device_id', deviceId)
+          .neq('status', 'REJECTED'),
+      ])
+      // Fail closed on unreadable counts: no promo without proof of room.
+      if (
+        typeof promoCount === 'number' && Number.isFinite(promoCount) && promoCount < PROMO_FREE_LIMIT &&
+        typeof deviceCount === 'number' && Number.isFinite(deviceCount) && deviceCount === 0
+      ) {
+        promoApplied = true
+        promoDeviceId = deviceId
+      }
+    }
   }
 
-  // Insert message
+  // Insert message. Promo broadcasts skip payment entirely: they enter the
+  // queue directly (QUEUED) with bid_amount = BASE_NORMAL_PRICE so bid-based
+  // tier classification keeps reading them as Normal, flagged is_promo_free.
   const { data: message, error: msgError } = await supabaseAdmin
     .from('messages')
     .insert({
@@ -199,9 +247,11 @@ export async function createMessage(data: {
       content: trimmedContent,
       signature: signature,
       recipient: recipient,
-      status: 'PENDING_PAYMENT',
-      bid_amount: bidAmount,
+      status: promoApplied ? 'QUEUED' : 'PENDING_PAYMENT',
+      bid_amount: promoApplied ? BASE_NORMAL_PRICE : bidAmount,
       is_reserved_slot: isReserved,
+      is_promo_free: promoApplied,
+      device_id: promoDeviceId,
       style_config: parsedStyle,
       reminder_email: reminderEmail,
     })
@@ -213,7 +263,7 @@ export async function createMessage(data: {
     return { error: 'Failed to create message' }
   }
 
-  return { success: true, messageId: message.id }
+  return { success: true, messageId: message.id, promoApplied }
 }
 
 /**
