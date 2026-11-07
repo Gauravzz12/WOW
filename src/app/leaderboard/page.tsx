@@ -1,5 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
+import type { Metadata } from 'next'
 import { LeaderboardView, LeaderboardItem } from './LeaderboardView'
+
+export const metadata: Metadata = {
+  title: 'Leaderboard',
+  description: 'The most loved, celebrated, and deeply resonated broadcasts on Words of the World.',
+}
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0

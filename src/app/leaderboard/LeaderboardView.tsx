@@ -99,7 +99,7 @@ export function LeaderboardView({ items }: { items: LeaderboardItem[] }) {
       shortLabel: 'All',
       icon: Trophy,
       badgeColor: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
-      activeGlow: 'shadow-[0_0_20px_rgba(245,158,11,0.15)]',
+      activeGlow: '',
     },
     {
       id: 'normal',
@@ -107,7 +107,7 @@ export function LeaderboardView({ items }: { items: LeaderboardItem[] }) {
       shortLabel: 'Normal',
       icon: Radio,
       badgeColor: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
-      activeGlow: 'shadow-[0_0_20px_rgba(16,185,129,0.15)]',
+      activeGlow: '',
     },
     {
       id: 'sponsored',
@@ -115,7 +115,7 @@ export function LeaderboardView({ items }: { items: LeaderboardItem[] }) {
       shortLabel: 'Sponsored',
       icon: Sparkles,
       badgeColor: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
-      activeGlow: 'shadow-[0_0_20px_rgba(251,191,36,0.15)]',
+      activeGlow: '',
     },
     {
       id: 'special',
@@ -123,7 +123,7 @@ export function LeaderboardView({ items }: { items: LeaderboardItem[] }) {
       shortLabel: 'Special',
       icon: Zap,
       badgeColor: 'text-violet-400 bg-violet-400/10 border-violet-400/20',
-      activeGlow: 'shadow-[0_0_20px_rgba(167,139,250,0.15)]',
+      activeGlow: '',
     },
   ]
 
@@ -157,10 +157,7 @@ export function LeaderboardView({ items }: { items: LeaderboardItem[] }) {
   const currentTabInfo = tabDescriptions[activeTab]
 
   return (
-    <div className="min-h-[100dvh] bg-background dark:bg-grid-white/[0.03] bg-grid-black/[0.03] relative flex flex-col pt-16 md:pt-20 px-4 sm:px-6 pb-28 overflow-x-hidden selection:bg-amber-500/20">
-      
-      {/* Radial fade mask */}
-      <div className="absolute pointer-events-none inset-0 flex items-center justify-center bg-background [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]" />
+    <div className="min-h-[100dvh] bg-background relative flex flex-col pt-16 md:pt-20 px-4 sm:px-6 pb-28 overflow-x-hidden selection:bg-amber-500/20">
       
       <div className="max-w-4xl mx-auto w-full relative z-10 space-y-8">
         
@@ -188,7 +185,7 @@ export function LeaderboardView({ items }: { items: LeaderboardItem[] }) {
         {/* Hero Section */}
         <section className="space-y-4">
           <div className="flex items-start sm:items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/5">
+            <div className="w-14 h-14 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 shadow-lg shadow-black/10">
               <Trophy className="text-amber-500 w-8 h-8" />
             </div>
             <div>
@@ -203,7 +200,7 @@ export function LeaderboardView({ items }: { items: LeaderboardItem[] }) {
         </section>
 
         {/* Tier Tabs Navigation */}
-        <div className="bg-background-elevated/70 backdrop-blur-xl border border-primary/10 rounded-2xl p-1.5 shadow-sm flex items-center gap-1 overflow-x-auto no-scrollbar">
+        <div className="bg-background-elevated/70 border border-primary/10 rounded-lg p-1.5 shadow-sm flex items-center gap-1 overflow-x-auto no-scrollbar">
           {tabOptions.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -274,7 +271,7 @@ export function LeaderboardView({ items }: { items: LeaderboardItem[] }) {
 
                 // Rank medal colors
                 const rankStyles = i === 0 
-                  ? 'bg-amber-500/20 text-amber-500 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                  ? 'bg-amber-500/20 text-amber-500 border-amber-500/40'
                   : i === 1
                   ? 'bg-slate-300/20 text-slate-300 border-slate-300/40'
                   : i === 2
@@ -292,7 +289,7 @@ export function LeaderboardView({ items }: { items: LeaderboardItem[] }) {
                   >
                     <Link
                       href={`/w/${msg.id}`}
-                      className="group block p-5 sm:p-6 rounded-2xl bg-background-elevated/60 hover:bg-background-elevated/90 border border-primary/10 hover:border-amber-500/40 backdrop-blur-md transition-all shadow-sm hover:shadow-xl"
+                      className="group block p-5 sm:p-6 rounded-lg bg-background-elevated/60 hover:bg-background-elevated/90 border border-primary/10 hover:border-amber-500/40 transition-all shadow-sm hover:shadow-sm"
                     >
                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
                         
@@ -363,9 +360,9 @@ export function LeaderboardView({ items }: { items: LeaderboardItem[] }) {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-center py-20 px-6 border border-dashed border-primary/15 rounded-3xl bg-background-elevated/20 space-y-4"
+                className="text-center py-20 px-6 border border-dashed border-primary/15 rounded-lg bg-background-elevated/20 space-y-4"
               >
-                <div className="w-12 h-12 rounded-2xl bg-primary/5 mx-auto flex items-center justify-center text-secondary">
+                <div className="w-12 h-12 rounded-lg bg-primary/5 mx-auto flex items-center justify-center text-secondary">
                   <Trophy className="w-6 h-6 opacity-40" />
                 </div>
                 <div>
