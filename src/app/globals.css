@@ -31,6 +31,20 @@ body {
   -webkit-user-select: text;
 }
 
+/* Final guard against any component pushing wider than the phone screen */
+html, body {
+  overflow-x: clip;
+}
+
+/* Hide scrollbars on horizontal pill/chip rails while keeping them scrollable */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* General text retains the clean default arrow cursor instead of showing the I-beam typing cursor on hover, while remaining fully selectable and copyable */
 p, span, h1, h2, h3, h4, h5, h6, blockquote, div, section, article, time, li, td, th {
   cursor: default;
