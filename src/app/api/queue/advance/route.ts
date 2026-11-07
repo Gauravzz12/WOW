@@ -3,10 +3,16 @@ import { runQueueAdvance } from '@/lib/queueAdvance'
 
 export const dynamic = 'force-dynamic'
 
-function isAuthorized(req: Request): boolean {
+// Auth model (stated honestly):
+// - POST is intentionally callable without a secret: the in-browser client
+//   (MainFeedContainer) triggers advances, and runQueueAdvance is idempotent
+//   with atomic guards — worst case from abuse is extra no-op sweeps.
+// - GET is the cron entry point (Vercel Cron sends GET with the secret), so
+//   GET requires CRON_SECRET whenever one is configured.
+function hasValidCronSecret(req: Request): boolean {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret) {
-    // If CRON_SECRET is not configured (e.g. in local dev), allow execution
+    // No secret configured (local dev): allow.
     return true
   }
   const authHeader = req.headers.get('authorization')
@@ -14,19 +20,15 @@ function isAuthorized(req: Request): boolean {
   return authHeader === `Bearer ${cronSecret}` || customHeader === cronSecret
 }
 
-export async function POST(req: Request) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+export async function POST() {
   const result = await runQueueAdvance()
   return NextResponse.json(result)
 }
 
 export async function GET(req: Request) {
-  if (!isAuthorized(req)) {
+  if (!hasValidCronSecret(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const result = await runQueueAdvance()
   return NextResponse.json(result)
 }
-
