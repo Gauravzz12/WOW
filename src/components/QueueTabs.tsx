@@ -72,6 +72,11 @@ export function QueueTabs({
     if (urlBumpToken) {
       setInitialBumpToken(urlBumpToken)
       setIsBumpModalOpen(true)
+      // DAT-8: the bump token is a bearer credential — scrub it from the
+      // address bar (and history) as soon as it has been read.
+      const clean = new URL(window.location.href)
+      clean.searchParams.delete('bumpToken')
+      window.history.replaceState(null, '', clean.toString())
     }
 
     if (searchParams?.get('bumpSuccess') === '1') {

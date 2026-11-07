@@ -8,8 +8,8 @@ import { getCategoryStyles } from '@/lib/utils/colors'
 import { ShareMenu } from './ShareMenu'
 import { ReportModal } from './ReportModal'
 import { toast } from '@/components/Toast'
-import { getDeviceId, getStoredReactions, setStoredReaction, removeStoredReaction, syncStoredReactions } from '@/lib/deviceId'
-import { addReaction as serverAddReaction, removeReaction as serverRemoveReaction } from '@/app/w/[id]/reactions'
+import { getStoredReactions, setStoredReaction, removeStoredReaction, syncStoredReactions } from '@/lib/deviceId'
+import { addReaction as serverAddReaction, removeReaction as serverRemoveReaction, getMyReactions } from '@/app/w/[id]/reactions'
 import { addComment as serverAddComment } from '@/app/w/[id]/comments'
 import { SITE_URL } from '@/lib/site'
 
@@ -122,21 +122,20 @@ export function InlineInteractions({
     const fetchReactions = async () => {
       const { data } = await supabase
         .from('reactions')
-        .select('id, reaction_type, device_id')
+        .select('id, reaction_type')
         .eq('message_id', messageId)
-      
+
       if (data) {
         const counts: Record<string, number> = {}
-        const deviceId = getDeviceId()
-        let deviceReactionType: string | null = null
-        let deviceReactionId: string | null = null
+        // DAT-3: own reaction comes from the server action, not from a
+        // device_id column shipped to every browser.
+        const mine = await getMyReactions(messageId).catch(() => ({ reactions: [] as { id: string; type: string }[] }))
+        const own = mine.reactions[0]
+        let deviceReactionType: string | null = own?.type ?? null
+        let deviceReactionId: string | null = own?.id ?? null
 
         for (const r of (data as any[])) {
           counts[r.reaction_type] = (counts[r.reaction_type] || 0) + 1
-          if (r.device_id && r.device_id === deviceId && !deviceReactionType) {
-            deviceReactionType = r.reaction_type
-            deviceReactionId = r.id
-          }
         }
         setReactionCounts(counts)
 
