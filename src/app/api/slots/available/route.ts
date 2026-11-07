@@ -28,15 +28,21 @@ export async function POST(request: Request) {
     if (requestedSlots.length > 40) {
       return NextResponse.json({ error: 'Too many slots requested' }, { status: 400 })
     }
-    const nowMs = Date.now()
-    const horizonMs = nowMs + 15 * 24 * 60 * 60 * 1000
+    const now = new Date()
+    const nowMs = now.getTime()
+    const todayUtcMidnightMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    // Allow slots starting from yesterday UTC (buffer for client timezone differences)
+    // up to 16 days in the future (covering the 15-day booking horizon).
+    const minAllowedStartMs = todayUtcMidnightMs - 24 * 60 * 60 * 1000
+    const maxAllowedStartMs = todayUtcMidnightMs + 16 * 24 * 60 * 60 * 1000
+
     for (const r of requestedSlots) {
       const startMs = new Date(r.scheduled_start).getTime()
       if (
         !isCanonicalSlotWindow(r.scheduled_start, r.scheduled_end) ||
         !Number.isFinite(startMs) ||
-        startMs < nowMs - 3 * 60 * 60 * 1000 ||
-        startMs > horizonMs
+        startMs < minAllowedStartMs ||
+        startMs > maxAllowedStartMs
       ) {
         return NextResponse.json({ error: 'Invalid slot window' }, { status: 400 })
       }
@@ -61,7 +67,9 @@ export async function POST(request: Request) {
 
     for (const r of requestedSlots) {
       const rTime = new Date(r.scheduled_start).getTime()
-      if (!existingMap.has(rTime)) {
+      const rEndTime = new Date(r.scheduled_end).getTime()
+      // Only materialize slots that have not yet fully elapsed
+      if (rEndTime > nowMs && !existingMap.has(rTime)) {
         slotsToCreate.push({
           scheduled_start: new Date(r.scheduled_start).toISOString(),
           scheduled_end: new Date(r.scheduled_end).toISOString(),
@@ -92,8 +100,12 @@ export async function POST(request: Request) {
         scheduled_start: r.scheduled_start,
         scheduled_end: r.scheduled_end,
         status: dbSlot.status || 'AVAILABLE',
-        bid_amount: dbSlot.bid_amount || 30
-      } : r
+        bid_amount: dbSlot.bid_amount || SPECIAL_SLOT_PRICE
+      } : {
+        ...r,
+        status: 'AVAILABLE',
+        bid_amount: SPECIAL_SLOT_PRICE
+      }
     })
     return NextResponse.json({ slots: result })
   } catch (err: any) {

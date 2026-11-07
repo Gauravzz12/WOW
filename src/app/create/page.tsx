@@ -85,6 +85,7 @@ function CreateMessageContent() {
   const searchParams = useSearchParams();
   const tierParam = searchParams?.get('tier');
   const slotParam = searchParams?.get('slot');
+  const dateParam = searchParams?.get('date');
   const prefillParam = searchParams?.get('prefill');
 
   const [bidAmount, setBidAmount] = useState(calculateNormalMinBid(BASE_NORMAL_MINS));
@@ -1201,6 +1202,7 @@ function CreateMessageContent() {
                               }
                             }}
                             selectedSlotIds={selectedSpecialSlots.map(s => s.id)}
+                            initialDate={dateParam || undefined}
                             initialSlotNumber={slotParam ? parseInt(slotParam, 10) : undefined}
                           />
                         </div>

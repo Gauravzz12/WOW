@@ -528,7 +528,7 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
             </button>
           ) : (
             <Link
-              href={`/create?tier=special&slot=${selectedSlot.slotNumber}`}
+              href={`/create?tier=special&slot=${selectedSlot.slotNumber}${selectedDay ? `&date=${selectedDay.toISOString().slice(0, 10)}` : ''}`}
               className="block w-full py-3.5 text-center bg-amber-400 text-black font-medium text-xs tracking-[0.12em] uppercase hover:bg-amber-300 active:scale-[0.99] transition-all"
             >
               {bookLabel}
