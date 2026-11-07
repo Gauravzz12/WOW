@@ -1,19 +1,31 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { getFixedSlotsForUtcDate, SPECIAL_SLOT_PRICE } from '@/lib/constants/pricing'
 
 export const dynamic = 'force-dynamic'
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabaseAdmin = getSupabaseAdmin()
 
 // Generates fixed 3-hour slots for the next 15 UTC days if they don't exist.
 // Uses the same UTC-day generator as the picker/pricing helpers so slot
 // boundaries always align (a previous version used server-local setHours,
 // producing misaligned slots on non-UTC hosts).
-export async function POST() {
+function isAuthorized(req: Request): boolean {
+  const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret) {
+    // Fail closed in production: slot generation writes rows, so an
+    // unconfigured secret must DENY there. Local dev (no secret) is allowed.
+    return process.env.NODE_ENV !== 'production'
+  }
+  const authHeader = req.headers.get('authorization')
+  const customHeader = req.headers.get('x-cron-secret')
+  return authHeader === `Bearer ${cronSecret}` || customHeader === cronSecret
+}
+
+export async function POST(req: Request) {
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   const now = new Date()
   const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
 
@@ -53,6 +65,6 @@ export async function POST() {
 }
 
 // GET: Trigger slot generation on first load too
-export async function GET() {
-  return POST()
+export async function GET(req: Request) {
+  return POST(req)
 }
