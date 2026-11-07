@@ -90,10 +90,10 @@ export function FullscreenMessage({
     appearance.bodyInnerClassName ?? 'my-auto w-full flex flex-col items-center justify-center'
   const htmlTextClass =
     appearance.htmlTextClass ??
-    `max-w-none text-center leading-relaxed ${enlargedTextSize(message.content?.length || 0)} ${message.font || ''} ${textColor}`
+    `max-w-none text-center leading-relaxed [overflow-wrap:anywhere] ${enlargedTextSize(message.content?.length || 0)} ${message.font || ''} ${textColor}`
   const plainTextClass =
     appearance.plainTextClass ??
-    `font-serif text-center leading-relaxed ${enlargedTextSize(message.content?.length || 0)} ${textColor}`
+    `font-serif text-center leading-relaxed [overflow-wrap:anywhere] ${enlargedTextSize(message.content?.length || 0)} ${textColor}`
 
   return (
     <>

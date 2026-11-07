@@ -103,7 +103,7 @@ export function QueueTabs({
       <aside 
         aria-label="Queue navigation panel"
         className={`
-          fixed inset-y-0 right-0 z-50 w-80 lg:w-80
+          fixed inset-y-0 right-0 z-50 w-[86vw] max-w-80 lg:w-80
           bg-background/95 lg:bg-background/80
           border-l border-primary/10 p-5 pt-16 lg:pt-24
           flex flex-col h-[100dvh]

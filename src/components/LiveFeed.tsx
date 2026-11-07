@@ -289,14 +289,14 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
                     paddingClass: compact ? 'p-4 md:p-6' : 'p-6 md:p-12',
                     bodyClassName: 'relative z-10 flex-1 min-h-0 w-full overflow-y-auto overscroll-contain custom-scrollbar px-2 md:px-6 py-4 my-2 flex flex-col',
                     bodyInnerClassName: 'my-auto w-full flex flex-col items-center justify-center',
-                    htmlTextClass: `max-w-none text-center leading-relaxed ${
+                    htmlTextClass: `max-w-none text-center leading-relaxed [overflow-wrap:anywhere] ${
                       (message.content?.length || 0) > 350
                         ? 'text-lg md:text-xl'
                         : (message.content?.length || 0) > 180
                         ? 'text-xl md:text-2xl'
                         : 'text-2xl md:text-3xl'
                     } ${compact ? '!text-base md:!text-lg' : ''} ${message.style_config?.font || ''} ${textColor}`,
-                    plainTextClass: `font-serif text-center leading-relaxed ${
+                    plainTextClass: `font-serif text-center leading-relaxed [overflow-wrap:anywhere] ${
                       (message.content?.length || 0) > 350
                         ? 'text-lg md:text-2xl'
                         : (message.content?.length || 0) > 180
@@ -313,7 +313,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
                 <div className="my-auto w-full flex flex-col items-center justify-center">
                   {message.style_config?.html ? (
                     <div 
-                      className={`max-w-none text-center leading-relaxed ${
+                      className={`max-w-none text-center leading-relaxed [overflow-wrap:anywhere] ${
                         (message.content?.length || 0) > 350
                           ? 'text-lg md:text-xl'
                           : (message.content?.length || 0) > 180
@@ -324,7 +324,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
                       dangerouslySetInnerHTML={{ __html: sanitizeHtmlText(message.style_config.html) }}
                     />
                   ) : (
-                    <p className={`font-serif text-center leading-relaxed ${
+                    <p className={`font-serif text-center leading-relaxed [overflow-wrap:anywhere] ${
                       (message.content?.length || 0) > 350
                         ? 'text-lg md:text-2xl'
                         : (message.content?.length || 0) > 180

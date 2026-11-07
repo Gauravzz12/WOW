@@ -135,8 +135,8 @@ function SponsoredCard({ message }: { message: any }) {
             paddingClass: 'p-5',
             bodyClassName: 'relative z-10 flex-1 my-2 overflow-y-auto overscroll-contain custom-scrollbar pr-1 flex flex-col justify-center min-h-[90px]',
             bodyInnerClassName: 'w-full',
-            htmlTextClass: `max-w-none text-center leading-relaxed text-base md:text-lg ${message?.style_config?.font || ''} ${textColor}`,
-            plainTextClass: `text-center leading-relaxed text-base md:text-lg ${message?.style_config?.font || 'font-serif italic'} ${textColor}`,
+            htmlTextClass: `max-w-none text-center leading-relaxed [overflow-wrap:anywhere] text-base md:text-lg ${message?.style_config?.font || ''} ${textColor}`,
+            plainTextClass: `text-center leading-relaxed [overflow-wrap:anywhere] text-base md:text-lg ${message?.style_config?.font || 'font-serif italic'} ${textColor}`,
           }}
         />
         </div>
@@ -146,12 +146,12 @@ function SponsoredCard({ message }: { message: any }) {
       <div className="relative z-10 flex-1 my-2 overflow-y-auto overscroll-contain custom-scrollbar pr-1 flex flex-col justify-center min-h-[90px]">
         {message?.style_config?.html ? (
           <div 
-            className={`max-w-none text-center leading-relaxed text-base md:text-lg ${message.style_config?.font || ''} ${textColor}`}
+            className={`max-w-none text-center leading-relaxed [overflow-wrap:anywhere] text-base md:text-lg ${message.style_config?.font || ''} ${textColor}`}
             style={{ color: inlineColor }}
             dangerouslySetInnerHTML={{ __html: sanitizeHtmlText(message.style_config.html) }}
           />
         ) : (
-          <p className={`text-center leading-relaxed text-base md:text-lg ${message?.style_config?.font || 'font-serif italic'} ${textColor}`}>
+          <p className={`text-center leading-relaxed [overflow-wrap:anywhere] text-base md:text-lg ${message?.style_config?.font || 'font-serif italic'} ${textColor}`}>
             &ldquo;{message?.content}&rdquo;
           </p>
         )}

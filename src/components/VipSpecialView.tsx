@@ -1,28 +1,13 @@
 'use client'
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Clock, 
-  Globe, 
-  ArrowUpRight, 
-  Check, 
-  Share2, 
-  Sun, 
-  Moon, 
-  Sparkles,
-  Compass,
-  PenTool,
-  Maximize2,
-  Calendar,
-  Layers,
-  ChevronRight
-} from 'lucide-react'
-import { 
-  FIXED_3H_SLOT_DEFINITIONS, 
-  SPECIAL_SLOT_PRICE, 
-  formatLocalSlotTime 
+import { Check, Share2, Compass } from 'lucide-react'
+import {
+  FIXED_3H_SLOT_DEFINITIONS,
+  SPECIAL_SLOT_PRICE,
+  formatLocalSlotTime,
+  getFixedSlotsForUtcDate
 } from '@/lib/constants/pricing'
 import { resolveCardStyles } from '@/lib/utils/colors'
 import { InlineInteractions } from './InlineInteractions'
@@ -36,8 +21,8 @@ export interface VipSpecialViewProps {
   upcomingVipQueue: any[]
 }
 
-// A booking matches a slot card only when it falls inside that card's exact
-// UTC day window — hour-only matching wrongly blocked the same slot number on
+// A booking matches a slot only when it falls inside that slot's exact UTC
+// day window — hour-only matching wrongly blocked the same slot number on
 // all 15 browsable days.
 function isBookedOnDay(
   queue: any[],
@@ -57,95 +42,33 @@ function isBookedOnDay(
   })
 }
 
-// Simple, marketing-friendly labels for each 3-hour slot
-const QUADRANT_METADATA = [
-  {
-    slot: 1,
-    title: 'Late night → early morning',
-    cities: 'Auckland · Honolulu · Fiji',
-    region: 'Pacific',
-    hemisphere: 'Quiet hours — great for surprises',
-    night: false
-  },
-  {
-    slot: 2,
-    title: 'Morning in Asia & Australia',
-    cities: 'Tokyo · Seoul · Sydney',
-    region: 'East Asia & Australia',
-    hemisphere: 'Morning crowd online',
-    night: false
-  },
-  {
-    slot: 3,
-    title: 'Midday in Asia & India',
-    cities: 'Beijing · Singapore · Mumbai',
-    region: 'South & Southeast Asia',
-    hemisphere: 'Lunch-time crowd',
-    night: false
-  },
-  {
-    slot: 4,
-    title: 'Midday in Europe & Africa',
-    cities: 'London · Paris · Dubai · Nairobi',
-    region: 'Europe, Middle East & Africa',
-    hemisphere: 'Peak daytime views',
-    night: false
-  },
-  {
-    slot: 5,
-    title: 'Morning in Atlantic & Africa',
-    cities: 'Dakar · Reykjavik · Azores',
-    region: 'Atlantic & West Africa',
-    hemisphere: 'Morning in the west',
-    night: false
-  },
-  {
-    slot: 6,
-    title: 'Daytime in the Americas',
-    cities: 'New York · São Paulo · Toronto',
-    region: 'Eastern Americas',
-    hemisphere: 'Prime daytime in US & Brazil',
-    night: false
-  },
-  {
-    slot: 7,
-    title: 'Evening in the Americas',
-    cities: 'Los Angeles · Mexico City · Lima',
-    region: 'Western Americas',
-    hemisphere: 'Evening — perfect for love & birthdays',
-    night: false
-  },
-  {
-    slot: 8,
-    title: 'Night time worldwide',
-    cities: 'Hawaii · Alaska · Tahiti',
-    region: 'Pacific Night',
-    hemisphere: 'Late-night spotlight',
-    night: true
-  }
-]
+// The signature motif of this page: a 2px rule with a 1px rule 3px below it —
+// the double rule that tops a newspaper front page. `inverted` renders it in
+// pale cream so it can frame the dark Night Stage panel.
+function DoubleRule({ inverted = false }: { inverted?: boolean }) {
+  const rule = inverted ? 'bg-white/25' : 'bg-primary'
+  return (
+    <div aria-hidden="true" className="w-full">
+      <div className={`h-[2px] w-full ${rule}`} />
+      <div className={`mt-[3px] h-px w-full ${rule}`} />
+    </div>
+  )
+}
+
+type SlotStatus = 'LIVE NOW' | 'BOOKED' | 'OPEN' | 'PAST'
+
+const DAY_MS = 24 * 60 * 60 * 1000
 
 export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipSpecialViewProps) {
   const [isMounted, setIsMounted] = useState(false)
-  const [utcTime, setUtcTime] = useState<string>('')
-  const [currentUtcHour, setCurrentUtcHour] = useState<number>(0)
-  const [currentUtcMinute, setCurrentUtcMinute] = useState<number>(0)
-  const [currentUtcSecond, setCurrentUtcSecond] = useState<number>(0)
-  const [selectedSlotNumber, setSelectedSlotNumber] = useState<number>(1)
-  const [userTz, setUserTz] = useState<string>('Local Time')
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
+  const [nowUtcMs, setNowUtcMs] = useState<number>(() => Date.now())
+  const [userTz, setUserTz] = useState<string>('Local Time')
   const [copiedLink, setCopiedLink] = useState(false)
-  const [activeTabMode, setActiveTabMode] = useState<'ASTROLABE' | 'TIMELINE'>('ASTROLABE')
+  const [selectedDayOffset, setSelectedDayOffset] = useState(0)
+  const [selectedSlotNumber, setSelectedSlotNumber] = useState<number | null>(null)
   // Fires the expiry advance exactly once per active message (not every 1s tick).
   const advanceFiredForRef = useRef<string | null>(null)
-
-  // Interactive preview state
-  const [simulatorOpen, setSimulatorOpen] = useState(false)
-  const [testQuote, setTestQuote] = useState<string>(
-    '“For 3 hours, this page is all yours. Make it count.”'
-  )
-  const [testAuthor, setTestAuthor] = useState<string>('Your name')
-  const [testFont, setTestFont] = useState<'font-serif' | 'font-sans' | 'font-mono'>('font-serif')
 
   useEffect(() => {
     setIsMounted(true)
@@ -155,15 +78,8 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
     } catch {}
 
     const updateClock = () => {
-      const now = new Date()
-      const h = now.getUTCHours()
-      const m = now.getUTCMinutes()
-      const s = now.getUTCSeconds()
-      
-      setCurrentUtcHour(h)
-      setCurrentUtcMinute(m)
-      setCurrentUtcSecond(s)
-      setUtcTime(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')} UTC`)
+      const now = Date.now()
+      setNowUtcMs(now)
 
       if (activeSpecialMsg) {
         let endMs: number
@@ -173,9 +89,9 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
           const durationSecs = activeSpecialMsg.durationSecs || 10800
           endMs = new Date(activeSpecialMsg.actual_start).getTime() + durationSecs * 1000
         } else {
-          endMs = Date.now()
+          endMs = now
         }
-        const rem = Math.max(0, Math.floor((endMs - Date.now()) / 1000))
+        const rem = Math.max(0, Math.floor((endMs - now) / 1000))
         setTimeLeft(rem)
         if (rem === 0) {
           const msgId = activeSpecialMsg.id || 'unknown'
@@ -185,20 +101,13 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
           }
         }
       } else {
-        // Calculate remaining seconds in current 3-hour sector
-        const now = new Date()
-        const currentHour = now.getUTCHours()
-        const currentSectorEndHour = Math.floor(currentHour / 3) * 3 + 3
-        const sectorEnd = new Date(Date.UTC(
-          now.getUTCFullYear(),
-          now.getUTCMonth(),
-          now.getUTCDate(),
-          currentSectorEndHour,
-          0,
-          0
-        ))
-        const rem = Math.max(0, Math.floor((sectorEnd.getTime() - now.getTime()) / 1000))
-        setTimeLeft(rem)
+        // Remaining seconds in the current 3-hour sector
+        const d = new Date(now)
+        const sectorEndHour = Math.floor(d.getUTCHours() / 3) * 3 + 3
+        const sectorEnd = Date.UTC(
+          d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), sectorEndHour, 0, 0
+        )
+        setTimeLeft(Math.max(0, Math.floor((sectorEnd - now) / 1000)))
       }
     }
 
@@ -206,45 +115,6 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
     const timer = setInterval(updateClock, 1000)
     return () => clearInterval(timer)
   }, [activeSpecialMsg])
-
-  // Current active slot definition based on live UTC hour
-  const currentLiveSlotDef = useMemo(() => {
-    return FIXED_3H_SLOT_DEFINITIONS.find(
-      s => currentUtcHour >= s.startHour && currentUtcHour < s.endHour
-    ) || FIXED_3H_SLOT_DEFINITIONS[0]
-  }, [currentUtcHour])
-
-  // Set default selected slot to current live sector on initial load
-  useEffect(() => {
-    if (currentLiveSlotDef) {
-      setSelectedSlotNumber(currentLiveSlotDef.slotNumber)
-    }
-  }, [currentLiveSlotDef])
-
-  const selectedSlotDef = useMemo(() => {
-    return FIXED_3H_SLOT_DEFINITIONS.find(s => s.slotNumber === selectedSlotNumber) || currentLiveSlotDef
-  }, [selectedSlotNumber, currentLiveSlotDef])
-
-  const selectedQuadrantMeta = useMemo(() => {
-    return QUADRANT_METADATA.find(q => q.slot === selectedSlotNumber) || QUADRANT_METADATA[0]
-  }, [selectedSlotNumber])
-
-  const selectedSlotBookedItem = useMemo(() => {
-    const today = new Date()
-    return upcomingVipQueue.find(item => {
-      if (!item.scheduled_start) return false
-      const t = new Date(item.scheduled_start).getTime()
-      const windowStart = Date.UTC(
-        today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(),
-        selectedSlotDef.startHour, 0, 0, 0
-      )
-      const windowEnd = Date.UTC(
-        today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(),
-        selectedSlotDef.endHour, 0, 0, 0
-      )
-      return t >= windowStart && t < windowEnd
-    })
-  }, [upcomingVipQueue, selectedSlotDef])
 
   const formatCountdown = (secs: number | null) => {
     if (secs === null) return '--:--:--'
@@ -262,24 +132,64 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
     }
   }
 
-  // Trigonometric coordinate calculator for the Astrolabe SVG
-  const getCoordinatesForSector = useCallback((index: number, radius: number) => {
-    // 8 sectors: index 0 to 7 -> 45 deg each.
-    // Starts at -90 deg (12 o'clock UTC 00:00)
-    const angleDeg = -90 + index * 45 + 22.5
-    const angleRad = (angleDeg * Math.PI) / 180
-    return {
-      x: 200 + radius * Math.cos(angleRad),
-      y: 200 + radius * Math.sin(angleRad),
-      angleDeg
-    }
-  }, [])
+  // Today (UTC) + the next 14 days
+  const days = useMemo(() => {
+    const now = new Date(nowUtcMs)
+    const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    return Array.from({ length: 15 }, (_, i) => new Date(todayUtc + i * DAY_MS))
+  }, [nowUtcMs])
 
-  // Precise pointer angle for current UTC minute (00:00 to 24:00)
-  const currentHandAngle = useMemo(() => {
-    const totalMinutes = currentUtcHour * 60 + currentUtcMinute
-    return -90 + (totalMinutes / 1440) * 360
-  }, [currentUtcHour, currentUtcMinute])
+  const selectedDay = days[selectedDayOffset] || days[0]
+
+  const slotsForDay = useMemo(() => {
+    if (!selectedDay) return []
+    return getFixedSlotsForUtcDate(
+      selectedDay.getUTCFullYear(), selectedDay.getUTCMonth(), selectedDay.getUTCDate()
+    )
+  }, [selectedDay])
+
+  const slotStatus = (slot: (typeof slotsForDay)[number]): SlotStatus => {
+    const startMs = new Date(slot.scheduled_start).getTime()
+    const endMs = new Date(slot.scheduled_end).getTime()
+    if (endMs <= nowUtcMs) return 'PAST'
+    if (startMs <= nowUtcMs && nowUtcMs < endMs) return 'LIVE NOW'
+    const def = FIXED_3H_SLOT_DEFINITIONS.find(d => d.slotNumber === slot.slotNumber)
+    if (def && selectedDay && isBookedOnDay(upcomingVipQueue, def, selectedDay)) return 'BOOKED'
+    return 'OPEN'
+  }
+
+  // Current live slot (for the dateline + default selection)
+  const currentSlot = useMemo(() => {
+    const today = days[0]
+    if (!today) return null
+    const todays = getFixedSlotsForUtcDate(
+      today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()
+    )
+    return (
+      todays.find(s => {
+        const st = new Date(s.scheduled_start).getTime()
+        const en = new Date(s.scheduled_end).getTime()
+        return st <= nowUtcMs && nowUtcMs < en
+      }) || todays[0]
+    )
+  }, [days, nowUtcMs])
+
+  // Default the selection to the current live slot on first render
+  useEffect(() => {
+    if (selectedSlotNumber === null && currentSlot) {
+      setSelectedSlotNumber(currentSlot.slotNumber)
+    }
+  }, [currentSlot, selectedSlotNumber])
+
+  const selectedSlot = slotsForDay.find(s => s.slotNumber === selectedSlotNumber) || slotsForDay[0]
+  const selectedStatus: SlotStatus = selectedSlot ? slotStatus(selectedSlot) : 'OPEN'
+
+  const fmtDayLong = (d: Date) =>
+    d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
+  const fmtDayChip = (d: Date) => {
+    const wd = d.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }).toUpperCase()
+    return `${wd} ${d.getUTCDate()}`
+  }
 
   const msgCategoryName = activeSpecialMsg?.category?.name || 'Special message'
   const { bg: msgBg, textColor, cardBorder: msgBorder, isDarkCard, inlineColor } = resolveCardStyles(
@@ -287,128 +197,91 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
     activeSpecialMsg?.template_id
   )
 
+  // ── Night Stage ──────────────────────────────────────────────
+  // A Special slot is the site's one significant moment, so a message on the
+  // default card style is presented on a dark stage (solid ink panel, cream
+  // type, amber accent) in BOTH site themes — the spotlight contrast. A
+  // message whose author chose a real template/background keeps that design;
+  // never paint over a paid design. Template 'a' IS the default style (its
+  // canonical bg is plain bg-background), so it does not count as chosen.
+  const rawStyleCfg = activeSpecialMsg?.style_config
+  const styleCfg: Record<string, any> = typeof rawStyleCfg === 'string'
+    ? (() => { try { return JSON.parse(rawStyleCfg) } catch { return {} } })()
+    : (rawStyleCfg || {})
+  const chosenTemplateId = activeSpecialMsg?.template_id || styleCfg.templateId || styleCfg.template_id
+  const hasChosenCardStyle = !!(
+    (chosenTemplateId && chosenTemplateId !== 'a') ||
+    styleCfg.isVip ||
+    (styleCfg.bg && styleCfg.bg !== 'bg-background')
+  )
+  const forceNightStage = !!activeSpecialMsg && !hasChosenCardStyle
+  const stageBg = forceNightStage ? 'bg-[#141118]' : msgBg
+  const stageTextColor = forceNightStage ? 'text-[#F5EFE6]' : textColor
+  const stageInlineColor = forceNightStage ? '#F5EFE6' : inlineColor
+  const stageIsDark = forceNightStage || isDarkCard
+  // The empty stage is always the dark panel, so its rules are always inverted.
+  const stageRulesInverted = activeSpecialMsg ? stageIsDark : true
+
+  const bookDisabled = selectedStatus !== 'OPEN'
+  const bookLabel = !selectedSlot
+    ? 'Pick a slot'
+    : selectedStatus === 'BOOKED'
+      ? `Slot #${selectedSlot.slotNumber} is booked`
+      : selectedStatus === 'PAST'
+        ? `Slot #${selectedSlot.slotNumber} has passed`
+        : selectedStatus === 'LIVE NOW'
+          ? `Slot #${selectedSlot.slotNumber} is live now`
+          : `Claim Slot #${selectedSlot.slotNumber} — ${fmtDayLong(selectedDay)} · ${selectedSlot.label} — $${SPECIAL_SLOT_PRICE}`
+
   return (
-    <div className="w-full flex flex-col items-center max-w-5xl mx-auto px-4 sm:px-6 space-y-10 py-6 font-sans relative">
+    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 font-sans">
+      {/* ── 1. Masthead ─────────────────────────────────────────── */}
+      <div className="flex items-baseline justify-between gap-3 flex-wrap">
+        <span className="font-mono text-[11px] sm:text-xs tracking-[0.25em] uppercase text-primary">
+          ✦ Special
+        </span>
+        <span className="font-mono text-[11px] sm:text-xs tracking-[0.25em] uppercase text-secondary">
+          ${SPECIAL_SLOT_PRICE} · 3 Hours · One Voice on Earth
+        </span>
+      </div>
+      <div className="mt-3">
+        <DoubleRule />
+      </div>
 
-      {/* ── 1. HEADER (supporting role — the live message below is the hero) ── */}
-      <motion.header
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full text-center space-y-3"
-      >
-        {/* Eyebrow badge */}
-        <div className="inline-flex items-center justify-center gap-2.5 px-4 py-1 border border-violet-500/30 rounded-full font-mono text-[11px] tracking-[0.2em] uppercase text-secondary bg-violet-500/[0.08]">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-          <span>Special spotlight &middot; <span className="text-amber-600 dark:text-amber-300 font-semibold">$30 for 3 hours</span></span>
-          <span className="text-secondary/40">/</span>
-          <span suppressHydrationWarning className="text-primary font-semibold">
-            {isMounted && utcTime ? utcTime : 'Universal Time'}
-          </span>
-        </div>
-
-        {/* Headline — kept, deliberately compact so attention flows to the message */}
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-serif font-light text-primary tracking-tight leading-[1.15] max-w-2xl mx-auto">
-          Your words.{' '}
-          <span className="text-violet-700 dark:text-violet-300 underline decoration-amber-400 decoration-2 underline-offset-4">
-            Center stage
-          </span>{' '}
-          for 3 hours.
-        </h1>
-
-        <p className="text-secondary text-xs md:text-sm max-w-xl mx-auto font-serif italic leading-relaxed">
-          Pick your exact time. No bidding. No one can bump you off.
-        </p>
-
-        {/* Live status badges */}
-        <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs font-mono">
-          <div suppressHydrationWarning className="px-3 py-1 border border-violet-500/30 rounded bg-violet-500/[0.07] text-secondary flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span suppressHydrationWarning className="text-primary font-bold">
-              {isMounted ? `LIVE NOW · SLOT #${currentLiveSlotDef.slotNumber}` : 'LIVE NOW'}
-            </span>
-            <span className="text-secondary/40">|</span>
-            <span suppressHydrationWarning>
-              {isMounted ? currentLiveSlotDef.label : 'UTC clock'}
-            </span>
-          </div>
-
-          <div suppressHydrationWarning className="px-3 py-1 border border-amber-400/30 rounded bg-amber-400/[0.08] text-secondary flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300" />
-            <span>Ends in:</span>
-            <span suppressHydrationWarning className="font-bold text-primary">
-              {isMounted ? formatCountdown(timeLeft) : '--:--:--'}
-            </span>
-          </div>
-
-          <div suppressHydrationWarning className="px-3 py-1 border border-primary/15 rounded bg-background text-secondary flex items-center gap-1.5">
-            <Globe className="w-3.5 h-3.5 text-secondary" />
-            <span>Your time:</span>
-            <span suppressHydrationWarning className="text-primary font-medium">
-              {isMounted ? userTz : 'Local Time'}
-            </span>
-          </div>
-        </div>
-      </motion.header>
-
-      {/* ── 2. THE MONUMENTAL EXHIBITION MONOLITH ───────────────────────── */}
-      <section className="w-full flex flex-col items-center">
+      {/* ── 2. Dateline ─────────────────────────────────────────── */}
+      <p className="mt-3 font-mono text-[11px] sm:text-xs text-secondary flex flex-wrap items-center gap-x-2 gap-y-1">
         {activeSpecialMsg ? (
-          /* ACTIVE ARCHIVAL MONOGRAPH */
-          <motion.article
-            key={activeSpecialMsg.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className={`w-full ${msgBg} border ${msgBorder || 'border-violet-500/30'} ring-1 ring-violet-500/20 rounded-lg px-6 py-9 sm:px-10 sm:py-12 md:px-14 md:py-14 shadow-sm text-primary relative overflow-hidden flex flex-col justify-between ${getFrameClass(activeSpecialMsg.style_config?.frameId)}`}
+          <span className="inline-flex items-center gap-1.5 text-primary font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            LIVE NOW
+          </span>
+        ) : (
+          <span className="text-primary font-semibold">
+            {currentSlot ? `SLOT #${currentSlot.slotNumber} OPEN` : 'OPEN'}
+          </span>
+        )}
+        {currentSlot && (
+          <>
+            <span aria-hidden="true" className="text-secondary/40">·</span>
+            <span>{currentSlot.label}</span>
+            <span aria-hidden="true" className="text-secondary/40">·</span>
+            <span suppressHydrationWarning>
+              YOUR TIME {isMounted ? userTz.toUpperCase() : 'LOCAL'} {formatLocalSlotTime(currentSlot.scheduled_start)} – {formatLocalSlotTime(currentSlot.scheduled_end)}
+            </span>
+          </>
+        )}
+      </p>
+
+      {/* ── 3. The Stage ────────────────────────────────────────── */}
+      <section className="mt-6">
+        <DoubleRule inverted={stageRulesInverted} />
+        {activeSpecialMsg ? (
+          <article
+            className={`relative overflow-hidden rounded-none ${stageBg} px-5 py-9 sm:px-10 sm:py-12 ${getFrameClass(activeSpecialMsg.style_config?.frameId)}`}
           >
             <FrameDecorator frameId={activeSpecialMsg.style_config?.frameId} />
 
-            {/* Solid gold hairline with a traveling light dot — premium marker */}
-            <span aria-hidden="true" className="absolute top-0 left-10 right-10 h-[2px] bg-amber-400/70">
-              <span className="special-sweep-dot absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-amber-300" />
-            </span>
-
-            {/* Floating sparkle SVGs — flat accent shapes that drift and twinkle */}
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="special-twinkle absolute top-16 right-8 w-5 h-5 text-amber-400/70 pointer-events-none z-[1]">
-              <path fill="currentColor" d="M12 0 L14.5 9.5 L24 12 L14.5 14.5 L12 24 L9.5 14.5 L0 12 L9.5 9.5 Z" />
-            </svg>
-            <svg aria-hidden="true" viewBox="0 0 24 24" style={{ animationDelay: '1.4s' }} className="special-twinkle absolute bottom-24 left-8 w-4 h-4 text-violet-400/70 pointer-events-none z-[1]">
-              <path fill="currentColor" d="M12 0 L14.5 9.5 L24 12 L14.5 14.5 L12 24 L9.5 14.5 L0 12 L9.5 9.5 Z" />
-            </svg>
-            <svg aria-hidden="true" viewBox="0 0 24 24" style={{ animationDelay: '2.6s' }} className="special-float absolute top-1/2 left-4 w-3 h-3 text-amber-400/40 pointer-events-none z-[1] hidden sm:block">
-              <path fill="currentColor" d="M12 0 L14.5 9.5 L24 12 L14.5 14.5 L12 24 L9.5 14.5 L0 12 L9.5 9.5 Z" />
-            </svg>
-
-            {/* Top header */}
-            <div className={`flex flex-wrap items-center justify-between gap-3 pb-5 border-b text-xs font-mono ${isDarkCard ? 'border-white/15 text-white/60' : 'border-violet-500/15 text-secondary'}`}>
-              <div className="flex items-center gap-2.5">
-                <span className="text-[10px] uppercase font-bold tracking-[0.2em] px-2.5 py-1 rounded bg-violet-700 dark:bg-violet-600 text-white border border-violet-700 dark:border-violet-500">
-                  ✦ {msgCategoryName}
-                </span>
-                <span className="inline-flex items-center gap-1.5 font-semibold tracking-wider">
-                  {/* Animated equalizer — flat bars that dance while live */}
-                  <span aria-hidden="true" className="flex items-end gap-[2px] h-3.5">
-                    <span className="special-eq-bar w-[3px] h-3.5 rounded-sm bg-emerald-500" />
-                    <span className="special-eq-bar w-[3px] h-3.5 rounded-sm bg-emerald-500" style={{ animationDelay: '0.25s' }} />
-                    <span className="special-eq-bar w-[3px] h-3.5 rounded-sm bg-emerald-500" style={{ animationDelay: '0.5s' }} />
-                    <span className="special-eq-bar w-[3px] h-3.5 rounded-sm bg-emerald-500" style={{ animationDelay: '0.75s' }} />
-                  </span>
-                  <span className={isDarkCard ? 'text-white' : 'text-primary'}>LIVE NOW</span>
-                </span>
-                <span className={isDarkCard ? 'text-white/40' : 'text-secondary/50'}>· #{activeSpecialMsg.id.slice(0, 8)}</span>
-              </div>
-
-              <div suppressHydrationWarning className={`flex items-center gap-2 px-3 py-1 rounded border ${isDarkCard ? 'bg-white/10 border-white/20 text-white' : 'bg-amber-400/[0.10] border-amber-400/30 text-primary'}`}>
-                <Clock className={`w-3.5 h-3.5 ${isDarkCard ? 'text-amber-300' : 'text-amber-600 dark:text-amber-300'}`} />
-                <span className={isDarkCard ? 'text-white/60' : 'text-secondary'}>Time left:</span>
-                <span suppressHydrationWarning className="font-bold font-mono tracking-wider">
-                  {isMounted ? formatCountdown(timeLeft) : '--:--:--'}
-                </span>
-              </div>
-            </div>
-
-            {/* Stickers as backdrop décor — always behind text so they never cover words */}
+            {/* Stickers as backdrop décor — always behind text */}
             {Array.isArray(activeSpecialMsg?.style_config?.stickers) && activeSpecialMsg.style_config.stickers.map((sticker: any) => (
               <span
                 key={sticker.id}
@@ -419,37 +292,43 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
                   top: `${sticker.y}%`,
                   fontSize: `${Math.min(sticker.size || 2.5, 2.75)}em`,
                   transform: 'translate(-50%, -50%)',
-                  filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.35))',
                 }}
               >
                 {sticker.emoji}
               </span>
             ))}
 
-            {/* Message — the hero: largest type on this tab, always above stickers */}
-            <div className="relative z-10 my-12 sm:my-16 text-center max-w-3xl mx-auto px-2">
+            {/* Stage strip — the significance marker */}
+            <p className={`relative z-10 mb-7 sm:mb-9 text-center font-mono text-[11px] uppercase tracking-[0.3em] ${stageIsDark ? 'text-amber-400' : 'text-amber-700'}`}>
+              ✦ Now on the World Stage ✦
+            </p>
+
+            {/* Top row */}
+            <div className={`relative z-10 flex flex-wrap items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-[0.2em] ${stageIsDark ? 'text-[#F5EFE6]/60' : 'text-secondary'}`}>
+              <span>✦ {msgCategoryName}</span>
+              <span className={stageIsDark ? 'text-[#F5EFE6]' : 'text-primary'}>Live Now · #{activeSpecialMsg.id.slice(0, 8)}</span>
+            </div>
+
+            {/* Message — the hero */}
+            <div className="relative z-10 my-10 sm:my-14 text-center max-w-3xl mx-auto px-1">
               {activeSpecialMsg.style_config?.html ? (
                 <div
-                  className={`text-balance leading-[1.25] tracking-tight text-[2rem] sm:text-5xl md:text-6xl ${activeSpecialMsg.style_config?.font || 'font-serif'} ${textColor}`}
-                  style={{
-                    color: inlineColor,
-                    textShadow: isDarkCard ? '0 2px 24px rgba(0,0,0,0.5)' : 'none',
-                  }}
+                  className={`text-balance leading-[1.2] tracking-tight text-4xl sm:text-6xl md:text-7xl [overflow-wrap:anywhere] ${activeSpecialMsg.style_config?.font || 'font-serif'} ${stageTextColor}`}
+                  style={{ color: stageInlineColor }}
                   dangerouslySetInnerHTML={{ __html: sanitizeHtmlText(activeSpecialMsg.style_config.html) }}
                 />
               ) : (
                 <blockquote
-                  className={`text-balance font-serif leading-[1.25] tracking-tight text-[2rem] sm:text-5xl md:text-6xl ${textColor}`}
-                  style={{ textShadow: isDarkCard ? '0 2px 24px rgba(0,0,0,0.5)' : 'none' }}
+                  className={`text-balance font-serif leading-[1.2] tracking-tight text-4xl sm:text-6xl md:text-7xl [overflow-wrap:anywhere] ${stageTextColor}`}
                 >
                   &ldquo;{activeSpecialMsg.content}&rdquo;
                 </blockquote>
               )}
             </div>
 
-            {/* Optional link — centered on its own line right after the message */}
+            {/* Optional brand link */}
             {activeSpecialMsg.style_config?.brandUrl && (
-              <div className="relative z-10 mx-auto mb-6">
+              <div className="relative z-10 mx-auto mb-6 text-center">
                 <a
                   href={activeSpecialMsg.style_config.brandUrl.startsWith('http') ? activeSpecialMsg.style_config.brandUrl : `https://${activeSpecialMsg.style_config.brandUrl}`}
                   target="_blank"
@@ -462,663 +341,209 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
               </div>
             )}
 
-            {/* Single footer: attribution left, copy-link right — one divider only */}
-            <div className={`relative z-10 pt-5 border-t flex flex-wrap items-center justify-between gap-3 text-xs font-mono ${isDarkCard ? 'border-white/15 text-white/60' : 'border-violet-500/15 text-secondary'}`}>
-              <div className="flex flex-wrap items-center gap-2">
+            {/* Attribution + actions */}
+            <div className={`relative z-10 flex flex-wrap items-center justify-between gap-3 font-mono text-xs ${stageIsDark ? 'text-[#F5EFE6]/70' : 'text-secondary'}`}>
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
                 <span>
-                  By <strong className={`font-semibold ${isDarkCard ? 'text-white' : 'text-primary'}`}>{activeSpecialMsg.signature || 'Anonymous'}</strong>
+                  By <strong className={`font-semibold ${stageIsDark ? 'text-[#F5EFE6]' : 'text-primary'}`}>{activeSpecialMsg.signature || 'Anonymous'}</strong>
                 </span>
-
                 {activeSpecialMsg.recipient && (
                   <>
-                    <span className={isDarkCard ? 'text-white/40' : 'text-secondary/40'}>·</span>
+                    <span className={stageIsDark ? 'text-[#F5EFE6]/40' : 'text-secondary/40'}>·</span>
                     <span>
-                      For <strong className={`font-semibold ${isDarkCard ? 'text-white' : 'text-primary'}`}>{activeSpecialMsg.recipient}</strong>
+                      For <strong className={`font-semibold ${stageIsDark ? 'text-[#F5EFE6]' : 'text-primary'}`}>{activeSpecialMsg.recipient}</strong>
                     </span>
                   </>
                 )}
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={handleCopyLink}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs transition-colors ${isDarkCard ? 'border-white/25 text-white/85 hover:bg-white/10 hover:text-white' : 'border-primary/20 hover:bg-primary/10 text-primary'}`}
-              >
-                {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
-                <span>{copiedLink ? 'Link copied!' : 'Copy link'}</span>
-              </button>
+                <button
+                  onClick={handleCopyLink}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs transition-colors ${stageIsDark ? 'border-white/25 text-[#F5EFE6]/85 hover:bg-white/10 hover:text-[#F5EFE6]' : 'border-primary/20 hover:bg-primary/10 text-primary'}`}
+                >
+                  {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
+                  <span>{copiedLink ? 'Link copied!' : 'Copy link'}</span>
+                </button>
 
-              <FullscreenMessage
-                message={{
-                  content: activeSpecialMsg.content || '',
-                  html: activeSpecialMsg.style_config?.html,
-                  font: activeSpecialMsg.style_config?.font,
-                  categoryName: msgCategoryName,
-                  brandName: activeSpecialMsg.style_config?.brandName,
-                  brandUrl: activeSpecialMsg.style_config?.brandUrl,
-                  sponsorName: activeSpecialMsg.style_config?.sponsorName,
-                  sponsorNote: activeSpecialMsg.style_config?.sponsorNote,
-                  stickers: activeSpecialMsg.style_config?.stickers,
-                  frameId: activeSpecialMsg.style_config?.frameId,
-                }}
-                appearance={{
-                  bg: msgBg,
-                  textColor,
-                  cardBorder: msgBorder || 'border-violet-500/30',
-                  inlineColor,
-                  isDarkCard,
-                  // Same geometry + display type as the monolith above.
-                  widthClass: 'max-w-4xl',
-                  aspectClass: '',
-                  paddingClass: 'px-6 py-9 sm:px-10 sm:py-12 md:px-14 md:py-14',
-                  bodyClassName: 'relative z-10 my-6 sm:my-8 text-center max-w-3xl mx-auto px-2 w-full flex-1 min-h-0 overflow-y-auto flex flex-col',
-                  bodyInnerClassName: 'm-auto w-full',
-                  htmlTextClass: `text-balance leading-[1.25] tracking-tight text-[2rem] sm:text-5xl md:text-6xl ${activeSpecialMsg.style_config?.font || 'font-serif'} ${textColor}`,
-                  plainTextClass: `text-balance font-serif leading-[1.25] tracking-tight text-[2rem] sm:text-5xl md:text-6xl ${textColor}`,
-                }}
-              />
+                <FullscreenMessage
+                  message={{
+                    content: activeSpecialMsg.content || '',
+                    html: activeSpecialMsg.style_config?.html,
+                    font: activeSpecialMsg.style_config?.font,
+                    categoryName: msgCategoryName,
+                    brandName: activeSpecialMsg.style_config?.brandName,
+                    brandUrl: activeSpecialMsg.style_config?.brandUrl,
+                    sponsorName: activeSpecialMsg.style_config?.sponsorName,
+                    sponsorNote: activeSpecialMsg.style_config?.sponsorNote,
+                    stickers: activeSpecialMsg.style_config?.stickers,
+                    frameId: activeSpecialMsg.style_config?.frameId,
+                  }}
+                  appearance={{
+                    bg: stageBg,
+                    textColor: stageTextColor,
+                    cardBorder: msgBorder || 'border-violet-500/30',
+                    inlineColor: stageInlineColor,
+                    isDarkCard: stageIsDark,
+                    widthClass: 'max-w-4xl',
+                    aspectClass: '',
+                    paddingClass: 'px-6 py-9 sm:px-10 sm:py-12 md:px-14 md:py-14',
+                    bodyClassName: 'relative z-10 my-6 sm:my-8 text-center max-w-3xl mx-auto px-2 w-full flex-1 min-h-0 overflow-y-auto flex flex-col',
+                    bodyInnerClassName: 'm-auto w-full',
+                    htmlTextClass: `text-balance leading-[1.2] tracking-tight text-4xl sm:text-6xl md:text-7xl ${activeSpecialMsg.style_config?.font || 'font-serif'} ${stageTextColor}`,
+                    plainTextClass: `text-balance font-serif leading-[1.2] tracking-tight text-4xl sm:text-6xl md:text-7xl ${stageTextColor}`,
+                  }}
+                />
               </div>
             </div>
 
-            {/* Reactions row — no second divider, actions live here */}
-            <div className="relative z-10 mt-4">
-              <InlineInteractions 
-                messageId={activeSpecialMsg.id} 
+            {/* Countdown — the centrepiece under the message */}
+            <div className="relative z-10 mt-9 text-center">
+              <p className={`font-mono text-[10px] uppercase tracking-[0.3em] ${stageIsDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                Remaining on stage
+              </p>
+              <p
+                suppressHydrationWarning
+                className={`mt-2 font-mono tabular-nums leading-none text-4xl sm:text-5xl ${stageIsDark ? 'text-[#F5EFE6]' : 'text-primary'}`}
+              >
+                {isMounted ? formatCountdown(timeLeft) : '--:--:--'}
+              </p>
+            </div>
+
+            {/* Reactions under a single hairline */}
+            <div className={`relative z-10 mt-6 pt-4 border-t ${stageIsDark ? 'border-white/15' : 'border-primary/10'}`}>
+              <InlineInteractions
+                messageId={activeSpecialMsg.id}
                 categorySlug={activeSpecialMsg?.category?.slug || 'general'}
                 isVip={true}
-                isDark={isDarkCard}
+                isDark={stageIsDark}
               />
             </div>
-          </motion.article>
+          </article>
         ) : (
-          /* EMPTY SPOTLIGHT */
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="w-full bg-[#FAF8F5] dark:bg-[#0E0E10] border border-violet-500/30 rounded-lg p-10 sm:p-14 md:p-18 text-center text-primary relative overflow-hidden flex flex-col items-center shadow-sm"
-          >
-            <span aria-hidden="true" className="absolute top-0 left-8 right-8 h-[2px] bg-amber-400" />
-            {/* Corner marks */}
-            <span className="absolute top-4 left-4 text-amber-500/50 font-mono text-sm select-none">⌜</span>
-            <span className="absolute top-4 right-4 text-amber-500/50 font-mono text-sm select-none">⌝</span>
-            <span className="absolute bottom-4 left-4 text-amber-500/50 font-mono text-sm select-none">⌞</span>
-            <span className="absolute bottom-4 right-4 text-amber-500/50 font-mono text-sm select-none">⌟</span>
-
-            {/* Stage Icon */}
-            <div className="special-float w-14 h-14 rounded-full border border-violet-500/30 bg-violet-500/10 flex items-center justify-center text-violet-700 dark:text-violet-300 mb-6">
-              <Compass className="w-6 h-6 stroke-[1.5]" />
-            </div>
-
-            <div suppressHydrationWarning className="text-[11px] font-mono uppercase tracking-[0.25em] text-violet-600 dark:text-violet-300 mb-3">
-              {isMounted ? `Slot #${currentLiveSlotDef.slotNumber} · Open now` : 'Open now'}
-            </div>
-
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-light text-primary mb-4 max-w-lg leading-tight">
-              This spotlight is empty.
-            </h2>
-
-            <p className="text-secondary text-sm md:text-base font-serif italic max-w-lg mx-auto mb-8 leading-relaxed text-secondary/85">
-              Own the next 3 hours. Your message stays big and center-stage — no bidding wars, no interruptions.
+          <div className="relative overflow-hidden rounded-none bg-[#141118] px-5 py-12 sm:p-14 text-center flex flex-col items-center">
+            <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-amber-400">
+              ✦ The World Stage ✦
             </p>
-
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <Link href="/create?tier=special">
-                <button className="px-8 py-4 rounded-xl bg-violet-700 dark:bg-violet-600 text-white font-medium text-xs sm:text-sm tracking-[0.15em] uppercase hover:bg-violet-600 dark:hover:bg-violet-500 active:scale-[0.98] transition-all shadow-sm flex items-center gap-3">
-                  <span>Claim this slot — $30</span>
-                  <ArrowUpRight className="w-4 h-4" />
-                </button>
-              </Link>
-
-              <button 
-                onClick={() => setSimulatorOpen(prev => !prev)}
-                className="px-6 py-4 rounded-xl border border-violet-500/30 bg-background-elevated hover:bg-violet-500/10 text-primary text-xs sm:text-sm font-medium tracking-wider uppercase transition-all flex items-center gap-2"
-              >
-                <PenTool className="w-4 h-4 text-violet-500" />
-                <span>{simulatorOpen ? 'Hide preview' : 'Preview your message'}</span>
-              </button>
+            <div className="mt-9 w-11 h-11 rounded-full border border-white/20 flex items-center justify-center text-[#F5EFE6]/50 mb-5">
+              <Compass className="w-5 h-5 stroke-[1.5]" />
             </div>
-          </motion.div>
+            <h2 className="text-3xl sm:text-4xl font-serif text-[#F5EFE6] mb-3 leading-tight">
+              The stage is dark.
+            </h2>
+            <p className="text-[#F5EFE6]/60 text-sm font-serif italic max-w-md mx-auto mb-7 leading-relaxed">
+              In a few hours this is the only voice on Earth. Make it yours.
+            </p>
+            <Link
+              href="/create?tier=special"
+              className="px-7 py-3.5 bg-amber-400 text-black font-medium text-xs tracking-[0.15em] uppercase hover:bg-amber-300 active:scale-[0.98] transition-all"
+            >
+              Claim this slot — ${SPECIAL_SLOT_PRICE}
+            </Link>
+          </div>
         )}
+        <DoubleRule inverted={stageRulesInverted} />
       </section>
 
-      {/* ── 3. TRY-IT-OUT PREVIEW ─────────────────── */}
-      <AnimatePresence>
-        {simulatorOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="w-full overflow-hidden"
-          >
-            <div className="w-full bg-background-elevated border border-violet-500/25 rounded-lg p-6 sm:p-8 space-y-6 shadow-sm">
-              <div className="flex items-center justify-between border-b border-violet-500/15 pb-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 font-mono text-xs text-violet-600 dark:text-violet-300 font-semibold uppercase tracking-wider">
-                    <PenTool className="w-3.5 h-3.5 text-amber-500" />
-                    <span>✦ Try it out</span>
-                  </div>
-                  <h3 className="text-base sm:text-lg font-serif font-medium text-primary">
-                    See how your message will look live
-                  </h3>
-                </div>
-
-                <button 
-                  onClick={() => setSimulatorOpen(false)}
-                  className="text-xs font-mono text-secondary hover:text-primary underline"
-                >
-                  Close
-                </button>
-              </div>
-
-              {/* Live preview */}
-              <div className="w-full bg-[#FAF8F5] dark:bg-[#0E0E10] border border-violet-500/25 rounded-xl p-8 sm:p-12 text-center text-primary relative">
-                <span className="absolute top-2 left-3 font-mono text-[10px] text-secondary/50 uppercase tracking-widest">
-                  Live preview
-                </span>
-
-                <div className={`my-4 sm:my-6 ${testFont} text-2xl sm:text-3xl md:text-4xl text-primary leading-relaxed max-w-2xl mx-auto break-words`}>
-                  {testQuote || 'Your message will appear here...'}
-                </div>
-
-                <div className="pt-4 border-t border-violet-500/15 font-mono text-xs text-secondary flex items-center justify-center gap-2">
-                  <span>By:</span>
-                  <span className="font-semibold text-primary">{testAuthor || 'Anonymous'}</span>
-                  <span>&middot;</span>
-                  <span className="text-secondary/60">3 hours live</span>
-                </div>
-              </div>
-
-              {/* Controls */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-secondary block font-semibold uppercase">
-                    Your message
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={testQuote}
-                    onChange={(e) => setTestQuote(e.target.value)}
-                    placeholder="Write a birthday wish, proposal, launch…"
-                    className="w-full p-2.5 text-xs sm:text-sm bg-background border border-violet-500/25 rounded-lg focus:outline-none focus:border-violet-500 text-primary"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-secondary block font-semibold uppercase">
-                    Your name (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={testAuthor}
-                    onChange={(e) => setTestAuthor(e.target.value)}
-                    placeholder="e.g. Sam"
-                    className="w-full p-2.5 text-xs sm:text-sm bg-background border border-violet-500/25 rounded-lg focus:outline-none focus:border-violet-500 text-primary"
-                  />
-                  <div className="flex gap-1.5 pt-1">
-                    <button
-                      onClick={() => setTestFont('font-serif')}
-                      className={`px-2.5 py-1 rounded text-[11px] font-mono border ${testFont === 'font-serif' ? 'border-violet-500 bg-violet-500/15 text-violet-700 dark:text-violet-200 font-bold' : 'border-primary/10 text-secondary'}`}
-                    >
-                      Serif
-                    </button>
-                    <button
-                      onClick={() => setTestFont('font-sans')}
-                      className={`px-2.5 py-1 rounded text-[11px] font-mono border ${testFont === 'font-sans' ? 'border-violet-500 bg-violet-500/15 text-violet-700 dark:text-violet-200 font-bold' : 'border-primary/10 text-secondary'}`}
-                    >
-                      Sans
-                    </button>
-                    <button
-                      onClick={() => setTestFont('font-mono')}
-                      className={`px-2.5 py-1 rounded text-[11px] font-mono border ${testFont === 'font-mono' ? 'border-violet-500 bg-violet-500/15 text-violet-700 dark:text-violet-200 font-bold' : 'border-primary/10 text-secondary'}`}
-                    >
-                      Monospace
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex flex-col justify-end space-y-2">
-                  <Link 
-                    href={`/create?tier=special&prefill=${encodeURIComponent(testQuote)}`}
-                    className="w-full"
-                  >
-                    <button className="w-full py-3 rounded-lg bg-violet-700 dark:bg-violet-600 text-white font-medium text-xs tracking-wider uppercase hover:bg-violet-600 dark:hover:bg-violet-500 transition-colors flex items-center justify-center gap-2 shadow-sm">
-                      <span>Post this message — $30</span>
-                      <ArrowUpRight className="w-4 h-4" />
-                    </button>
-                  </Link>
-                  <span className="text-[10px] font-mono text-secondary text-center block">
-                    $30 · 3 hours · no bidding
-                  </span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── 4. PICK YOUR TIME ───────── */}
-      <section className="w-full space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 border-b border-violet-500/20 pb-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-violet-600 dark:text-violet-300 mb-1">
-              <Globe className="w-4 h-4 text-amber-500" />
-              <span>✦ Pick your time</span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-serif font-medium text-primary">
-              Choose your 3-hour slot
-            </h2>
-            <p className="text-xs text-secondary font-mono mt-1">
-              Tap any slot to see your local time and availability.
-            </p>
-          </div>
-
-          {/* View toggle: Globe vs List */}
-          <div className="inline-flex p-1 rounded-lg border border-violet-500/25 bg-background-elevated text-xs font-mono">
-            <button
-              onClick={() => setActiveTabMode('ASTROLABE')}
-              className={`px-3 py-1 rounded font-medium transition-colors ${activeTabMode === 'ASTROLABE' ? 'bg-violet-700 dark:bg-violet-600 text-white' : 'text-secondary hover:text-violet-600 dark:hover:text-violet-300'}`}
-            >
-              Globe
-            </button>
-            <button
-              onClick={() => setActiveTabMode('TIMELINE')}
-              className={`px-3 py-1 rounded font-medium transition-colors ${activeTabMode === 'TIMELINE' ? 'bg-violet-700 dark:bg-violet-600 text-white' : 'text-secondary hover:text-violet-600 dark:hover:text-violet-300'}`}
-            >
-              List
-            </button>
-          </div>
+      {/* ── 4. Pick your time ───────────────────────────────────── */}
+      <section className="mt-10">
+        <div className="flex items-baseline justify-between gap-3 flex-wrap">
+          <h2 className="text-xl sm:text-2xl font-serif font-medium text-primary">Eight slots a day.</h2>
+          <span className="font-mono text-[10px] sm:text-[11px] tracking-[0.25em] uppercase text-secondary">
+            One voice at a time
+          </span>
         </div>
 
-        {activeTabMode === 'ASTROLABE' ? (
-          /* ── SLOT GLOBE ── */
-          <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-background-elevated border border-violet-500/25 rounded-lg p-6 sm:p-10 shadow-sm">
-            
-            {/* Left: The Astrolabe Interactive SVG */}
-            <div className="lg:col-span-7 flex flex-col items-center justify-center relative">
-              <div className="w-full max-w-[380px] aspect-square relative select-none">
-                <svg
-                  viewBox="0 0 400 400"
-                  className="w-full h-full drop-shadow-sm"
-                  aria-label="24-Hour Planetary Astrolabe"
-                >
-                  {/* Outer Astronomical Ring */}
-                  <circle
-                    cx="200"
-                    cy="200"
-                    r="185"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    className="text-primary/20"
-                  />
+        {/* Day chips — today + next 14 days */}
+        <div className="mt-4 flex gap-2 overflow-x-auto sm:flex-wrap sm:overflow-visible pb-1 -mx-1 px-1">
+          {days.map((day, i) => {
+            const isSel = i === selectedDayOffset
+            return (
+              <button
+                key={day.getTime()}
+                onClick={() => setSelectedDayOffset(i)}
+                className={`shrink-0 px-3 py-1.5 border font-mono text-[11px] tracking-wider transition-colors ${
+                  isSel
+                    ? 'bg-violet-700 dark:bg-violet-600 border-violet-700 dark:border-violet-600 text-white'
+                    : 'border-primary/20 text-secondary hover:text-primary hover:border-primary/40'
+                }`}
+              >
+                {i === 0 ? `TODAY · ${fmtDayChip(day)}` : fmtDayChip(day)}
+              </button>
+            )
+          })}
+        </div>
 
-                  {/* Inner Degree Rim */}
-                  <circle
-                    cx="200"
-                    cy="200"
-                    r="150"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="0.75"
-                    strokeDasharray="2 3"
-                    className="text-primary/30"
-                  />
-
-                  {/* Meridian Center Axis Lines */}
-                  <line x1="200" y1="15" x2="200" y2="385" stroke="currentColor" strokeWidth="0.75" className="text-primary/15" />
-                  <line x1="15" y1="200" x2="385" y2="200" stroke="currentColor" strokeWidth="0.75" className="text-primary/15" />
-                  <line x1="69" y1="69" x2="331" y2="331" stroke="currentColor" strokeWidth="0.5" className="text-primary/10" />
-                  <line x1="69" y1="331" x2="331" y2="69" stroke="currentColor" strokeWidth="0.5" className="text-primary/10" />
-
-                  {/* 24-Hour Tick Marks */}
-                  {Array.from({ length: 24 }).map((_, i) => {
-                    const angle = -90 + (i * 360) / 24
-                    const rad = (angle * Math.PI) / 180
-                    const x1 = 200 + 175 * Math.cos(rad)
-                    const y1 = 200 + 175 * Math.sin(rad)
-                    const x2 = 200 + (i % 3 === 0 ? 162 : 170) * Math.cos(rad)
-                    const y2 = 200 + (i % 3 === 0 ? 162 : 170) * Math.sin(rad)
-                    return (
-                      <line
-                        key={`tick-${i}`}
-                        x1={x1}
-                        y1={y1}
-                        x2={x2}
-                        y2={y2}
-                        stroke="currentColor"
-                        strokeWidth={i % 3 === 0 ? 1.5 : 0.75}
-                        className={i % 3 === 0 ? 'text-primary' : 'text-primary/30'}
-                      />
-                    )
-                  })}
-
-                  {/* 8 Sector Nodes / Interactive Hotspots */}
-                  {FIXED_3H_SLOT_DEFINITIONS.map((def, idx) => {
-                    const { x, y } = getCoordinatesForSector(idx, 150)
-                    const isSelected = selectedSlotNumber === def.slotNumber
-                    const isLive = currentLiveSlotDef.slotNumber === def.slotNumber
-                    
-                    const booked = isBookedOnDay(upcomingVipQueue, def, new Date())
-
-                    return (
-                      <g
-                        key={def.slotNumber}
-                        onClick={() => setSelectedSlotNumber(def.slotNumber)}
-                        className="cursor-pointer group"
-                      >
-                        {/* Interactive Sector Pulse / Ring */}
-                        <circle
-                          cx={x}
-                          cy={y}
-                          r={isSelected ? 19 : 14}
-                          fill="currentColor"
-                          className={`transition-all duration-200 ${
-                            isLive 
-                              ? 'text-violet-600 dark:text-violet-400' 
-                              : isSelected 
-                              ? 'text-violet-500' 
-                              : booked 
-                              ? 'text-secondary/60' 
-                              : 'text-primary/10 group-hover:text-violet-500/40'
-                          }`}
-                        />
-                        
-                        {/* Outer Selection Border — gold ring */}
-                        {isSelected && (
-                          <circle
-                            cx={x}
-                            cy={y}
-                            r={24}
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            className="text-amber-400 animate-pulse"
-                          />
-                        )}
-
-                        {/* Node Label */}
-                        <text
-                          x={x}
-                          y={y + 4}
-                          textAnchor="middle"
-                          fontSize="10"
-                          fontWeight="bold"
-                          fontFamily="monospace"
-                          fill={isLive || isSelected ? '#ffffff' : 'currentColor'}
-                          className={isLive || isSelected ? '' : 'text-primary'}
-                        >
-                          {def.slotNumber}
-                        </text>
-                      </g>
-                    )
-                  })}
-
-                  {/* Center hub */}
-                  <circle cx="200" cy="200" r="32" fill="currentColor" className="text-background" />
-                  <circle cx="200" cy="200" r="32" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-violet-500/40" />
-                  <circle cx="200" cy="200" r="6" fill="currentColor" className="text-amber-400" />
-
-                  {/* UTC needle */}
-                  <g transform={`rotate(${currentHandAngle} 200 200)`}>
-                    <line
-                      x1="200"
-                      y1="200"
-                      x2="200"
-                      y2="30"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="text-violet-600 dark:text-violet-400"
-                    />
-                    <polygon
-                      points="200,20 196,32 204,32"
-                      fill="currentColor"
-                      className="text-violet-600 dark:text-violet-400"
-                    />
-                    {/* Tip dot */}
-                    <circle cx="200" cy="60" r="4" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-amber-500" />
-                    <circle cx="200" cy="60" r="1.5" fill="currentColor" className="text-amber-500" />
-                  </g>
-                </svg>
-
-                {/* Subtext beneath dial */}
-                <div className="text-center font-mono text-[10px] text-secondary tracking-widest mt-2 uppercase">
-                  Needle shows current UTC time
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Slot details panel */}
-            <div className="lg:col-span-5 flex flex-col justify-between space-y-6 border-t lg:border-t-0 lg:border-l border-violet-500/15 pt-6 lg:pt-0 lg:pl-8">
-              <div className="space-y-4">
-                
-                {/* Slot badge & status */}
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold tracking-widest px-2.5 py-1 rounded bg-violet-500/15 text-violet-700 dark:text-violet-200 border border-violet-500/30">
-                    SLOT #{selectedSlotDef.slotNumber}
+        {/* The day's 8 slots — one ruled list, no cards */}
+        <div className="mt-2 divide-y divide-primary/10 border-b border-primary/10">
+          {slotsForDay.map(slot => {
+            const status = slotStatus(slot)
+            const isSel = selectedSlot?.slotNumber === slot.slotNumber
+            return (
+              <button
+                key={slot.slotNumber}
+                onClick={() => setSelectedSlotNumber(slot.slotNumber)}
+                className={`relative w-full flex items-center gap-3 px-3 py-3 text-left transition-colors ${
+                  isSel ? 'bg-violet-50 dark:bg-violet-500/10' : 'hover:bg-primary/[0.03]'
+                }`}
+              >
+                {isSel && <span aria-hidden="true" className="absolute left-0 top-0 bottom-0 w-[3px] bg-violet-700 dark:bg-violet-500" />}
+                <span className="font-mono text-[11px] tracking-wider text-secondary w-14 shrink-0">
+                  SLOT {slot.slotNumber}
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-medium text-primary whitespace-nowrap">{slot.label}</span>
+                  <span className="block text-xs text-secondary whitespace-nowrap" suppressHydrationWarning>
+                    {formatLocalSlotTime(slot.scheduled_start)} – {formatLocalSlotTime(slot.scheduled_end)} local
                   </span>
-
-                  {currentLiveSlotDef.slotNumber === selectedSlotDef.slotNumber ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      Live now
-                    </span>
-                  ) : selectedSlotBookedItem ? (
-                    <span className="text-xs font-mono font-semibold text-secondary uppercase">
-                      Already booked
-                    </span>
-                  ) : (
-                    <span className="text-xs font-mono font-semibold text-amber-600 dark:text-amber-300 uppercase">
-                      Available — $30
-                    </span>
-                  )}
-                </div>
-
-                {/* Slot title */}
-                <div>
-                  <h3 className="text-xl sm:text-2xl font-serif font-medium text-primary">
-                    {selectedQuadrantMeta.title}
-                  </h3>
-                  <div className="text-xs font-mono text-secondary mt-1">
-                    {selectedSlotDef.label}
-                  </div>
-                </div>
-
-                {/* Your local time */}
-                <div className="p-3 rounded-lg border border-violet-500/20 bg-violet-500/[0.06] text-xs font-mono space-y-1">
-                  <div className="text-secondary text-[11px] uppercase tracking-wider">
-                    Your time ({userTz}):
-                  </div>
-                  <div className="font-bold text-primary text-sm">
-                    {(() => {
-                      const now = new Date()
-                      const s = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), selectedSlotDef.startHour, 0))
-                      const e = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), selectedSlotDef.endHour, 0))
-                      return `${formatLocalSlotTime(s.toISOString())} – ${formatLocalSlotTime(e.toISOString())}`
-                    })()}
-                  </div>
-                </div>
-
-                {/* Best for */}
-                <div className="space-y-1 text-xs">
-                  <span className="font-mono text-[11px] text-secondary uppercase tracking-wider block">
-                    Popular in:
-                  </span>
-                  <div className="font-mono text-primary text-xs bg-background p-2.5 rounded border border-primary/10">
-                    {selectedQuadrantMeta.cities}
-                  </div>
-                </div>
-
-                {/* Vibe note */}
-                <div className="flex items-center gap-2 text-xs font-mono text-secondary">
-                  {selectedQuadrantMeta.night ? (
-                    <Moon className="w-3.5 h-3.5 text-primary" />
-                  ) : (
-                    <Sun className="w-3.5 h-3.5 text-primary" />
-                  )}
-                  <span>{selectedQuadrantMeta.hemisphere}</span>
-                </div>
-              </div>
-
-              {/* Book button */}
-              <div className="pt-4 border-t border-violet-500/15">
-                {selectedSlotBookedItem ? (
-                  <div className="p-3 rounded-lg bg-background border border-primary/10 text-xs font-mono">
-                    <span className="text-secondary block mb-1">Coming up:</span>
-                    <span className="text-secondary/60 select-none" aria-label="Message hidden until live">
-                      {"•".repeat(24)}
-                      <span className="block text-[10px] mt-1">Revealed when live</span>
-                    </span>
-                  </div>
-                ) : (
-                  <Link 
-                    href={`/create?tier=special&slot=${selectedSlotDef.slotNumber}`}
-                    className="w-full block"
-                  >
-                    <button className="w-full py-3.5 rounded-xl bg-violet-700 dark:bg-violet-600 text-white font-medium text-xs tracking-[0.15em] uppercase hover:bg-violet-600 dark:hover:bg-violet-500 active:scale-[0.98] transition-colors flex items-center justify-center gap-2 shadow-sm">
-                      <span>Book slot #{selectedSlotDef.slotNumber} — $30</span>
-                      <ArrowUpRight className="w-4 h-4" />
-                    </button>
-                  </Link>
-                )}
-              </div>
-
-            </div>
-          </div>
-        ) : (
-          /* ── SLOT LIST (8 x 3-HOUR) ── */
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-            {FIXED_3H_SLOT_DEFINITIONS.map((def) => {
-              const isLive = currentLiveSlotDef.slotNumber === def.slotNumber
-              const today = new Date()
-              const windowStart = Date.UTC(
-                today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(),
-                def.startHour, 0, 0, 0
-              )
-              const windowEnd = Date.UTC(
-                today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(),
-                def.endHour, 0, 0, 0
-              )
-              const booked = upcomingVipQueue.find(item => {
-                if (!item.scheduled_start) return false
-                const t = new Date(item.scheduled_start).getTime()
-                return t >= windowStart && t < windowEnd
-              })
-
-              const meta = QUADRANT_METADATA.find(q => q.slot === def.slotNumber)
-              const now = new Date()
-              const sDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), def.startHour, 0))
-              const eDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), def.endHour, 0))
-              const localRange = `${formatLocalSlotTime(sDate.toISOString())} – ${formatLocalSlotTime(eDate.toISOString())}`
-
-              return (
-                <div
-                  key={def.slotNumber}
-                  onClick={() => setSelectedSlotNumber(def.slotNumber)}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between min-h-[160px] ${
-                    isLive 
-                      ? 'border-violet-500 bg-violet-500/10 ring-1 ring-violet-500' 
-                      : booked 
-                      ? 'border-primary/20 bg-background-elevated' 
-                      : 'border-violet-500/20 bg-background hover:border-violet-500/50 hover:bg-violet-500/[0.04]'
+                </span>
+                <span
+                  className={`font-mono text-[10px] tracking-[0.15em] shrink-0 ${
+                    status === 'LIVE NOW'
+                      ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+                      : status === 'BOOKED'
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : status === 'PAST'
+                          ? 'text-secondary/50'
+                          : 'text-secondary'
                   }`}
                 >
-                  <div>
-                    <div className="flex items-center justify-between text-[11px] font-mono mb-2">
-                      <span className="font-bold text-violet-700 dark:text-violet-200">
-                        ✦ SLOT {def.slotNumber.toString().padStart(2, '0')}
-                      </span>
-                      {isLive ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          Live
-                        </span>
-                      ) : booked ? (
-                        <span className="text-[10px] text-secondary font-mono uppercase">
-                          Booked
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-amber-600 dark:text-amber-300 font-semibold font-mono uppercase">
-                          Available
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="text-xs font-mono font-bold text-primary">
-                      {def.label}
-                    </div>
-                    <div className="text-[11px] text-secondary font-mono mt-0.5">
-                      {localRange}
-                    </div>
-                    <div className="text-[10px] text-secondary/80 font-mono mt-1 truncate">
-                      {meta?.cities}
-                    </div>
-                  </div>
-
-                  <div className="mt-3 pt-2.5 border-t border-violet-500/15 flex items-center justify-between text-xs font-mono">
-                    {booked ? (
-                      <span className="text-[10px] text-secondary/60 font-mono truncate max-w-[170px] select-none" aria-label="Message hidden until live">
-                        {"•".repeat(12)}
-                      </span>
-                    ) : (
-                      <>
-                        <span className="text-amber-600 dark:text-amber-300 font-bold">${SPECIAL_SLOT_PRICE}</span>
-                        <Link 
-                          href={`/create?tier=special&slot=${def.slotNumber}`}
-                          className="text-[10px] text-violet-600 dark:text-violet-300 hover:underline flex items-center gap-1 font-semibold uppercase tracking-wider"
-                        >
-                          <span>Book</span>
-                          <ArrowUpRight className="w-3 h-3" />
-                        </Link>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* ── 5. WHY SPECIAL? (3 BENEFITS) ─────────────── */}
-      <section className="w-full grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 border-t border-violet-500/20">
-        <div className="space-y-2 border-l-2 border-violet-500/40 pl-4">
-          <div className="font-mono text-xs text-violet-600 dark:text-violet-300 font-semibold tracking-widest uppercase">
-            1. No bidding. No bumping.
-          </div>
-          <h3 className="font-serif text-lg font-medium text-primary">
-            Your slot is locked
-          </h3>
-          <p className="text-xs text-secondary font-serif leading-relaxed text-secondary/85">
-            Once you book, it&apos;s yours for the full 3 hours. No one can outbid you or cut in line.
-          </p>
+                  {status}
+                </span>
+                <span className="text-sm text-primary w-8 text-right shrink-0">${SPECIAL_SLOT_PRICE}</span>
+              </button>
+            )
+          })}
         </div>
 
-        <div className="space-y-2 border-l-2 border-fuchsia-500/40 pl-4">
-          <div className="font-mono text-xs text-fuchsia-600 dark:text-fuchsia-300 font-semibold tracking-widest uppercase">
-            2. You pick the exact time
-          </div>
-          <h3 className="font-serif text-lg font-medium text-primary">
-            On your schedule
-          </h3>
-          <p className="text-xs text-secondary font-serif leading-relaxed text-secondary/85">
-            Choose any 3-hour slot up to 15 days ahead. We auto-show your local time, so no math needed.
-          </p>
-        </div>
-
-        <div className="space-y-2 border-l-2 border-amber-400/60 pl-4">
-          <div className="font-mono text-xs text-amber-600 dark:text-amber-300 font-semibold tracking-widest uppercase">
-            3. Made for big moments
-          </div>
-          <h3 className="font-serif text-lg font-medium text-primary">
-            Birthdays, proposals, launches
-          </h3>
-          <p className="text-xs text-secondary font-serif leading-relaxed text-secondary/85">
-            Get a premium design plus a shareable page that stays up forever — perfect to send to friends & family.
-          </p>
+        {/* One booking action for the selected slot */}
+        <div className="mt-5">
+          {bookDisabled || !selectedSlot ? (
+            <button
+              disabled
+              className="w-full py-3.5 bg-primary/10 text-secondary font-medium text-xs tracking-[0.12em] uppercase cursor-not-allowed"
+            >
+              {bookLabel}
+            </button>
+          ) : (
+            <Link
+              href={`/create?tier=special&slot=${selectedSlot.slotNumber}`}
+              className="block w-full py-3.5 text-center bg-amber-400 text-black font-medium text-xs tracking-[0.12em] uppercase hover:bg-amber-300 active:scale-[0.99] transition-all"
+            >
+              {bookLabel}
+            </Link>
+          )}
         </div>
       </section>
 
+      {/* ── 5. Facts strip — true scarcity facts, nothing else ──── */}
+      <p className="mt-10 text-center font-mono text-[11px] uppercase tracking-[0.2em] text-secondary leading-relaxed">
+        The only message on the homepage
+        <span aria-hidden="true" className="text-amber-500"> ✦ </span>
+        Full 3 hours — never bumped
+        <span aria-hidden="true" className="text-amber-500"> ✦ </span>
+        A page that stays forever
+      </p>
     </div>
   )
 }
