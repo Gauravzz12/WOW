@@ -5,7 +5,7 @@ import { ArrowLeft, Lock, PartyPopper, Radio } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { sponsorTokenCookieName, verifySponsorEditToken, issueSponsorEditToken } from '@/lib/sponsorToken'
-import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
+import { getCategoryHex, getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { FrameDecorator } from '@/components/FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
 import { SponsorShoutoutForm } from './SponsorShoutoutForm'
@@ -202,7 +202,7 @@ export default async function SponsorShoutoutPage({
 
         {/* Revealed message card */}
         <div className={`${bg || 'bg-background-elevated'} border ${cardBorder || (message as any).style_config?.cardBorder || 'border-primary/10'} rounded-lg p-6 sm:p-10 md:p-12 text-center shadow-md relative overflow-hidden transition-colors ${getFrameClass((message as any).style_config?.frameId)}`}>
-          <FrameDecorator frameId={(message as any).style_config?.frameId} />
+          <FrameDecorator frameId={(message as any).style_config?.frameId} accentHex={getCategoryHex(categorySlug)} />
           <div className="flex flex-col items-center gap-2 mb-6">
             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border shadow-sm ${badgeClass}`}>
               {categoryName}
