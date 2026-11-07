@@ -2,14 +2,11 @@
 
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { verifyAdminSessionToken, ADMIN_COOKIE_CONFIG } from '@/lib/adminAuth'
 import { runQueueAdvance } from '@/lib/queueAdvance'
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabaseAdmin = getSupabaseAdmin()
 
 async function assertAdmin() {
   const cookieStore = cookies()
