@@ -141,6 +141,20 @@ export function getFixedSlotsForUtcDate(utcYear: number, utcMonth: number, utcDa
   })
 }
 
+/**
+ * SLOT-1: a slot window is canonical only if it exactly matches one of
+ * the fixed 3-hour definitions for its UTC date (start aligned to the
+ * grid, end exactly start+3h). Server paths that accept slot times from
+ * clients MUST validate with this — never trust supplied windows.
+ */
+export function isCanonicalSlotWindow(scheduledStart: unknown, scheduledEnd: unknown): boolean {
+  if (typeof scheduledStart !== 'string' || typeof scheduledEnd !== 'string') return false
+  const start = new Date(scheduledStart)
+  if (isNaN(start.getTime())) return false
+  const defs = getFixedSlotsForUtcDate(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())
+  return defs.some(d => d.scheduled_start === scheduledStart && d.scheduled_end === scheduledEnd)
+}
+
 // Backwards-compatible alias for Date objects
 export function getFixedSlotsForDate(date: Date) {
   return getFixedSlotsForUtcDate(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
