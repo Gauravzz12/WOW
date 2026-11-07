@@ -44,9 +44,23 @@ export async function GET() {
 
   const cat = Array.isArray(pick.category) ? pick.category[0] : pick.category
 
+  // API-7: never return style_config raw — legacy rows can carry a
+  // poster's reminderEmail inside it (queueAdvance still reads that
+  // legacy fallback), and this endpoint is unauthenticated. Strip the
+  // key before the row leaves the server.
+  let safeStyle: any = (pick as any).style_config
+  if (typeof safeStyle === 'string') {
+    try { safeStyle = JSON.parse(safeStyle) } catch { safeStyle = {} }
+  }
+  if (safeStyle && typeof safeStyle === 'object') {
+    const { reminderEmail: _stripped, ...rest } = safeStyle
+    safeStyle = rest
+  }
+
   return NextResponse.json({
     message: {
       ...pick,
+      style_config: safeStyle,
       category: cat,
       durationSecs: getMessageDurationSecs(pick),
     },
