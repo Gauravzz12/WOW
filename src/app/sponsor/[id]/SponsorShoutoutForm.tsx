@@ -78,9 +78,9 @@ export function SponsorShoutoutForm({
   }
 
   return (
-    <div className="bg-background-elevated border border-primary/10 rounded-3xl p-6 md:p-8 shadow-2xl space-y-5">
+    <div className="bg-background-elevated border border-primary/10 rounded-lg p-6 md:p-8 shadow-none space-y-5">
       <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-500 flex items-center justify-center shrink-0 shadow-sm">
+        <div className="w-11 h-11 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-500 flex items-center justify-center shrink-0 shadow-sm">
           <Sparkles size={22} />
         </div>
         <div>
@@ -92,7 +92,7 @@ export function SponsorShoutoutForm({
       </div>
 
       {/* Live preview of attribution */}
-      <div className="p-3.5 rounded-2xl bg-background border border-primary/10 text-center">
+      <div className="p-3.5 rounded-lg bg-background border border-primary/10 text-center">
         <span className="text-[10px] font-bold uppercase tracking-wider text-secondary block mb-1.5">
           Live preview
         </span>
