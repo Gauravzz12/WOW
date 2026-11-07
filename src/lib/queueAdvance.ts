@@ -27,6 +27,18 @@ export async function runQueueAdvance() {
     .lt('created_at', twelveHoursAgo)
     .select('id')
 
+  // PAY-3: slots are marked BOOKED at checkout start, before payment.
+  // Expiring the unpaid message must release its still-future slots or
+  // abandoned checkouts permanently drain Special inventory at $0 cost.
+  if (expiredWaiting && expiredWaiting.length > 0) {
+    await supabaseAdmin
+      .from('reserved_slots')
+      .update({ status: 'AVAILABLE', message_id: null, bid_amount: 0 })
+      .in('message_id', expiredWaiting.map(m => m.id))
+      .eq('status', 'BOOKED')
+      .gt('scheduled_end', nowIso)
+  }
+
   // 1. Check all ACTIVE messages and mark them COMPLETED if expired
   const { data: activeMessages } = await supabaseAdmin
     .from('messages')
@@ -202,26 +214,17 @@ export async function runQueueAdvance() {
   // 1. Expire any queued VIP slots whose scheduled end time has already elapsed.
   //    Their slots intentionally stay BOOKED (never re-released for elapsed
   //    time); only future-windowed releases happen on the ACTIVE path above.
-  const { data: expiredVip } = await supabaseAdmin
+  await supabaseAdmin
     .from('messages')
     .update({ status: 'EXPIRED' })
     .eq('status', 'QUEUED')
     .eq('is_reserved_slot', true)
     .lte('scheduled_end', nowIso)
     .select('id, scheduled_end')
-
-  if (expiredVip && expiredVip.length > 0) {
-    const releasable = expiredVip
-      .filter((m: any) => m.scheduled_end && new Date(m.scheduled_end).getTime() > now.getTime())
-      .map((m: any) => m.id)
-    if (releasable.length > 0) {
-      await supabaseAdmin
-        .from('reserved_slots')
-        .update({ status: 'AVAILABLE' })
-        .in('message_id', releasable)
-        .eq('status', 'BOOKED')
-    }
-  }
+  // (The release block that used to sit here was dead code — it selected
+  // rows with scheduled_end <= now and then kept only scheduled_end >
+  // now, so it could never release anything. Removed; elapsed slots
+  // staying BOOKED is the intended behaviour per the comment above.)
 
   if (!currentActives.special) {
     const { data: latestActiveVip } = await supabaseAdmin
