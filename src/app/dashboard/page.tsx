@@ -94,7 +94,7 @@ export default async function DashboardPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-24 bg-background-elevated border border-primary/10 rounded-2xl">
+          <div className="text-center py-24 bg-background-elevated border border-primary/10 rounded-lg">
             <p className="text-secondary mb-4">You haven't broadcasted any messages yet.</p>
             <Link href="/create">
               <button className="px-6 py-3 bg-primary text-background rounded-full font-medium hover:opacity-90 transition-opacity">
