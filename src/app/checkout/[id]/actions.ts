@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
-import { calculateSpecialPrice, calculateNormalMinBid, BASE_NORMAL_MINS, MAX_NORMAL_MINS, SPONSORED_PRICE, SPONSORED_DURATION_SECS } from '@/lib/constants/pricing'
+import { calculateSpecialPrice, calculateNormalMinBid, BASE_NORMAL_MINS, MAX_NORMAL_MINS, SPONSORED_PRICE, SPONSORED_DURATION_SECS, isCanonicalSlotWindow } from '@/lib/constants/pricing'
 import { issueSponsorEditToken, sponsorTokenCookieName } from '@/lib/sponsorToken'
 import { validateContentModeration } from '@/lib/moderation'
 
@@ -83,6 +83,12 @@ export async function processPayment(
 
     // Fallback: If slots weren't resolved by UUIDs, resolve by scheduled_start from style.selectedSlots
     if (slots.length === 0 && Array.isArray(style.selectedSlots) && style.selectedSlots.length > 0) {
+      // SLOT-1: this fallback used to manufacture AVAILABLE rows from
+      // whatever times the client stored at create. Only canonical fixed
+      // 3-hour windows may be materialised — anything else is forgery.
+      if (style.selectedSlots.some((s: any) => !isCanonicalSlotWindow(s?.scheduled_start, s?.scheduled_end))) {
+        return { error: 'Invalid time slot selection.' }
+      }
       // Ensure records exist in database
       const slotsToUpsert = style.selectedSlots.map((s: any) => ({
         scheduled_start: new Date(s.scheduled_start).toISOString(),
@@ -116,6 +122,12 @@ export async function processPayment(
     const expectedCount = targetSlotIds.length > 0 ? targetSlotIds.length : (style.selectedSlots?.length || 0)
     if (!slots || slots.length === 0 || slots.length !== expectedCount) {
       return { error: 'One or more selected slots could not be found. Please try again.' }
+    }
+
+    // SLOT-1 (UUID path): rows fetched by id must also be canonical —
+    // a poisoned or legacy row with forged times is not bookable.
+    if (slots.some(s => !isCanonicalSlotWindow(s.scheduled_start, s.scheduled_end))) {
+      return { error: 'Invalid time slot selection.' }
     }
 
     const anyBooked = slots.some(s => s.status === 'BOOKED')
@@ -287,7 +299,10 @@ export async function processPayment(
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
         })
-        returnUrl = `${SITE_URL}/sponsor/${messageId}?token=${sponsorToken}`
+        // PAY-7: the sponsor token is a bearer credential — it travels in
+        // the httpOnly cookie set above and in the confirmation email,
+        // never in a URL that lands in dashboards, logs and history.
+        returnUrl = `${SITE_URL}/sponsor/${messageId}`
       } else {
         // Standard priority queue bid: generate secret bump token
         const { generateBumpToken, hashBumpToken } = await import('@/lib/bumpToken')
@@ -329,65 +344,5 @@ export async function processPayment(
       console.error('Checkout error:', err)
       return { error: `Failed to initialize checkout session: ${err.message || err}` }
     }
-  }
-}
-
-export async function bumpBid(messageId: string, additionalAmount: number) {
-  // Must be positive
-  if (!additionalAmount || additionalAmount <= 0) {
-    return { error: 'Invalid bump amount.' }
-  }
-
-  // Simulate payment processing delay
-  await new Promise(resolve => setTimeout(resolve, 1500))
-
-  const { data: currentMsg, error: msgFetchError } = await supabaseAdmin
-    .from('messages')
-    .select('id, status, is_reserved_slot, bid_amount, content, reminder_email')
-    .eq('id', messageId)
-    .single()
-
-  if (msgFetchError || !currentMsg) {
-    return { error: 'Message not found.' }
-  }
-
-  if (currentMsg.status !== 'QUEUED' || currentMsg.is_reserved_slot) {
-    return { error: 'Only normal queued messages can be bumped.' }
-  }
-
-  // CREATE DODO PAYMENTS CHECKOUT SESSION FOR BUMP
-  const DodoPayments = (await import('dodopayments')).default
-  const client = new DodoPayments({
-    bearerToken: process.env.DODO_PAYMENTS_API_KEY,
-    environment: 'test_mode'
-  })
-
-  try {
-    const { generateBumpToken } = await import('@/lib/bumpToken')
-    const newToken = generateBumpToken()
-    const newTotalBid = Math.round(((currentMsg.bid_amount || 0) + additionalAmount) * 100) / 100
-
-    const session = await client.checkoutSessions.create({
-      product_cart: [{
-        product_id: process.env.NEXT_PUBLIC_DODO_PAYMENTS_PRODUCT_ID!,
-        quantity: 1,
-        amount: Math.round(additionalAmount * 100),
-      }],
-      return_url: `${SITE_URL}/?tab=NORMAL&bumpSuccess=1`,
-      ...(currentMsg.reminder_email ? { customer: { email: currentMsg.reminder_email } } : {}),
-      metadata: {
-        messageId,
-        isBump: 'true',
-        newTotalBid: newTotalBid.toString(),
-        usdAmount: additionalAmount.toString(),
-        newToken,
-        userEmail: currentMsg.reminder_email || '',
-        userMessage: (currentMsg.content || '').slice(0, 200),
-      }
-    })
-    return { success: true, redirectUrl: session.checkout_url }
-  } catch (err: any) {
-    console.error('Bump checkout error:', err)
-    return { error: `Failed to initialize bump checkout session: ${err.message || err}` }
   }
 }
