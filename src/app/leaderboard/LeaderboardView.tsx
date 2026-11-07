@@ -14,6 +14,7 @@ import {
   Heart
 } from 'lucide-react'
 import { getCategoryStyles } from '@/lib/utils/colors'
+import { MIN_NORMAL_BID } from '@/lib/constants/pricing'
 
 export type LeaderboardTier = 'all' | 'normal' | 'sponsored' | 'special'
 
@@ -47,7 +48,7 @@ export function classifyMessage(msg: LeaderboardItem): 'special' | 'sponsored' |
   if (
     config.isSponsored === true ||
     config.tier === 'sponsored' ||
-    (typeof msg.bid_amount === 'number' && msg.bid_amount < 10) ||
+    (typeof msg.bid_amount === 'number' && msg.bid_amount < MIN_NORMAL_BID) ||
     Boolean(config.sponsorName) ||
     Boolean(config.sponsorNote)
   ) {
