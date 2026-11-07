@@ -90,6 +90,21 @@ export const VIP_SPECIAL_TEMPLATES: Template[] = [
     vipTagline: 'OLED Obsidian & Velvet Amethyst',
     categoryFit: ['confession', 'rant'],
     dummyText: 'I have spent a lifetime waiting for permission that was never going to come. Today, I grant it to myself.'
+  },
+  {
+    id: 'night-edition',
+    name: 'Night Edition',
+    bg: 'bg-[#141118]',
+    font: 'font-playfair',
+    textColor: 'text-[#F5EFE6]',
+    cardBorder: 'border-amber-400/50',
+    accent: 'bg-[#F59E0B]',
+    isVip: true,
+    vipBadge: '✦ NIGHT EDITION ✦',
+    vipIcon: '🌌',
+    vipTagline: 'The Night Stage — Cream on Ink',
+    categoryFit: ['general', 'celebration', 'announcement'],
+    dummyText: 'When the world goes quiet, one voice remains. Tonight, it is yours.'
   }
 ]
 
@@ -179,7 +194,7 @@ export const STANDARD_TEMPLATES: Template[] = [
   },
   {
     id: "botanical",
-    name: "Botanical",
+    name: "Meadow",
     bg: "bg-[#F2F7F2] dark:bg-[#0A120A] bg-dot-green-800/[0.08] dark:bg-dot-green-500/[0.05]",
     font: "font-serif",
     textColor: "text-[#14532D] dark:text-[#A7F3D0]",
@@ -221,23 +236,13 @@ export const STANDARD_TEMPLATES: Template[] = [
   // Page 3
   {
     id: "midnight",
-    name: "Midnight",
+    name: "Slate",
     bg: "bg-[#EBF0F5] dark:bg-[#050B14]",
     font: "font-playfair",
     textColor: "text-[#0F172A] dark:text-[#94A3B8]",
     cardBorder: "border-slate-300 dark:border-slate-800",
     accent: "bg-slate-700 dark:bg-slate-400",
     dummyText: "The quietest hour holds the loudest thoughts."
-  },
-  {
-    id: "sunset",
-    name: "Sunset",
-    bg: "bg-[#FFF5F0] dark:bg-[#2A1108] dark:",
-    font: "font-sans font-light",
-    textColor: "text-[#9A3412] dark:text-[#FDBA74]",
-    cardBorder: "border-orange-200 dark:border-orange-900/50",
-    accent: "bg-orange-500",
-    dummyText: "Chasing the horizon until the colors fade."
   },
   {
     id: "oceanic",
@@ -250,16 +255,6 @@ export const STANDARD_TEMPLATES: Template[] = [
     dummyText: "Deep currents and quiet ripples."
   },
   {
-    id: "hacker",
-    name: "Hacker",
-    bg: "bg-[#E6FFE6] dark:bg-[#000000]",
-    font: "font-mono font-bold",
-    textColor: "text-[#166534] dark:text-[#22C55E]",
-    cardBorder: "border-green-400 dark:border-green-600 rounded-none shadow-[0px_0px_10px_rgba(34,197,94,0.15)]",
-    accent: "bg-green-500",
-    dummyText: "ACCESS GRANTED. INITIALIZING PROTOCOL..."
-  },
-  {
     id: "golden-age",
     name: "Golden Age",
     bg: "bg-[#FFFAF0] dark:bg-[#1A160C] bg-dot-yellow-900/[0.05] dark:bg-dot-yellow-500/[0.05]",
@@ -269,15 +264,84 @@ export const STANDARD_TEMPLATES: Template[] = [
     accent: "bg-yellow-500",
     dummyText: "A nostalgic memory from a brighter era."
   },
+
+  // Page 4 — Editorial additions
   {
-    id: "neon-nights",
-    name: "Neon Nights",
-    bg: "bg-[#FDF4FF] dark:bg-[#17051A] bg-[size:2rem_100%]",
-    font: "font-sans font-bold tracking-tight",
-    textColor: "text-[#A21CAF] dark:text-[#F0ABFC]",
-    cardBorder: "border-l-[8px] border-l-fuchsia-500 border-y-fuchsia-300 border-r-fuchsia-300 dark:border-y-fuchsia-900/50 dark:border-r-fuchsia-900/50",
-    accent: "bg-fuchsia-500",
-    dummyText: "City lights blur in the rearview mirror."
+    id: "broadsheet",
+    name: "Broadsheet",
+    bg: "bg-[#FBFAF7] dark:bg-[#121212]",
+    font: "font-playfair",
+    textColor: "text-[#141414] dark:text-[#EDEDE6]",
+    cardBorder: "border-neutral-300 dark:border-neutral-700",
+    accent: "bg-[#B91C1C]",
+    categoryFit: ['announcement', 'general'],
+    dummyText: "Extra! Extra! Read all about it — the headline is you."
+  },
+  {
+    id: "vow",
+    name: "Vow",
+    bg: "bg-[#FDF2F4] dark:bg-[#20060D]",
+    font: "font-playfair italic",
+    textColor: "text-[#701A2E] dark:text-[#FBDCE2]",
+    cardBorder: "border-rose-300 dark:border-rose-400/30",
+    accent: "bg-[#E11D48]",
+    categoryFit: ['love'],
+    dummyText: "I choose you, in every lifetime, in every universe, always."
+  },
+  {
+    id: "first-light",
+    name: "First Light",
+    bg: "bg-[#FDF6EC] dark:bg-[#1D1508]",
+    font: "font-serif",
+    textColor: "text-[#6B4423] dark:text-[#F3E3C2]",
+    cardBorder: "border-amber-300 dark:border-amber-500/30",
+    accent: "bg-[#D97706]",
+    categoryFit: ['gratitude', 'celebration'],
+    dummyText: "Thank you for being the first light in my darkest season."
+  },
+  {
+    id: "ember",
+    name: "Ember",
+    bg: "bg-[#FFF4ED] dark:bg-[#1C0B03]",
+    font: "font-sans font-semibold",
+    textColor: "text-[#7C2D12] dark:text-[#FCD9B8]",
+    cardBorder: "border-orange-300 dark:border-orange-500/30",
+    accent: "bg-[#EA580C]",
+    categoryFit: ['rant'],
+    dummyText: "Enough. Some truths refuse to stay quiet any longer."
+  },
+  {
+    id: "confessional",
+    name: "Confessional",
+    bg: "bg-[#F4F1FA] dark:bg-[#0E0A1A]",
+    font: "font-serif italic",
+    textColor: "text-[#3B2764] dark:text-[#DDD0F5]",
+    cardBorder: "border-violet-300 dark:border-violet-400/30",
+    accent: "bg-[#7C3AED]",
+    categoryFit: ['confession'],
+    dummyText: "There is something I have never told anyone, until now."
+  },
+  {
+    id: "summit",
+    name: "Summit",
+    bg: "bg-[#EEF4F6] dark:bg-[#061419]",
+    font: "font-outfit font-medium",
+    textColor: "text-[#123B4F] dark:text-[#CFE8EF]",
+    cardBorder: "border-cyan-600/30 dark:border-cyan-500/40",
+    accent: "bg-[#0891B2]",
+    categoryFit: ['promotion', 'announcement'],
+    dummyText: "We climbed quietly. Today, the view is for everyone."
+  },
+  {
+    id: "telegram",
+    name: "Telegram",
+    bg: "bg-[#F7F3E8] dark:bg-[#161410]",
+    font: "font-mono uppercase tracking-wider",
+    textColor: "text-[#33302A] dark:text-[#E8E2D2]",
+    cardBorder: "border-stone-300 dark:border-stone-600",
+    accent: "bg-[#57534E]",
+    categoryFit: ['announcement', 'general'],
+    dummyText: "WIRE DISPATCH. THE NEWS CANNOT WAIT. STOP."
   }
 ]
 
