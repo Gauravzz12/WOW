@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import posthog from 'posthog-js'
-import { getDeviceId, getStoredReactions, setStoredReaction, removeStoredReaction, syncStoredReactions } from '@/lib/deviceId'
-import { addReaction as serverAddReaction, removeReaction as serverRemoveReaction } from './reactions'
+import { getStoredReactions, setStoredReaction, removeStoredReaction, syncStoredReactions } from '@/lib/deviceId'
+import { addReaction as serverAddReaction, removeReaction as serverRemoveReaction, getMyReactions } from './reactions'
 
 const REACTION_TYPES = [
   { id: 'LOVE', emoji: '❤️', label: 'Love' },
@@ -41,22 +41,24 @@ export function ReactionBar({ messageId }: { messageId: string }) {
     const fetchReactions = async () => {
       const { data, error } = await supabase
         .from('reactions')
-        .select('id, reaction_type, device_id')
+        .select('id, reaction_type')
         .eq('message_id', messageId)
 
       if (!error && data) {
         const newCounts: Record<string, number> = {}
-        const deviceId = getDeviceId()
+        // DAT-3: own rows come from the server action, not from a
+        // device_id column shipped to every browser.
+        const mine = await getMyReactions(messageId).catch(() => ({ reactions: [] as { id: string; type: string }[] }))
         const deviceReactions: Record<string, string> = {}
+        for (const r of mine.reactions) {
+          // Skip rows we just deleted but haven't seen committed yet.
+          const removedAt = recentlyRemoved.current[r.type] || 0
+          if (Date.now() - removedAt < 4000) continue
+          deviceReactions[r.type] = r.id
+        }
 
         for (const r of (data as any[])) {
           newCounts[r.reaction_type] = (newCounts[r.reaction_type] || 0) + 1
-          if (r.device_id && r.device_id === deviceId) {
-            // Skip rows we just deleted but haven't seen committed yet.
-            const removedAt = recentlyRemoved.current[r.reaction_type] || 0
-            if (Date.now() - removedAt < 4000) continue
-            deviceReactions[r.reaction_type] = r.id
-          }
         }
         setCounts(newCounts)
 

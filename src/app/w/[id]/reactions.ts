@@ -40,6 +40,35 @@ function getOrCreateDeviceId(): string {
   return id
 }
 
+function getDeviceIdOrNull(): string | null {
+  try {
+    return cookies().get(DEVICE_COOKIE)?.value ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * DAT-3: returns the CALLER's own reactions on a message (id + type).
+ * Replaces shipping every reactor's device_id to every browser, where
+ * the id doubles as the ownership credential — a client now only ever
+ * learns about its own rows.
+ */
+export async function getMyReactions(messageId: string) {
+  if (!messageId) return { reactions: [] as { id: string; type: string }[] }
+  const deviceId = getDeviceIdOrNull()
+  if (!deviceId) return { reactions: [] as { id: string; type: string }[] }
+  const supabaseAdmin = getAdmin()
+  const { data } = await supabaseAdmin
+    .from('reactions')
+    .select('id, reaction_type')
+    .eq('message_id', messageId)
+    .eq('device_id', deviceId)
+  return {
+    reactions: ((data as any[]) || []).map(r => ({ id: r.id as string, type: r.reaction_type as string })),
+  }
+}
+
 async function checkRateLimit(
   supabaseAdmin: ReturnType<typeof getAdmin>,
   deviceId: string
