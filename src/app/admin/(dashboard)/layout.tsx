@@ -22,7 +22,7 @@ export default async function AdminDashboardLayout({
 
   return (
     <div className="min-h-screen bg-background text-primary selection:bg-primary/20">
-      <header className="border-b border-primary/10 p-4 bg-background-elevated/80 backdrop-blur-md sticky top-0 z-50">
+      <header className="border-b border-primary/10 p-4 bg-background-elevated/80 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
