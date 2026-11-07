@@ -4,7 +4,7 @@
  * FrameDecorator renders decorative SVG/CSS overlays inside a card.
  * It must be the first child of a `relative overflow-hidden` container.
  */
-export function FrameDecorator({ frameId }: { frameId?: string }) {
+export function FrameDecorator({ frameId, accentHex }: { frameId?: string; accentHex?: string }) {
   if (!frameId || frameId === 'none') return null
 
   if (frameId === 'ornate-corners') {
@@ -91,20 +91,7 @@ export function FrameDecorator({ frameId }: { frameId?: string }) {
     )
   }
 
-  if (frameId === 'stepped-inset') {
-    return (
-      <svg
-        aria-hidden="true"
-        className="absolute inset-0 w-full h-full pointer-events-none z-[2]"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-      >
-        <rect x="1" y="1" width="98" height="98" rx="1" fill="none" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.4" />
-        <rect x="3" y="3" width="94" height="94" rx="0.5" fill="none" stroke="currentColor" strokeWidth="0.4" strokeOpacity="0.25" />
-        <rect x="5.5" y="5.5" width="89" height="89" rx="0.5" fill="none" stroke="currentColor" strokeWidth="0.2" strokeOpacity="0.15" />
-      </svg>
-    )
-  }
+  // 'stepped-inset' is CSS-only (globals.css box-shadow rings) — no SVG branch.
 
   // ── Theme-focused decorative frames ──
 
@@ -305,7 +292,97 @@ export function FrameDecorator({ frameId }: { frameId?: string }) {
     )
   }
 
-  // For CSS-only frames (royal-double, golden-filigree, etc.) return null —
-  // the visual is driven purely by globals.css on the parent container.
+  // ── Editorial frames ──
+
+  if (frameId === 'corner-ticks') {
+    // Four minimal L-ticks, corners only
+    return (
+      <svg
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full pointer-events-none z-[2]"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+      >
+        <path d="M2,14 L2,2 L14,2" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+        <path d="M86,2 L98,2 L98,14" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+        <path d="M2,86 L2,98 L14,98" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+        <path d="M86,98 L98,98 L98,86" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+      </svg>
+    )
+  }
+
+  if (frameId === 'ticket-stub') {
+    // Perforated left edge + one dashed tear line in from the left
+    return (
+      <svg
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full pointer-events-none z-[2]"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+      >
+        {Array.from({ length: 14 }, (_, i) => {
+          const y = 4.5 + i * 6.8
+          return <circle key={i} cx={1.2} cy={y} r={1.1} fill="currentColor" fillOpacity="0.18" />
+        })}
+        <line x1="7" y1="2" x2="7" y2="98" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.35" strokeDasharray="2.5 2" />
+        <circle cx="7" cy="0.5" r="1.8" fill="currentColor" fillOpacity="0.12" />
+        <circle cx="7" cy="99.5" r="1.8" fill="currentColor" fillOpacity="0.12" />
+      </svg>
+    )
+  }
+
+  if (frameId === 'top-band') {
+    // One solid band across the top edge, in the category accent colour
+    // (falls back to the card's own text colour when no accent is passed).
+    return (
+      <div
+        aria-hidden="true"
+        className="absolute top-0 left-0 right-0 h-[6px] pointer-events-none z-[2]"
+        style={{ backgroundColor: accentHex || 'currentColor' }}
+      />
+    )
+  }
+
+  if (frameId === 'laurel') {
+    // Two small laurel sprigs in the bottom corners, muted brass
+    const leaves = [
+      { x: 4.6, y: 93.5, r: -55 },
+      { x: 5.6, y: 90.5, r: -40 },
+      { x: 7.0, y: 87.8, r: -25 },
+      { x: 8.8, y: 85.2, r: -10 },
+    ]
+    const sprig = (
+      <g>
+        <path d="M4,96.5 Q2.8,88 10,83.5" fill="none" stroke="#B08D2F" strokeWidth="0.55" strokeLinecap="round" />
+        {leaves.map((l, i) => (
+          <ellipse
+            key={i}
+            cx={l.x}
+            cy={l.y}
+            rx="2"
+            ry="0.9"
+            fill="#B08D2F"
+            fillOpacity="0.75"
+            transform={`rotate(${l.r},${l.x},${l.y})`}
+          />
+        ))}
+        <circle cx="4" cy="96.8" r="0.9" fill="#B08D2F" />
+      </g>
+    )
+    return (
+      <svg
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full pointer-events-none z-[2]"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+      >
+        {sprig}
+        <g transform="translate(100,0) scale(-1,1)">{sprig}</g>
+      </svg>
+    )
+  }
+
+  // For CSS-only frames (royal-double, stepped-inset, double-rule, ledger, etc.)
+  // return null — the visual is driven purely by globals.css on the parent container.
   return null
 }

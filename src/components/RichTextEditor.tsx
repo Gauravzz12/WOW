@@ -53,9 +53,20 @@ export function RichTextEditor({
 }) {
   const [showEmoji, setShowEmoji] = useState(false)
   const [showSizeDropdown, setShowSizeDropdown] = useState(false)
+  const [wordCount, setWordCount] = useState(0)
   const emojiRef = useRef<HTMLDivElement>(null)
   const sizeDropdownRef = useRef<HTMLDivElement>(null)
-  
+  // Last HTML this editor emitted via onChange. The sync effect below uses it
+  // to tell parent echoes (which must be ignored, or TipTap's normalized HTML
+  // causes setContent loops and cursor jumps) from genuinely external changes
+  // such as an opening starter being applied.
+  const lastEmittedRef = useRef<string | null>(null)
+
+  const countWords = (text: string) => {
+    const trimmed = text.trim()
+    return trimmed.length > 0 ? trimmed.split(/\s+/).length : 0
+  }
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -64,8 +75,14 @@ export function RichTextEditor({
       FontFamily,
     ],
     content: value,
+    onCreate: ({ editor }) => {
+      setWordCount(countWords(editor.getText()))
+    },
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML())
+      const html = editor.getHTML()
+      lastEmittedRef.current = html
+      setWordCount(countWords(editor.getText()))
+      onChange(html)
     },
     editorProps: {
       attributes: {
@@ -77,9 +94,14 @@ export function RichTextEditor({
   // Synchronize external value changes (e.g. when opening starters or templates are applied)
   useEffect(() => {
     if (!editor) return
+    // Ignore echoes of our own onChange — only sync genuinely external values.
+    if (value === lastEmittedRef.current) return
     const currentHtml = editor.getHTML()
     if (value !== currentHtml && (value || currentHtml !== '<p></p>')) {
       editor.commands.setContent(value || '', { emitUpdate: false })
+      // emitUpdate is false, so onUpdate won't fire — refresh the word
+      // counter here or it stays stale until the next keystroke/focus.
+      setWordCount(countWords(editor.getText()))
       editor.commands.focus('end')
     }
   }, [value, editor])
@@ -127,7 +149,7 @@ export function RichTextEditor({
   }
 
   return (
-    <div className="relative bg-background-muted/80 dark:bg-background-muted border border-background-elevated rounded-2xl p-6 transition-colors focus-within:border-secondary shadow-sm">
+    <div className="relative bg-background-muted/80 dark:bg-background-muted border border-background-elevated rounded-lg p-6 transition-colors focus-within:border-secondary shadow-sm">
       
       {/* Static Toolbar */}
       <div className="flex flex-wrap gap-3.5 items-center mb-6 pb-4 border-b border-primary/10">
@@ -222,7 +244,7 @@ export function RichTextEditor({
 
           {/* Size Dropdown Menu */}
           {showSizeDropdown && (
-            <div className="absolute top-full left-0 mt-2 z-50 min-w-[11rem] bg-background-muted border border-background-elevated rounded-xl shadow-2xl p-1.5 backdrop-blur-md">
+            <div className="absolute top-full left-0 mt-2 z-50 min-w-[11rem] bg-background-muted border border-background-elevated rounded-xl shadow-none p-1.5">
               <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-secondary/70 border-b border-primary/10 mb-1">
                 Font Size
               </div>
@@ -291,7 +313,7 @@ export function RichTextEditor({
           </button>
           
           {showEmoji && (
-            <div className="absolute bottom-full right-0 mb-2 z-50 shadow-2xl rounded-2xl overflow-hidden border border-primary/10">
+            <div className="absolute bottom-full right-0 mb-2 z-50 shadow-none rounded-lg overflow-hidden border border-primary/10">
               <Picker 
                 data={data} 
                 onEmojiSelect={(emoji: any) => {
@@ -304,15 +326,13 @@ export function RichTextEditor({
           )}
         </div>
         {(() => {
-          const text = editor.getText().trim()
-          const wordCount = text.length > 0 ? text.split(/\s+/).length : 0
           const isOver = wordCount > maxWords
           return (
             <div className={`text-xs font-mono px-2.5 py-1 rounded-full border transition-colors ${
-              isOver 
-                ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30 font-bold' 
-                : wordCount >= maxWords - 10 
-                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 font-medium' 
+              isOver
+                ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30 font-bold'
+                : wordCount >= maxWords - 10
+                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 font-medium'
                 : 'text-secondary bg-background-elevated/80 border-primary/15'
             }`}>
               {wordCount} / {maxWords} words

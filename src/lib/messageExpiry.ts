@@ -7,6 +7,8 @@
  * expired everything after 60s. All expiry checks must use these helpers.
  */
 
+import { BASE_NORMAL_MINS, MIN_NORMAL_BID } from './constants/pricing'
+
 export interface ExpirableMessage {
   style_config?: any
   category?: any
@@ -34,7 +36,7 @@ function categoryOf(category: any): any {
 
 /**
  * Airtime in seconds: explicit duration → category base → type default
- * (reserved 3h / sponsored 30m / normal 1h).
+ * (reserved 3h / sponsored 30m / normal = BASE_NORMAL_MINS).
  */
 export function getMessageDurationSecs(msg: ExpirableMessage): number {
   const config = parseStyleConfig(msg.style_config)
@@ -42,7 +44,7 @@ export function getMessageDurationSecs(msg: ExpirableMessage): number {
   return (
     config.durationSecs ||
     cat?.base_duration ||
-    (msg.is_reserved_slot ? 10800 : (msg.bid_amount ?? 0) < 10 ? 1800 : 3600)
+    (msg.is_reserved_slot ? 10800 : (msg.bid_amount ?? 0) < MIN_NORMAL_BID ? 1800 : BASE_NORMAL_MINS * 60)
   )
 }
 

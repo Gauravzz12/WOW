@@ -4,18 +4,18 @@ import { useState } from 'react'
 import { Zap, AlertTriangle } from 'lucide-react'
 import { BumpBidModal } from '@/components/BumpBidModal'
 
-export function BumpBidButton({ 
-  messageId, 
-  currentBid 
-}: { 
+export function BumpBidButton({
+  messageId,
+  currentBid
+}: {
   messageId: string
-  currentBid: number 
+  currentBid: number
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   return (
     <>
-      <div className="mt-8 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="mt-8 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3 text-amber-700 dark:text-amber-400 font-medium text-sm text-left">
           <AlertTriangle size={20} className="shrink-0" />
           <p>Want to climb higher in the queue? Enter your secret bump token to boost your bid.</p>

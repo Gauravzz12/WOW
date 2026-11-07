@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { getMessageDurationSecs, isMessageExpired } from '@/lib/messageExpiry'
+import { MIN_NORMAL_BID } from '@/lib/constants/pricing'
 
 export const dynamic = 'force-dynamic'
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabaseAdmin = getSupabaseAdmin()
 
 /**
  * GET /api/display/current — READ-ONLY legacy display endpoint.
@@ -40,15 +38,29 @@ export async function GET() {
 
   // Priority: normal track, then special, then sponsored — mirrors the UI.
   const pick =
-    live.find((m: any) => !m.is_reserved_slot && m.bid_amount >= 10) ||
+    live.find((m: any) => !m.is_reserved_slot && m.bid_amount >= MIN_NORMAL_BID) ||
     live.find((m: any) => m.is_reserved_slot) ||
     live[0]
 
   const cat = Array.isArray(pick.category) ? pick.category[0] : pick.category
 
+  // API-7: never return style_config raw — legacy rows can carry a
+  // poster's reminderEmail inside it (queueAdvance still reads that
+  // legacy fallback), and this endpoint is unauthenticated. Strip the
+  // key before the row leaves the server.
+  let safeStyle: any = (pick as any).style_config
+  if (typeof safeStyle === 'string') {
+    try { safeStyle = JSON.parse(safeStyle) } catch { safeStyle = {} }
+  }
+  if (safeStyle && typeof safeStyle === 'object') {
+    const { reminderEmail: _stripped, ...rest } = safeStyle
+    safeStyle = rest
+  }
+
   return NextResponse.json({
     message: {
       ...pick,
+      style_config: safeStyle,
       category: cat,
       durationSecs: getMessageDurationSecs(pick),
     },

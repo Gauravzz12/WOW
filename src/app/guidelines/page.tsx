@@ -23,9 +23,6 @@ export default function GuidelinesPage() {
   return (
     <div className="min-h-[100dvh] bg-background text-primary relative flex flex-col pt-16 px-6 pb-24 overflow-x-hidden">
       
-      {/* Background radial gradient mask */}
-      <div className="absolute pointer-events-none inset-0 flex items-center justify-center bg-background [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]" />
-
       <div className="max-w-3xl mx-auto w-full relative z-10 space-y-12">
         
         {/* Navigation Back */}
@@ -64,7 +61,7 @@ export default function GuidelinesPage() {
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-5 rounded-2xl bg-background-elevated/40 border border-primary/10 space-y-2">
+            <div className="p-5 rounded-lg bg-background-elevated/40 border border-primary/10 space-y-2">
               <div className="font-bold text-sm text-primary flex items-center gap-2">
                 <CheckCircle2 size={16} className="text-emerald-500" />
                 Raw Emotion & Real Confessions
@@ -74,7 +71,7 @@ export default function GuidelinesPage() {
               </p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-background-elevated/40 border border-primary/10 space-y-2">
+            <div className="p-5 rounded-lg bg-background-elevated/40 border border-primary/10 space-y-2">
               <div className="font-bold text-sm text-primary flex items-center gap-2">
                 <CheckCircle2 size={16} className="text-emerald-500" />
                 Love, Proposals & Celebrations
@@ -84,7 +81,7 @@ export default function GuidelinesPage() {
               </p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-background-elevated/40 border border-primary/10 space-y-2">
+            <div className="p-5 rounded-lg bg-background-elevated/40 border border-primary/10 space-y-2">
               <div className="font-bold text-sm text-primary flex items-center gap-2">
                 <CheckCircle2 size={16} className="text-emerald-500" />
                 Art, Poetry & Philosophy
@@ -94,7 +91,7 @@ export default function GuidelinesPage() {
               </p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-background-elevated/40 border border-primary/10 space-y-2">
+            <div className="p-5 rounded-lg bg-background-elevated/40 border border-primary/10 space-y-2">
               <div className="font-bold text-sm text-primary flex items-center gap-2">
                 <CheckCircle2 size={16} className="text-emerald-500" />
                 Brand & Launch Showcases
@@ -150,9 +147,9 @@ export default function GuidelinesPage() {
         </section>
 
         {/* SECTION 3: STRICT NO-REFUND POLICY (HIGH VISIBILITY CALLOUT) */}
-        <section className="rounded-3xl border-2 border-rose-500 bg-gradient-to-b from-rose-500/15 via-rose-500/5 to-background p-6 md:p-8 space-y-4 shadow-xl">
+        <section className="rounded-lg border border-rose-500/60 bg-rose-500/10 p-6 md:p-8 space-y-4 shadow-none">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-rose-500 text-white flex items-center justify-center shadow-lg shrink-0">
+            <div className="w-12 h-12 rounded-lg bg-rose-500 text-white flex items-center justify-center shadow-lg shrink-0">
               <AlertOctagon size={26} />
             </div>
             <div>
@@ -170,7 +167,7 @@ export default function GuidelinesPage() {
               Every slot on Words of the World occupies finite, real-time global broadcast airtime. By submitting a message and proceeding through checkout, you explicitly agree to the following terms:
             </p>
             
-            <div className="p-4 rounded-2xl bg-background/80 border border-rose-500/30 space-y-2">
+            <div className="p-4 rounded-lg bg-background/80 border border-rose-500/30 space-y-2">
               <div className="flex items-start gap-2.5">
                 <span className="font-bold text-rose-500 shrink-0">•</span>
                 <p>
@@ -196,7 +193,7 @@ export default function GuidelinesPage() {
         </section>
 
         {/* SECTION 4: HOW TO REPORT */}
-        <section className="space-y-4 rounded-2xl border border-primary/15 bg-background-elevated/40 p-6 md:p-8">
+        <section className="space-y-4 rounded-lg border border-primary/15 bg-background-elevated/40 p-6 md:p-8">
           <div className="flex items-center gap-2">
             <Mail className="text-primary" size={20} />
             <h2 className="text-lg font-bold">4. Reporting a Violation</h2>

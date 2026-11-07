@@ -3,6 +3,21 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Clock } from 'lucide-react'
 import { CATEGORY_METADATA } from '@/lib/constants/templates'
+import type { Metadata } from 'next'
+
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const supabase = createClient()
+  const { data: category } = await supabase
+    .from('categories')
+    .select('name, description')
+    .eq('slug', params.slug)
+    .single()
+  if (!category) return { title: 'Category' }
+  return {
+    title: category.name,
+    description: category.description || (CATEGORY_METADATA as any)[params.slug]?.tagline || undefined,
+  }
+}
 
 export const dynamic = 'force-dynamic'
 

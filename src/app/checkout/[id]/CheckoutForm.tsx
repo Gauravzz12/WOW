@@ -2,23 +2,23 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { processPayment, processMockPayment } from './actions'
+import { processPayment } from './actions'
 import { SlotPicker, Slot } from '@/components/SlotPicker'
 import { Zap, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { calculateSpecialPrice, SPONSORED_PRICE } from '@/lib/constants/pricing'
+import { calculateSpecialPrice, MIN_NORMAL_BID, SPONSORED_PRICE } from '@/lib/constants/pricing'
 import { toast } from '@/components/Toast'
 
-export function CheckoutForm({ 
-  messageId, 
+export function CheckoutForm({
+  messageId,
   baseAmount,
   isReservedSlot = false,
   isSponsorMode = false,
   isSponsoredTier = false,
   initialSlotIds = [],
   initialSlots = []
-}: { 
-  messageId: string, 
+}: {
+  messageId: string,
   baseAmount: number,
   isReservedSlot?: boolean,
   isSponsorMode?: boolean,
@@ -28,7 +28,6 @@ export function CheckoutForm({
 }) {
   const router = useRouter()
   const [isProcessing, setIsProcessing] = useState(false)
-  const [isMockProcessing, setIsMockProcessing] = useState(false)
   const [selectedSlots, setSelectedSlots] = useState<Slot[]>(initialSlots)
   const [isEditingSlots, setIsEditingSlots] = useState(initialSlots.length === 0)
   const [currentBid, setCurrentBid] = useState(baseAmount)
@@ -48,7 +47,7 @@ export function CheckoutForm({
         .select('bid_amount')
         .eq('status', 'QUEUED')
         .eq('is_reserved_slot', false)
-        .gte('bid_amount', 10)
+        .gte('bid_amount', MIN_NORMAL_BID)
         .neq('id', messageId)
         .order('bid_amount', { ascending: false })
 
@@ -115,38 +114,11 @@ export function CheckoutForm({
     }
   }
 
-  const handleMockPay = async () => {
-    setIsMockProcessing(true)
-    const result = await processMockPayment(
-      messageId, 
-      isReservedSlot ? selectedSlots.map(s => s.id) : null, 
-      total, 
-      isSponsorMode,
-      undefined
-    )
-    
-    if (result.success && result.redirectUrl) {
-      if (isSponsorMode) {
-        toast.success('Mock payment successful! Taking you to the sponsor shoutout screen.', {
-          title: 'Sponsorship Confirmed (Mock)'
-        })
-      } else {
-        toast.success('Mock payment successful! Message queued/activated.', {
-          title: 'Payment Confirmed (Mock)'
-        })
-      }
-      window.location.href = result.redirectUrl
-    } else {
-      toast.error(result.error || 'Mock payment failed.', { title: 'Payment Failed' })
-      setIsMockProcessing(false)
-    }
-  }
-
   return (
     <div className="space-y-6">
       {isSponsoredTier ? (
         <div className="space-y-4">
-          <div className="p-4 bg-blue-500/10 border border-blue-500/25 rounded-2xl text-blue-700 dark:text-blue-300 text-xs font-medium text-center leading-relaxed">
+          <div className="p-4 bg-blue-500/10 border border-blue-500/25 rounded-lg text-blue-700 dark:text-blue-300 text-xs font-medium text-center leading-relaxed">
             Sponsored messages have no pay-and-broadcast. This message is waiting in the Waiting Room and will go live for 30 minutes once someone sponsors it for $3.
           </div>
           <button
@@ -161,7 +133,7 @@ export function CheckoutForm({
       <>
       {isSponsorMode && (
         <div className="space-y-4">
-          <div className="p-3.5 bg-green-500/10 border border-green-500/25 rounded-2xl text-green-700 dark:text-green-400 text-xs font-medium text-center">
+          <div className="p-3.5 bg-green-500/10 border border-green-500/25 rounded-lg text-green-700 dark:text-green-400 text-xs font-medium text-center">
             You are paying for someone else&apos;s message. Thank you for broadcasting their voice!
           </div>
           <p className="text-[11px] text-secondary text-center leading-relaxed">
@@ -174,7 +146,7 @@ export function CheckoutForm({
       {!isReservedSlot && !isSponsorMode && (
         <>
           {isOutbid ? (
-            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2.5">
+            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg space-y-2.5">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-semibold text-xs">
                   <AlertTriangle size={15} className="shrink-0" />
@@ -197,7 +169,7 @@ export function CheckoutForm({
               </button>
             </div>
           ) : (
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl flex items-center justify-between text-xs">
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-lg flex items-center justify-between text-xs">
               <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-medium">
                 <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
                 <span>Position #1 in Line (Highest bid)</span>
@@ -211,7 +183,7 @@ export function CheckoutForm({
       )}
 
       {/* Dynamic Summary */}
-      <div className="space-y-4 bg-background p-6 rounded-2xl border border-primary/5">
+      <div className="space-y-4 bg-background p-6 rounded-lg border border-primary/5">
         {!isReservedSlot && (
           <div className="flex justify-between text-sm">
             <span className="text-secondary">
@@ -300,7 +272,7 @@ export function CheckoutForm({
         {/* Real Payment Button */}
         <button 
           onClick={handlePay}
-          disabled={isProcessing || isMockProcessing || (isReservedSlot && selectedSlots.length === 0)}
+          disabled={isProcessing || (isReservedSlot && selectedSlots.length === 0)}
           className={`w-full py-4 rounded-full font-bold disabled:opacity-50 transition-colors flex items-center justify-center gap-2 ${
             isReservedSlot
               ? 'bg-violet-700 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 text-white shadow-sm'
@@ -318,24 +290,6 @@ export function CheckoutForm({
               ? `Sponsor for $${SPONSORED_PRICE.toFixed(2)} with Card & Broadcast` 
               : `Pay $${total.toFixed(2)} with Card & Broadcast`)}
         </button>
-
-        {/* Mock Payment Button for Testing */}
-        <button
-          type="button"
-          onClick={handleMockPay}
-          disabled={isProcessing || isMockProcessing || (isReservedSlot && selectedSlots.length === 0)}
-          className="w-full py-3.5 rounded-full font-bold text-xs bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/40 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99]"
-        >
-          <Zap size={15} className="text-amber-500 fill-amber-500" />
-          <span>
-            {isMockProcessing
-              ? 'Processing Mock Payment...'
-              : `⚡ Instant Mock Pay ($${total.toFixed(2)} Test Mode)`}
-          </span>
-        </button>
-        <p className="text-[11px] text-secondary text-center">
-          Instant test checkout: skips card input, activates message, and sends token confirmation email.
-        </p>
       </div>
 
       {/* Transparent auction notice */}

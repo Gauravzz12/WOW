@@ -1,7 +1,8 @@
 const { createClient } = require('@supabase/supabase-js')
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321'
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz'
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+if (!supabaseServiceKey) { console.error('SUPABASE_SERVICE_ROLE_KEY env var is required'); process.exit(1) }
 
 class DummyWS {
   constructor() {}
@@ -22,23 +23,23 @@ async function runTests() {
   // 1. Check Pricing Constants & Formulas
   console.log('Test 1: Normal Duration & Pricing Logic')
   function calculateNormalMinBid(mins) {
-    const BASE_NORMAL_MINS = 60
+    const BASE_NORMAL_MINS = 120
     const EXTENSION_STEP_MINS = 10
-    const EXTENSION_COST_PER_STEP = 5
-    const BASE_NORMAL_PRICE = 15
+    const EXTENSION_COST_PER_STEP = 2
+    const BASE_NORMAL_PRICE = 5
     const extraMins = Math.max(0, mins - BASE_NORMAL_MINS)
     const steps = Math.ceil(extraMins / EXTENSION_STEP_MINS)
     return BASE_NORMAL_PRICE + (steps * EXTENSION_COST_PER_STEP)
   }
 
   const normalExpectations = [
-    { mins: 60, expected: 15 },
-    { mins: 70, expected: 20 },
-    { mins: 80, expected: 25 },
-    { mins: 90, expected: 30 },
-    { mins: 100, expected: 35 },
-    { mins: 110, expected: 40 },
-    { mins: 120, expected: 45 },
+    { mins: 120, expected: 5 },
+    { mins: 130, expected: 7 },
+    { mins: 140, expected: 9 },
+    { mins: 150, expected: 11 },
+    { mins: 160, expected: 13 },
+    { mins: 170, expected: 15 },
+    { mins: 180, expected: 17 },
   ]
   for (const { mins, expected } of normalExpectations) {
     const actual = calculateNormalMinBid(mins)

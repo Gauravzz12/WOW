@@ -1,4 +1,5 @@
 import { Zap, Sparkles, Radio, LucideIcon } from 'lucide-react'
+import { MIN_NORMAL_BID } from '@/lib/constants/pricing'
 
 export interface AdminMessage {
   id: string
@@ -45,7 +46,7 @@ export function getMessageTypeInfo(msg: AdminMessage): MessageTypeInfo {
     }
   }
 
-  if (msg.bid_amount < 10 || config.sponsorName || config.sponsorNote) {
+  if (msg.bid_amount < MIN_NORMAL_BID || config.sponsorName || config.sponsorNote) {
     return {
       type: 'sponsored',
       label: 'Sponsored',

@@ -13,12 +13,14 @@ import {
   verifySponsorEditToken,
 } from '@/lib/sponsorToken'
 import { ShareMenu } from '@/components/ShareMenu'
-import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
+import { getCategoryHex, getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { getSponsoredTeaser } from '@/lib/masking'
 import { FullscreenMessage } from '@/components/MessageFullscreen'
 import { FrameDecorator } from '@/components/FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
 import { BumpBidButton } from './BumpBidButton'
+import { SITE_URL } from '@/lib/site'
+import { MIN_NORMAL_BID } from '@/lib/constants/pricing'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -137,7 +139,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
                 </Link>
               </header>
               <main className="flex-1 max-w-2xl w-full mx-auto p-4 md:p-8">
-                <div className="bg-background-elevated border border-primary/10 rounded-2xl p-8 md:p-12 text-center shadow-lg">
+                <div className="bg-background-elevated border border-primary/10 rounded-lg p-8 md:p-12 text-center shadow-lg">
                   <div className="w-12 h-12 rounded-full bg-violet-500/10 text-violet-500 flex items-center justify-center mx-auto mb-4 border border-violet-500/20">
                     <Lock size={20} />
                   </div>
@@ -161,7 +163,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
               </Link>
             </header>
             <main className="flex-1 max-w-2xl w-full mx-auto p-4 md:p-8">
-              <div className="bg-background-elevated border border-primary/10 rounded-2xl p-8 md:p-12 text-center shadow-lg">
+              <div className="bg-background-elevated border border-primary/10 rounded-lg p-8 md:p-12 text-center shadow-lg">
                 <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
                   <Lock size={20} />
                 </div>
@@ -193,7 +195,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
             </Link>
           </header>
           <main className="flex-1 max-w-2xl w-full mx-auto p-4 md:p-8">
-            <div className="bg-background-elevated border border-primary/10 rounded-2xl p-8 md:p-12 text-center shadow-lg">
+            <div className="bg-background-elevated border border-primary/10 rounded-lg p-8 md:p-12 text-center shadow-lg">
               <div className="w-12 h-12 rounded-full bg-violet-500/10 text-violet-500 flex items-center justify-center mx-auto mb-4 border border-violet-500/20">
                 <Lock size={20} />
               </div>
@@ -219,7 +221,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
           </Link>
         </header>
         <main className="flex-1 max-w-2xl w-full mx-auto p-4 md:p-8">
-          <div className="bg-background-elevated border border-primary/10 rounded-2xl p-8 md:p-12 text-center shadow-lg">
+          <div className="bg-background-elevated border border-primary/10 rounded-lg p-8 md:p-12 text-center shadow-lg">
             <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
               <Lock size={20} />
             </div>
@@ -238,14 +240,14 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
   const categoryName = (message.category as any)?.name || 'MESSAGE'
   const categorySlug = (message.category as any)?.slug || 'general'
   const shareText = `"${message.content}"\n\n${categoryName} on Words of the World`
-  const shareUrl = `https://words.world/w/${message.id}`
+  const shareUrl = `${SITE_URL}/w/${message.id}`
 
   // Shoutout editor is sponsor-only: verified via the edit token issued at
   // sponsorship time, and can only be submitted once.
   const isShoutoutLocked = Boolean((message.style_config as any)?.shoutoutLocked)
   const canEditShoutout =
     !(message as any).is_reserved_slot &&
-    ((message as any).bid_amount ?? 0) < 10 &&
+    ((message as any).bid_amount ?? 0) < MIN_NORMAL_BID &&
     !isShoutoutLocked &&
     isSponsorTokenValid
   
@@ -302,8 +304,8 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
       <main className="flex-1 max-w-3xl w-full mx-auto p-4 md:p-6 space-y-8">
         
         {/* Message Presentation */}
-        <div className={`${bg || 'bg-background-elevated'} border ${cardBorder || message.style_config?.cardBorder || borderColor} rounded-3xl p-6 sm:p-10 md:p-12 text-center shadow-md relative overflow-hidden transition-colors ${getFrameClass(message.style_config?.frameId)}`}>
-          <FrameDecorator frameId={message.style_config?.frameId} />
+        <div className={`${bg || 'bg-background-elevated'} border ${cardBorder || message.style_config?.cardBorder || borderColor} rounded-lg p-6 sm:p-10 md:p-12 text-center shadow-md relative overflow-hidden transition-colors ${getFrameClass(message.style_config?.frameId)}`}>
+          <FrameDecorator frameId={message.style_config?.frameId} accentHex={getCategoryHex(categorySlug)} />
 
           {message.status === 'ACTIVE' && (
             <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-600 text-[11px] font-bold uppercase tracking-wider rounded-full">
@@ -313,7 +315,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
           )}
           
           <div className="flex flex-col items-center gap-2 mb-6">
-            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border shadow-sm backdrop-blur-md ${isVip ? 'bg-amber-400/20 border-amber-400/40 text-amber-300' : badgeClass}`}>
+            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border shadow-sm ${isVip ? 'bg-amber-400/20 border-amber-400/40 text-amber-300' : badgeClass}`}>
               {categoryName}
             </span>
 
@@ -325,7 +327,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
             )}
           </div>
           
-          <h1 className={`${textSizeClass} ${fontStyle} leading-relaxed mb-6 ${textColor}`} style={{ color: inlineColor }}>
+          <h1 className={`${textSizeClass} ${fontStyle} leading-relaxed [overflow-wrap:anywhere] mb-6 ${textColor}`} style={{ color: inlineColor }}>
             &quot;{message.content}&quot;
           </h1>
 
@@ -346,7 +348,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
 
           {/* Sponsor Attribution */}
           {(message.style_config?.sponsorName || message.style_config?.sponsorNote) && (
-            <div className={`mb-6 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-2 rounded-2xl border text-xs shadow-sm backdrop-blur-md max-w-xl mx-auto text-center ${sponsorStyle}`}>
+            <div className={`mb-6 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-2 rounded-lg border text-xs shadow-sm max-w-xl mx-auto text-center ${sponsorStyle}`}>
               <span className="text-amber-500 shrink-0">✨</span>
               <span className={`${sponsorLabelStyle} text-[10px] uppercase font-bold tracking-wider shrink-0`}>Sponsored by</span>
               <span className={`font-semibold shrink-0 ${sponsorNameStyle}`}>{message.style_config.sponsorName || 'Community'}</span>

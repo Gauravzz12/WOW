@@ -46,9 +46,9 @@ export default function AdminLoginPage() {
       <main className="flex-1 flex flex-col items-center justify-center p-6 -mt-12">
         <div className="w-full max-w-md">
           {/* Card */}
-          <div className="bg-background-elevated border border-primary/10 rounded-2xl p-8 shadow-2xl backdrop-blur-sm">
+          <div className="bg-background-elevated border border-primary/10 rounded-lg p-8 shadow-none">
             <div className="flex flex-col items-center text-center mb-8">
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/15 flex items-center justify-center mb-4 text-primary">
+              <div className="w-14 h-14 rounded-lg bg-primary/10 border border-primary/15 flex items-center justify-center mb-4 text-primary">
                 <Lock className="w-6 h-6" />
               </div>
               <h1 className="text-2xl md:text-3xl font-serif font-bold tracking-tight">

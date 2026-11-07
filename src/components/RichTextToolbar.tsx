@@ -186,7 +186,7 @@ export function RichTextToolbar({ style, categorySlug, onChange, onInsertEmoji }
 
       {/* Emoji Panel */}
       {showEmoji && (
-        <div className="absolute z-20 top-full left-0 mt-1 p-3 bg-background-elevated border border-primary/20 rounded-xl shadow-xl flex flex-wrap gap-2 w-64">
+        <div className="absolute z-20 top-full left-0 mt-1 p-3 bg-background-elevated border border-primary/20 rounded-xl shadow-sm flex flex-wrap gap-2 w-64">
           {COMMON_EMOJIS.map(emoji => (
             <button
               key={emoji}

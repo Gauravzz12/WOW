@@ -7,6 +7,7 @@ import { Suspense } from 'react'
 import { runQueueAdvance } from '@/lib/queueAdvance'
 import { toLockedSponsoredCard } from '@/lib/masking'
 import { getMessageDurationSecs, isMessageExpired } from '@/lib/messageExpiry'
+import { MIN_NORMAL_BID } from '@/lib/constants/pricing'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -40,7 +41,8 @@ export default async function Home() {
       .select('id, created_at, bid_amount, category:categories(name, slug)')
       .eq('status', 'QUEUED')
       .eq('is_reserved_slot', false)
-      .gte('bid_amount', 10)
+      .gte('bid_amount', MIN_NORMAL_BID)
+      .order('is_promo_free', { ascending: true })
       .order('bid_amount', { ascending: false })
       .order('created_at', { ascending: true })
       .limit(5),
@@ -56,7 +58,7 @@ export default async function Home() {
       .select('id, content, created_at, bid_amount, category:categories(name, slug)')
       .eq('status', 'QUEUED')
       .eq('is_reserved_slot', false)
-      .lt('bid_amount', 10)
+      .lt('bid_amount', MIN_NORMAL_BID)
       .order('created_at', { ascending: true })
       .limit(25),
     supabaseAdmin
@@ -96,9 +98,9 @@ export default async function Home() {
     const nowMs = Date.now()
     const isNotExpired = (msg: any) => !isMessageExpired(msg, nowMs)
 
-    const nMsg = activeMessages.find(m => !m.is_reserved_slot && m.bid_amount >= 10 && isNotExpired(m))
+    const nMsg = activeMessages.find(m => !m.is_reserved_slot && m.bid_amount >= MIN_NORMAL_BID && isNotExpired(m))
     const sMsg = activeMessages.find(m => m.is_reserved_slot && isNotExpired(m))
-    const spMsgs = activeMessages.filter(m => !m.is_reserved_slot && m.bid_amount < 10 && isNotExpired(m)).slice(0, 10)
+    const spMsgs = activeMessages.filter(m => !m.is_reserved_slot && m.bid_amount < MIN_NORMAL_BID && isNotExpired(m)).slice(0, 10)
 
     const processMsg = (msg: any) => {
       const cat = Array.isArray(msg.category) ? msg.category[0] : msg.category

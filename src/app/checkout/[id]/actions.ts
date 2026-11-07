@@ -2,12 +2,12 @@
 
 import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
-import { revalidatePath } from 'next/cache'
-import { calculateSpecialPrice, calculateNormalMinBid, SPONSORED_PRICE, SPONSORED_DURATION_SECS } from '@/lib/constants/pricing'
+import { calculateSpecialPrice, calculateNormalMinBid, BASE_NORMAL_MINS, MAX_NORMAL_MINS, SPONSORED_PRICE, SPONSORED_DURATION_SECS, isCanonicalSlotWindow } from '@/lib/constants/pricing'
 import { issueSponsorEditToken, sponsorTokenCookieName } from '@/lib/sponsorToken'
 import { validateContentModeration } from '@/lib/moderation'
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { SITE_URL } from '@/lib/site'
 
 const supabaseAdmin = getSupabaseAdmin()
 
@@ -83,6 +83,12 @@ export async function processPayment(
 
     // Fallback: If slots weren't resolved by UUIDs, resolve by scheduled_start from style.selectedSlots
     if (slots.length === 0 && Array.isArray(style.selectedSlots) && style.selectedSlots.length > 0) {
+      // SLOT-1: this fallback used to manufacture AVAILABLE rows from
+      // whatever times the client stored at create. Only canonical fixed
+      // 3-hour windows may be materialised — anything else is forgery.
+      if (style.selectedSlots.some((s: any) => !isCanonicalSlotWindow(s?.scheduled_start, s?.scheduled_end))) {
+        return { error: 'Invalid time slot selection.' }
+      }
       // Ensure records exist in database
       const slotsToUpsert = style.selectedSlots.map((s: any) => ({
         scheduled_start: new Date(s.scheduled_start).toISOString(),
@@ -116,6 +122,12 @@ export async function processPayment(
     const expectedCount = targetSlotIds.length > 0 ? targetSlotIds.length : (style.selectedSlots?.length || 0)
     if (!slots || slots.length === 0 || slots.length !== expectedCount) {
       return { error: 'One or more selected slots could not be found. Please try again.' }
+    }
+
+    // SLOT-1 (UUID path): rows fetched by id must also be canonical —
+    // a poisoned or legacy row with forged times is not bookable.
+    if (slots.some(s => !isCanonicalSlotWindow(s.scheduled_start, s.scheduled_end))) {
+      return { error: 'Invalid time slot selection.' }
     }
 
     const anyBooked = slots.some(s => s.status === 'BOOKED')
@@ -193,7 +205,7 @@ export async function processPayment(
           quantity: 1,
           amount: Math.round(officialVipPrice * 100),
         }],
-        return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=SPECIAL`,
+        return_url: `${SITE_URL}/?tab=SPECIAL`,
         ...(currentMsg.reminder_email ? { customer: { email: currentMsg.reminder_email } } : {}),
         metadata: {
           messageId,
@@ -240,8 +252,8 @@ export async function processPayment(
       }
     } else {
       // Normal queue message: calculate minimum bid based on duration minutes
-      const durationSecs = Number(style.durationSecs) || 3600
-      const durationMins = Math.max(60, Math.min(120, Math.round(durationSecs / 60)))
+      const durationSecs = Number(style.durationSecs) || BASE_NORMAL_MINS * 60
+      const durationMins = Math.max(BASE_NORMAL_MINS, Math.min(MAX_NORMAL_MINS, Math.round(durationSecs / 60)))
       const minBid = calculateNormalMinBid(durationMins)
 
       // Ensure bid is at least minimum; allow higher bids for priority
@@ -274,7 +286,7 @@ export async function processPayment(
     })
 
     try {
-      let returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=NORMAL`
+      let returnUrl = `${SITE_URL}/?tab=NORMAL`
       let initialBumpToken: string | null = null
       let sponsorToken: string | null = null
 
@@ -287,7 +299,10 @@ export async function processPayment(
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
         })
-        returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/sponsor/${messageId}?token=${sponsorToken}`
+        // PAY-7: the sponsor token is a bearer credential — it travels in
+        // the httpOnly cookie set above and in the confirmation email,
+        // never in a URL that lands in dashboards, logs and history.
+        returnUrl = `${SITE_URL}/sponsor/${messageId}`
       } else {
         // Standard priority queue bid: generate secret bump token
         const { generateBumpToken, hashBumpToken } = await import('@/lib/bumpToken')
@@ -302,7 +317,7 @@ export async function processPayment(
           })
           .eq('id', messageId)
 
-        returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=NORMAL`
+        returnUrl = `${SITE_URL}/?tab=NORMAL`
       }
 
       const session = await client.checkoutSessions.create({
@@ -329,301 +344,5 @@ export async function processPayment(
       console.error('Checkout error:', err)
       return { error: `Failed to initialize checkout session: ${err.message || err}` }
     }
-  }
-}
-
-export async function processMockPayment(
-  messageId: string, 
-  slotId: string | string[] | null, 
-  total: number, 
-  isSponsorMode: boolean = false,
-  sponsorData?: { sponsorName?: string; sponsorNote?: string }
-) {
-  // 1. Fetch current message record
-  const { data: currentMsg, error: msgFetchError } = await supabaseAdmin
-    .from('messages')
-    .select('id, status, is_reserved_slot, bid_amount, style_config, content, reminder_email')
-    .eq('id', messageId)
-    .single()
-
-  if (msgFetchError || !currentMsg) {
-    return { error: 'Message not found.' }
-  }
-
-  let style = currentMsg.style_config || {}
-  if (typeof style === 'string') {
-    try { style = JSON.parse(style) } catch (e) { style = {} }
-  }
-
-  const emailTo = currentMsg.reminder_email || process.env.TEST_EMAIL_FALLBACK || 'gthakurzzz424@gmail.com'
-  const targetSlotIds: string[] = Array.isArray(slotId) ? slotId : (slotId ? [slotId] : [])
-
-  if (targetSlotIds.length > 0) {
-    // --- VIP RESERVED SLOTS MOCK FULFILLMENT ---
-    const { finalPrice: officialVipPrice } = calculateSpecialPrice(targetSlotIds.length)
-
-    await supabaseAdmin
-      .from('reserved_slots')
-      .update({
-        status: 'BOOKED',
-        message_id: messageId,
-        bid_amount: officialVipPrice / targetSlotIds.length,
-      })
-      .in('id', targetSlotIds)
-
-    const { data: slots } = await supabaseAdmin
-      .from('reserved_slots')
-      .select('id, scheduled_start, scheduled_end')
-      .in('id', targetSlotIds)
-      .order('scheduled_start', { ascending: true })
-
-    style.durationSecs = targetSlotIds.length * 3 * 3600
-    style.slotCount = targetSlotIds.length
-    style.slotIds = targetSlotIds
-
-    await supabaseAdmin
-      .from('messages')
-      .update({
-        status: 'QUEUED',
-        is_reserved_slot: true,
-        bid_amount: officialVipPrice,
-        scheduled_start: slots && slots[0] ? slots[0].scheduled_start : null,
-        scheduled_end: slots && slots[slots.length - 1] ? slots[slots.length - 1].scheduled_end : null,
-        style_config: style,
-        reminder_email: emailTo,
-      })
-      .eq('id', messageId)
-
-    await supabaseAdmin.from('payments').insert({
-      message_id: messageId,
-      provider: 'mock_test',
-      provider_payment_id: `mock_vip_${Date.now()}`,
-      amount: officialVipPrice,
-      currency: 'usd',
-      status: 'SUCCESS',
-    })
-
-    if (emailTo) {
-      try {
-        const { sendVipReservationEmail } = await import('@/lib/email')
-        await sendVipReservationEmail({
-          to: emailTo,
-          messageId,
-          messageContent: currentMsg.content || '',
-          amountPaid: officialVipPrice,
-          scheduledStart: slots && slots[0] ? slots[0].scheduled_start : null,
-          scheduledEnd: slots && slots.length > 0 ? slots[slots.length - 1].scheduled_end : null,
-          slotCount: targetSlotIds.length,
-        })
-      } catch (vipEmailErr) {
-        console.error('[Mock VIP] Email failed:', vipEmailErr)
-      }
-    }
-
-    const { runQueueAdvance } = await import('@/lib/queueAdvance')
-    await runQueueAdvance().catch(console.error)
-
-    revalidatePath('/')
-    revalidatePath('/waiting-room')
-    return { success: true, redirectUrl: '/?tab=SPECIAL' }
-  } else if (isSponsorMode) {
-    // --- SPONSOR MODE MOCK FULFILLMENT ---
-    const officialTotal = SPONSORED_PRICE // $3
-    style.durationSecs = SPONSORED_DURATION_SECS // 1800s (30m)
-    style.isSponsored = true
-
-    if (sponsorData?.sponsorName?.trim()) {
-      style.sponsorName = sponsorData.sponsorName.trim().slice(0, 50)
-    }
-    if (sponsorData?.sponsorNote?.trim()) {
-      const words = sponsorData.sponsorNote.trim().split(/\s+/).filter(Boolean)
-      style.sponsorNote = words.slice(0, 12).join(' ').slice(0, 150)
-    }
-
-    const sponsorToken = await issueSponsorEditToken(messageId)
-    cookies().set(sponsorTokenCookieName(messageId), sponsorToken, {
-      path: '/',
-      maxAge: 30 * 24 * 60 * 60,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-    })
-
-    await supabaseAdmin
-      .from('messages')
-      .update({
-        status: 'ACTIVE',
-        is_reserved_slot: false,
-        bid_amount: officialTotal,
-        actual_start: new Date().toISOString(),
-        style_config: style,
-        reminder_email: emailTo,
-      })
-      .eq('id', messageId)
-
-    await supabaseAdmin.from('payments').insert({
-      message_id: messageId,
-      provider: 'mock_test',
-      provider_payment_id: `mock_sp_${Date.now()}`,
-      amount: officialTotal,
-      currency: 'usd',
-      status: 'SUCCESS',
-    })
-
-    // Send confirmation email with sponsor edit token!
-    try {
-      const { sendSponsorConfirmationEmail } = await import('@/lib/email')
-      await sendSponsorConfirmationEmail({
-        to: emailTo,
-        messageId,
-        messageContent: currentMsg.content || '',
-        sponsorToken,
-        amountPaid: officialTotal,
-      })
-    } catch (emailErr) {
-      console.error('[Mock Sponsor] Email failed:', emailErr)
-    }
-
-    revalidatePath('/')
-    revalidatePath('/waiting-room')
-    revalidatePath(`/sponsor/${messageId}`)
-
-    return { 
-      success: true, 
-      redirectUrl: `/sponsor/${messageId}?token=${sponsorToken}` 
-    }
-  } else {
-    // --- STANDARD QUEUE BID MOCK FULFILLMENT ---
-    const durationSecs = Number(style.durationSecs) || 3600
-    const durationMins = Math.max(60, Math.min(120, Math.round(durationSecs / 60)))
-    const minBid = calculateNormalMinBid(durationMins)
-    const candidateBid = Number(total)
-    const officialTotal = !isNaN(candidateBid) && candidateBid >= minBid 
-      ? Math.round(candidateBid * 100) / 100 
-      : minBid
-
-    const { generateBumpToken, hashBumpToken } = await import('@/lib/bumpToken')
-    const initialBumpToken = generateBumpToken()
-    style.bumpTokenHash = hashBumpToken(initialBumpToken)
-    style.bumpCount = 0
-
-    const { data: actives } = await supabaseAdmin
-      .from('messages')
-      .select('id')
-      .eq('status', 'ACTIVE')
-      .eq('is_reserved_slot', false)
-      .gte('bid_amount', 10)
-
-    const canActivate = !actives || actives.length === 0
-    const targetStatus = canActivate ? 'ACTIVE' : 'QUEUED'
-
-    await supabaseAdmin
-      .from('messages')
-      .update({
-        status: targetStatus,
-        is_reserved_slot: false,
-        bid_amount: officialTotal,
-        actual_start: canActivate ? new Date().toISOString() : null,
-        style_config: style,
-        reminder_email: emailTo,
-      })
-      .eq('id', messageId)
-
-    await supabaseAdmin.from('payments').insert({
-      message_id: messageId,
-      provider: 'mock_test',
-      provider_payment_id: `mock_std_${Date.now()}`,
-      amount: officialTotal,
-      currency: 'usd',
-      status: 'SUCCESS',
-    })
-
-    // Send confirmation email with secret bump token!
-    try {
-      const { sendBumpTokenEmail } = await import('@/lib/email')
-      await sendBumpTokenEmail({
-        to: emailTo,
-        messageContent: currentMsg.content || '',
-        bumpToken: initialBumpToken,
-        currentBid: officialTotal,
-        isUpdated: false,
-        messageId,
-      })
-    } catch (emailErr) {
-      console.error('[Mock Bid] Email failed:', emailErr)
-    }
-
-    try {
-      const { checkAndNotifyOutbids } = await import('@/lib/outbidService')
-      await checkAndNotifyOutbids(officialTotal)
-    } catch (outbidErr) {
-      console.error('[Mock Bid] Outbid check failed:', outbidErr)
-    }
-
-    revalidatePath('/')
-    revalidatePath('/waiting-room')
-
-    return { success: true, redirectUrl: '/?tab=NORMAL' }
-  }
-}
-
-
-export async function bumpBid(messageId: string, additionalAmount: number) {
-  // Must be positive
-  if (!additionalAmount || additionalAmount <= 0) {
-    return { error: 'Invalid bump amount.' }
-  }
-
-  // Simulate payment processing delay
-  await new Promise(resolve => setTimeout(resolve, 1500))
-
-  const { data: currentMsg, error: msgFetchError } = await supabaseAdmin
-    .from('messages')
-    .select('id, status, is_reserved_slot, bid_amount, content, reminder_email')
-    .eq('id', messageId)
-    .single()
-
-  if (msgFetchError || !currentMsg) {
-    return { error: 'Message not found.' }
-  }
-
-  if (currentMsg.status !== 'QUEUED' || currentMsg.is_reserved_slot) {
-    return { error: 'Only normal queued messages can be bumped.' }
-  }
-
-  // CREATE DODO PAYMENTS CHECKOUT SESSION FOR BUMP
-  const DodoPayments = (await import('dodopayments')).default
-  const client = new DodoPayments({
-    bearerToken: process.env.DODO_PAYMENTS_API_KEY,
-    environment: 'test_mode'
-  })
-
-  try {
-    const { generateBumpToken } = await import('@/lib/bumpToken')
-    const newToken = generateBumpToken()
-    const newTotalBid = Math.round(((currentMsg.bid_amount || 0) + additionalAmount) * 100) / 100
-
-    const session = await client.checkoutSessions.create({
-      product_cart: [{
-        product_id: process.env.NEXT_PUBLIC_DODO_PAYMENTS_PRODUCT_ID!,
-        quantity: 1,
-        amount: Math.round(additionalAmount * 100),
-      }],
-      return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=NORMAL&bumpSuccess=1`,
-      ...(currentMsg.reminder_email ? { customer: { email: currentMsg.reminder_email } } : {}),
-      metadata: {
-        messageId,
-        isBump: 'true',
-        newTotalBid: newTotalBid.toString(),
-        usdAmount: additionalAmount.toString(),
-        newToken,
-        userEmail: currentMsg.reminder_email || '',
-        userMessage: (currentMsg.content || '').slice(0, 200),
-      }
-    })
-    return { success: true, redirectUrl: session.checkout_url }
-  } catch (err: any) {
-    console.error('Bump checkout error:', err)
-    return { error: `Failed to initialize bump checkout session: ${err.message || err}` }
   }
 }

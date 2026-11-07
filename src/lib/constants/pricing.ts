@@ -1,10 +1,30 @@
 // Normal Message Pricing & Durations
-// Base time: 1hr. Extendable up to 2 hours at +$5 per 10 minutes.
-export const BASE_NORMAL_MINS = 60
-export const MAX_NORMAL_MINS = 120
+// Launch pricing: base time 2hrs included. Extendable up to 3 hours at +$2 per 10 minutes.
+export const BASE_NORMAL_MINS = 120
+export const MAX_NORMAL_MINS = 180
 export const EXTENSION_STEP_MINS = 10
-export const EXTENSION_COST_PER_STEP = 5
-export const BASE_NORMAL_PRICE = 15
+export const EXTENSION_COST_PER_STEP = 2
+export const BASE_NORMAL_PRICE = 5
+
+/**
+ * Tier separator: a non-reserved message is classified as Normal vs
+ * Sponsored purely by its bid_amount (Normal >= this, Sponsored below).
+ * Sponsored is a flat $3 (below), so the separator must stay above $3 and
+ * at or below the Normal floor ($5). Never compare bid_amount against a
+ * raw numeric literal — always use this constant, so the classification
+ * can't silently break when launch pricing changes.
+ */
+export const MIN_NORMAL_BID = BASE_NORMAL_PRICE
+
+/**
+ * Launch promo: the first 500 Normal broadcasts are free — base duration
+ * only (no extensions, no raised bid), one per device, and paid messages
+ * always outrank free ones in the queue. Eligibility is re-validated
+ * server-side in the create action; /api/promo/status only feeds the UI.
+ * Promo rows store bid_amount = BASE_NORMAL_PRICE plus is_promo_free=true
+ * (never a $0 bid, which the tier separator above would read as Sponsored).
+ */
+export const PROMO_FREE_LIMIT = 500
 
 export function calculateNormalMinBid(mins: number): number {
   const extraMins = Math.max(0, mins - BASE_NORMAL_MINS)
@@ -21,15 +41,35 @@ export interface NormalDurationOption {
   isMax?: boolean
 }
 
-export const NORMAL_DURATION_OPTIONS: NormalDurationOption[] = [
-  { mins: 60, label: '1 Hour', minBid: 15, desc: 'Base 1-hour broadcast', isBase: true },
-  { mins: 70, label: '1h 10m', minBid: 20, desc: '+10 min extension' },
-  { mins: 80, label: '1h 20m', minBid: 25, desc: '+20 min extension' },
-  { mins: 90, label: '1h 30m', minBid: 30, desc: '+30 min extension' },
-  { mins: 100, label: '1h 40m', minBid: 35, desc: '+40 min extension' },
-  { mins: 110, label: '1h 50m', minBid: 40, desc: '+50 min extension' },
-  { mins: 120, label: '2 Hours', minBid: 45, desc: 'Maximum 2-hour broadcast', isMax: true },
-]
+function normalDurationLabel(mins: number): string {
+  const hours = Math.floor(mins / 60)
+  const rem = mins % 60
+  if (rem === 0) return `${hours} Hour${hours === 1 ? '' : 's'}`
+  return `${hours}h ${rem}m`
+}
+
+// Derived from the pricing constants above — minBid values are computed,
+// never hardcoded, so this table can't drift from calculateNormalMinBid.
+export const NORMAL_DURATION_OPTIONS: NormalDurationOption[] = (() => {
+  const options: NormalDurationOption[] = []
+  for (let mins = BASE_NORMAL_MINS; mins <= MAX_NORMAL_MINS; mins += EXTENSION_STEP_MINS) {
+    const isBase = mins === BASE_NORMAL_MINS
+    const isMax = mins === MAX_NORMAL_MINS
+    options.push({
+      mins,
+      label: normalDurationLabel(mins),
+      minBid: calculateNormalMinBid(mins),
+      desc: isBase
+        ? `Base ${BASE_NORMAL_MINS / 60}-hour broadcast`
+        : isMax
+          ? `Maximum ${MAX_NORMAL_MINS / 60}-hour broadcast`
+          : `+${mins - BASE_NORMAL_MINS} min extension`,
+      ...(isBase ? { isBase: true } : {}),
+      ...(isMax ? { isMax: true } : {}),
+    })
+  }
+  return options
+})()
 
 // Special Messages (Fixed 3-Hour Slots)
 // Fixed 3hr slots for $30 each. Buy up to 3 continuous slots with 20% discount.
@@ -99,6 +139,20 @@ export function getFixedSlotsForUtcDate(utcYear: number, utcMonth: number, utcDa
       scheduled_end: end.toISOString(),
     }
   })
+}
+
+/**
+ * SLOT-1: a slot window is canonical only if it exactly matches one of
+ * the fixed 3-hour definitions for its UTC date (start aligned to the
+ * grid, end exactly start+3h). Server paths that accept slot times from
+ * clients MUST validate with this — never trust supplied windows.
+ */
+export function isCanonicalSlotWindow(scheduledStart: unknown, scheduledEnd: unknown): boolean {
+  if (typeof scheduledStart !== 'string' || typeof scheduledEnd !== 'string') return false
+  const start = new Date(scheduledStart)
+  if (isNaN(start.getTime())) return false
+  const defs = getFixedSlotsForUtcDate(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())
+  return defs.some(d => d.scheduled_start === scheduledStart && d.scheduled_end === scheduledEnd)
 }
 
 // Backwards-compatible alias for Date objects

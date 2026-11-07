@@ -4,8 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Send, Trash2 } from 'lucide-react'
 import posthog from 'posthog-js'
-import { getDeviceId } from '@/lib/deviceId'
-import { addComment, deleteComment } from './comments'
+import { addComment, deleteComment, getMyCommentIds } from './comments'
 
 const MAX_LEN = 300
 
@@ -14,13 +13,15 @@ export function CommentSection({ messageId }: { messageId: string }) {
   const [content, setContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [myDeviceId, setMyDeviceId] = useState<string>('')
+  // DAT-3: ownership is resolved server-side (which comment ids are
+  // mine) — device ids are never shipped to the browser anymore.
+  const [myCommentIds, setMyCommentIds] = useState<Set<string>>(new Set())
   const [supabase] = useState(() => createClient())
   const endOfCommentsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setMyDeviceId(getDeviceId())
-  }, [])
+    getMyCommentIds(messageId).then(res => setMyCommentIds(new Set(res.ids))).catch(() => {})
+  }, [messageId])
 
   useEffect(() => {
     // Initial fetch
@@ -30,8 +31,7 @@ export function CommentSection({ messageId }: { messageId: string }) {
         .select(`
           id,
           content,
-          created_at,
-          device_id
+          created_at
         `)
         .eq('message_id', messageId)
         .order('created_at', { ascending: true })
@@ -87,7 +87,10 @@ export function CommentSection({ messageId }: { messageId: string }) {
     try { posthog.capture('comment_posted', { message_id: messageId }) } catch {}
     setContent('')
     if ((res as any).comment) {
-      setComments(prev => [...prev, (res as any).comment])
+      const own = { ...(res as any).comment }
+      delete own.device_id
+      setComments(prev => [...prev, own])
+      setMyCommentIds(prev => new Set(prev).add(own.id))
       scrollToBottom()
     }
   }
@@ -99,7 +102,7 @@ export function CommentSection({ messageId }: { messageId: string }) {
       // Revert: refetch to restore
       const { data } = await supabase
         .from('comments')
-        .select('id, content, created_at, device_id')
+        .select('id, content, created_at')
         .eq('message_id', messageId)
         .order('created_at', { ascending: true })
         .limit(200)
@@ -108,7 +111,7 @@ export function CommentSection({ messageId }: { messageId: string }) {
   }
 
   return (
-    <div className="flex flex-col h-[500px] bg-background-elevated border border-primary/10 rounded-2xl overflow-hidden">
+    <div className="flex flex-col h-[500px] bg-background-elevated border border-primary/10 rounded-lg overflow-hidden">
 
       {/* Comments List */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -127,7 +130,7 @@ export function CommentSection({ messageId }: { messageId: string }) {
                   <span className="text-[10px] text-secondary/50">
                     {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
-                  {myDeviceId && comment.device_id === myDeviceId && (
+                  {myCommentIds.has(comment.id) && (
                     <button
                       type="button"
                       onClick={() => handleDelete(comment.id)}

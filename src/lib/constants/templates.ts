@@ -90,6 +90,21 @@ export const VIP_SPECIAL_TEMPLATES: Template[] = [
     vipTagline: 'OLED Obsidian & Velvet Amethyst',
     categoryFit: ['confession', 'rant'],
     dummyText: 'I have spent a lifetime waiting for permission that was never going to come. Today, I grant it to myself.'
+  },
+  {
+    id: 'night-edition',
+    name: 'Night Edition',
+    bg: 'bg-[#141118]',
+    font: 'font-playfair',
+    textColor: 'text-[#F5EFE6]',
+    cardBorder: 'border-amber-400/50',
+    accent: 'bg-[#F59E0B]',
+    isVip: true,
+    vipBadge: '✦ NIGHT EDITION ✦',
+    vipIcon: '🌌',
+    vipTagline: 'The Night Stage — Cream on Ink',
+    categoryFit: ['general', 'celebration', 'announcement'],
+    dummyText: 'When the world goes quiet, one voice remains. Tonight, it is yours.'
   }
 ]
 
@@ -118,7 +133,7 @@ export const STANDARD_TEMPLATES: Template[] = [
   { 
     id: "f", 
     name: "Console", 
-    bg: "bg-[#EBF7EE] dark:bg-[#051109] bg-grid-emerald-800/[0.05] dark:bg-grid-emerald-400/[0.05]", 
+    bg: "bg-[#EBF7EE] dark:bg-[#051109]", 
     font: "font-mono", 
     textColor: "text-[#064E22] dark:text-[#6ee7b7]", 
     cardBorder: "border-emerald-300 dark:border-emerald-500/30 rounded-[4px]",
@@ -138,7 +153,7 @@ export const STANDARD_TEMPLATES: Template[] = [
   {
     id: "n",
     name: "Twilight",
-    bg: "bg-[#F5F3FF] dark:bg-[#0D0B1A] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-violet-100/50 via-transparent to-transparent dark:from-violet-900/20",
+    bg: "bg-[#F5F3FF] dark:bg-[#0D0B1A]",
     font: "font-outfit font-light tracking-wide",
     textColor: "text-[#4C1D95] dark:text-[#E8DAFF]",
     cardBorder: "border-violet-300 dark:border-violet-400/30 rounded-[2rem]",
@@ -148,7 +163,7 @@ export const STANDARD_TEMPLATES: Template[] = [
   {
     id: "l",
     name: "Mainframe",
-    bg: "bg-[#F0F4F8] dark:bg-[#0A0E14] bg-grid-small-slate-400/[0.2] dark:bg-grid-small-slate-600/[0.2]",
+    bg: "bg-[#F0F4F8] dark:bg-[#0A0E14]",
     font: "font-mono font-bold tracking-widest uppercase",
     textColor: "text-[#1B2838] dark:text-[#CBD5E1]",
     cardBorder: "border-slate-300 dark:border-slate-600 shadow-[4px_4px_0px_0px_rgba(148,163,184,0.3)] dark:shadow-[4px_4px_0px_0px_rgba(71,85,105,0.3)] rounded-none",
@@ -160,7 +175,7 @@ export const STANDARD_TEMPLATES: Template[] = [
   {
     id: "journal",
     name: "Journal",
-    bg: "bg-[#FFFDF5] dark:bg-[#1A1813] bg-[linear-gradient(transparent_95%,#fcd34d_95%)] bg-[length:100%_2rem]",
+    bg: "bg-[#FFFDF5] dark:bg-[#1A1813]",
     font: "font-caveat text-xl",
     textColor: "text-[#4A3D2C] dark:text-[#E2D5C3]",
     cardBorder: "border-l-4 border-l-amber-400 border-y-amber-200 border-r-amber-200 dark:border-y-amber-900/50 dark:border-r-amber-900/50",
@@ -170,7 +185,7 @@ export const STANDARD_TEMPLATES: Template[] = [
   {
     id: "blueprint",
     name: "Blueprint",
-    bg: "bg-[#E6F0FA] dark:bg-[#0A1929] bg-grid-blue-500/[0.15] dark:bg-grid-blue-400/[0.1]",
+    bg: "bg-[#E6F0FA] dark:bg-[#0A1929]",
     font: "font-outfit font-medium",
     textColor: "text-[#1E3A8A] dark:text-[#93C5FD]",
     cardBorder: "border-blue-300 dark:border-blue-800/50 rounded-sm",
@@ -179,7 +194,7 @@ export const STANDARD_TEMPLATES: Template[] = [
   },
   {
     id: "botanical",
-    name: "Botanical",
+    name: "Meadow",
     bg: "bg-[#F2F7F2] dark:bg-[#0A120A] bg-dot-green-800/[0.08] dark:bg-dot-green-500/[0.05]",
     font: "font-serif",
     textColor: "text-[#14532D] dark:text-[#A7F3D0]",
@@ -200,7 +215,7 @@ export const STANDARD_TEMPLATES: Template[] = [
   {
     id: "valentine",
     name: "Valentine",
-    bg: "bg-[#FFF0F2] dark:bg-[#2B0E15] bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-rose-200/40 via-transparent to-transparent dark:from-rose-900/30",
+    bg: "bg-[#FFF0F2] dark:bg-[#2B0E15]",
     font: "font-caveat text-2xl",
     textColor: "text-[#9F1239] dark:text-[#FDA4AF]",
     cardBorder: "border-rose-200 dark:border-rose-900/40 rounded-[2.5rem]",
@@ -221,8 +236,8 @@ export const STANDARD_TEMPLATES: Template[] = [
   // Page 3
   {
     id: "midnight",
-    name: "Midnight",
-    bg: "bg-[#EBF0F5] dark:bg-[#050B14] bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-slate-300/40 via-transparent to-transparent dark:from-slate-800/40",
+    name: "Slate",
+    bg: "bg-[#EBF0F5] dark:bg-[#050B14]",
     font: "font-playfair",
     textColor: "text-[#0F172A] dark:text-[#94A3B8]",
     cardBorder: "border-slate-300 dark:border-slate-800",
@@ -230,34 +245,14 @@ export const STANDARD_TEMPLATES: Template[] = [
     dummyText: "The quietest hour holds the loudest thoughts."
   },
   {
-    id: "sunset",
-    name: "Sunset",
-    bg: "bg-[#FFF5F0] dark:bg-[#2A1108] bg-[linear-gradient(180deg,transparent_0%,rgba(253,186,116,0.1)_100%)] dark:bg-[linear-gradient(180deg,transparent_0%,rgba(234,88,12,0.1)_100%)]",
-    font: "font-sans font-light",
-    textColor: "text-[#9A3412] dark:text-[#FDBA74]",
-    cardBorder: "border-orange-200 dark:border-orange-900/50",
-    accent: "bg-orange-500",
-    dummyText: "Chasing the horizon until the colors fade."
-  },
-  {
     id: "oceanic",
     name: "Oceanic",
-    bg: "bg-[#F0FDFA] dark:bg-[#042F2E] bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-teal-100/60 via-transparent to-transparent dark:from-teal-900/40",
+    bg: "bg-[#F0FDFA] dark:bg-[#042F2E]",
     font: "font-outfit",
     textColor: "text-[#0F766E] dark:text-[#5EEAD4]",
     cardBorder: "border-teal-200 dark:border-teal-900/50 rounded-tl-[3rem] rounded-br-[3rem]",
     accent: "bg-teal-500",
     dummyText: "Deep currents and quiet ripples."
-  },
-  {
-    id: "hacker",
-    name: "Hacker",
-    bg: "bg-[#E6FFE6] dark:bg-[#000000] bg-grid-small-green-500/[0.1] dark:bg-grid-small-green-500/[0.2]",
-    font: "font-mono font-bold",
-    textColor: "text-[#166534] dark:text-[#22C55E]",
-    cardBorder: "border-green-400 dark:border-green-600 rounded-none shadow-[0px_0px_10px_rgba(34,197,94,0.15)]",
-    accent: "bg-green-500",
-    dummyText: "ACCESS GRANTED. INITIALIZING PROTOCOL..."
   },
   {
     id: "golden-age",
@@ -269,15 +264,84 @@ export const STANDARD_TEMPLATES: Template[] = [
     accent: "bg-yellow-500",
     dummyText: "A nostalgic memory from a brighter era."
   },
+
+  // Page 4 — Editorial additions
   {
-    id: "neon-nights",
-    name: "Neon Nights",
-    bg: "bg-[#FDF4FF] dark:bg-[#17051A] bg-[linear-gradient(to_right,rgba(217,70,239,0.05)_1px,transparent_1px)] bg-[size:2rem_100%]",
-    font: "font-sans font-bold tracking-tight",
-    textColor: "text-[#A21CAF] dark:text-[#F0ABFC]",
-    cardBorder: "border-l-[8px] border-l-fuchsia-500 border-y-fuchsia-300 border-r-fuchsia-300 dark:border-y-fuchsia-900/50 dark:border-r-fuchsia-900/50",
-    accent: "bg-fuchsia-500",
-    dummyText: "City lights blur in the rearview mirror."
+    id: "broadsheet",
+    name: "Broadsheet",
+    bg: "bg-[#FBFAF7] dark:bg-[#121212]",
+    font: "font-playfair",
+    textColor: "text-[#141414] dark:text-[#EDEDE6]",
+    cardBorder: "border-neutral-300 dark:border-neutral-700",
+    accent: "bg-[#B91C1C]",
+    categoryFit: ['announcement', 'general'],
+    dummyText: "Extra! Extra! Read all about it — the headline is you."
+  },
+  {
+    id: "vow",
+    name: "Vow",
+    bg: "bg-[#FDF2F4] dark:bg-[#20060D]",
+    font: "font-playfair italic",
+    textColor: "text-[#701A2E] dark:text-[#FBDCE2]",
+    cardBorder: "border-rose-300 dark:border-rose-400/30",
+    accent: "bg-[#E11D48]",
+    categoryFit: ['love'],
+    dummyText: "I choose you, in every lifetime, in every universe, always."
+  },
+  {
+    id: "first-light",
+    name: "First Light",
+    bg: "bg-[#FDF6EC] dark:bg-[#1D1508]",
+    font: "font-serif",
+    textColor: "text-[#6B4423] dark:text-[#F3E3C2]",
+    cardBorder: "border-amber-300 dark:border-amber-500/30",
+    accent: "bg-[#D97706]",
+    categoryFit: ['gratitude', 'celebration'],
+    dummyText: "Thank you for being the first light in my darkest season."
+  },
+  {
+    id: "ember",
+    name: "Ember",
+    bg: "bg-[#FFF4ED] dark:bg-[#1C0B03]",
+    font: "font-sans font-semibold",
+    textColor: "text-[#7C2D12] dark:text-[#FCD9B8]",
+    cardBorder: "border-orange-300 dark:border-orange-500/30",
+    accent: "bg-[#EA580C]",
+    categoryFit: ['rant'],
+    dummyText: "Enough. Some truths refuse to stay quiet any longer."
+  },
+  {
+    id: "confessional",
+    name: "Confessional",
+    bg: "bg-[#F4F1FA] dark:bg-[#0E0A1A]",
+    font: "font-serif italic",
+    textColor: "text-[#3B2764] dark:text-[#DDD0F5]",
+    cardBorder: "border-violet-300 dark:border-violet-400/30",
+    accent: "bg-[#7C3AED]",
+    categoryFit: ['confession'],
+    dummyText: "There is something I have never told anyone, until now."
+  },
+  {
+    id: "summit",
+    name: "Summit",
+    bg: "bg-[#EEF4F6] dark:bg-[#061419]",
+    font: "font-outfit font-medium",
+    textColor: "text-[#123B4F] dark:text-[#CFE8EF]",
+    cardBorder: "border-cyan-600/30 dark:border-cyan-500/40",
+    accent: "bg-[#0891B2]",
+    categoryFit: ['promotion', 'announcement'],
+    dummyText: "We climbed quietly. Today, the view is for everyone."
+  },
+  {
+    id: "telegram",
+    name: "Telegram",
+    bg: "bg-[#F7F3E8] dark:bg-[#161410]",
+    font: "font-mono uppercase tracking-wider",
+    textColor: "text-[#33302A] dark:text-[#E8E2D2]",
+    cardBorder: "border-stone-300 dark:border-stone-600",
+    accent: "bg-[#57534E]",
+    categoryFit: ['announcement', 'general'],
+    dummyText: "WIRE DISPATCH. THE NEWS CANNOT WAIT. STOP."
   }
 ]
 
@@ -293,7 +357,7 @@ export interface CategoryMeta {
   placeholder: string
   starters: string[]
   accentColor: string
-  gradientAccent: string
+  accentBg: string
 }
 
 export const CATEGORY_METADATA: Record<string, CategoryMeta> = {
@@ -310,7 +374,7 @@ export const CATEGORY_METADATA: Record<string, CategoryMeta> = {
       "Two years ago I couldn't afford the software my competitors were using. So I built my own. It's yours now, for free.",
     ],
     accentColor: '#06b6d4',
-    gradientAccent: 'from-cyan-500/20 via-blue-500/10 to-transparent'
+    accentBg: 'bg-cyan-500/15'
   },
   celebration: {
     icon: '🎂',
@@ -325,7 +389,7 @@ export const CATEGORY_METADATA: Record<string, CategoryMeta> = {
       "We did it. After six rounds, three hospitals, and more prayers than I can count — she is officially cancer-free.",
     ],
     accentColor: '#f59e0b',
-    gradientAccent: 'from-amber-500/20 via-yellow-500/10 to-transparent'
+    accentBg: 'bg-amber-500/15'
   },
   love: {
     icon: '💖',
@@ -340,7 +404,7 @@ export const CATEGORY_METADATA: Record<string, CategoryMeta> = {
       "To the person who made me stop believing I was too much — you're the first one who made me feel like just enough.",
     ],
     accentColor: '#f43f5e',
-    gradientAccent: 'from-rose-500/20 via-pink-500/10 to-transparent'
+    accentBg: 'bg-rose-500/15'
   },
   confession: {
     icon: '🤫',
@@ -355,7 +419,7 @@ export const CATEGORY_METADATA: Record<string, CategoryMeta> = {
       "The promotion I didn't get? I cried in a parking garage for 90 minutes, then went back inside and smiled through three more meetings.",
     ],
     accentColor: '#a855f7',
-    gradientAccent: 'from-purple-500/20 via-violet-500/10 to-transparent'
+    accentBg: 'bg-purple-500/15'
   },
   gratitude: {
     icon: '🙏',
@@ -370,7 +434,7 @@ export const CATEGORY_METADATA: Record<string, CategoryMeta> = {
       "My parents gave up their retirement savings so I could finish school. They never once mentioned it. I found out last week, by accident.",
     ],
     accentColor: '#14b8a6',
-    gradientAccent: 'from-teal-500/20 via-emerald-500/10 to-transparent'
+    accentBg: 'bg-teal-500/15'
   },
   announcement: {
     icon: '📢',
@@ -385,7 +449,7 @@ export const CATEGORY_METADATA: Record<string, CategoryMeta> = {
       "Attention to every night-shift worker in this country: you are invisible to most people and essential to all of them. That is worth saying out loud.",
     ],
     accentColor: '#3b82f6',
-    gradientAccent: 'from-blue-500/20 via-indigo-500/10 to-transparent'
+    accentBg: 'bg-blue-500/15'
   },
   rant: {
     icon: '🔥',
@@ -400,7 +464,7 @@ export const CATEGORY_METADATA: Record<string, CategoryMeta> = {
       "Stop telling burned-out people to 'practice self-care.' The problem isn't that they aren't taking enough bubble baths.",
     ],
     accentColor: '#ef4444',
-    gradientAccent: 'from-red-500/20 via-orange-500/10 to-transparent'
+    accentBg: 'bg-red-500/15'
   },
   general: {
     icon: '📜',
@@ -415,6 +479,6 @@ export const CATEGORY_METADATA: Record<string, CategoryMeta> = {
       "The advice I'd give my 23-year-old self: the people who make you feel like you need to earn their basic respect — leave.",
     ],
     accentColor: '#8b5cf6',
-    gradientAccent: 'from-violet-500/20 via-purple-500/10 to-transparent'
+    accentBg: 'bg-violet-500/15'
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { isCanonicalSlotWindow, SPECIAL_SLOT_PRICE } from '@/lib/constants/pricing'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -17,6 +18,28 @@ export async function POST(request: Request) {
 
     if (!requestedSlots.length) {
       return NextResponse.json({ error: 'No slots provided' }, { status: 400 })
+    }
+
+    // SLOT-1: this route writes with the service role and used to insert
+    // caller-supplied windows verbatim (first writer wins), letting
+    // anyone poison upcoming Special slots. Only canonical fixed 3-hour
+    // windows inside the 15-day booking horizon may be materialised,
+    // always at the fixed Special price.
+    if (requestedSlots.length > 40) {
+      return NextResponse.json({ error: 'Too many slots requested' }, { status: 400 })
+    }
+    const nowMs = Date.now()
+    const horizonMs = nowMs + 15 * 24 * 60 * 60 * 1000
+    for (const r of requestedSlots) {
+      const startMs = new Date(r.scheduled_start).getTime()
+      if (
+        !isCanonicalSlotWindow(r.scheduled_start, r.scheduled_end) ||
+        !Number.isFinite(startMs) ||
+        startMs < nowMs - 3 * 60 * 60 * 1000 ||
+        startMs > horizonMs
+      ) {
+        return NextResponse.json({ error: 'Invalid slot window' }, { status: 400 })
+      }
     }
 
     const minStart = new Date(Math.min(...requestedSlots.map(s => new Date(s.scheduled_start).getTime()))).toISOString()
@@ -42,7 +65,7 @@ export async function POST(request: Request) {
         slotsToCreate.push({
           scheduled_start: new Date(r.scheduled_start).toISOString(),
           scheduled_end: new Date(r.scheduled_end).toISOString(),
-          bid_amount: r.bid_amount || 30,
+          bid_amount: SPECIAL_SLOT_PRICE,
           status: 'AVAILABLE'
         })
       }

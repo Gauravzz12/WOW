@@ -1,7 +1,7 @@
 const DodoPayments = require('dodopayments').default;
 
 const client = new DodoPayments({
-  bearerToken: 'VW_lFihtfE62zI3l.UMLzqUZAlcNwkTfIs7Ig3CLD_pFHzc-oQXxOpOHmnFYQoJFX',
+  bearerToken: process.env.DODO_PAYMENTS_API_KEY,
   environment: 'test_mode'
 });
 

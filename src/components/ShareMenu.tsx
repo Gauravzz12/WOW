@@ -71,14 +71,14 @@ export function ShareMenu({
     <div className="relative inline-block">
       <button 
         onClick={handleNativeShare}
-        className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full border shadow-sm backdrop-blur-md transition-all active:scale-95 ${btnStyle}`}
+        className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full border shadow-sm transition-all active:scale-95 ${btnStyle}`}
       >
         <Share2 size={16} />
         <span className="font-medium tracking-wide text-sm hidden md:inline">Share</span>
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 bottom-full mb-2 w-48 bg-background-elevated border border-primary/20 rounded-xl shadow-xl overflow-hidden z-50 animate-in slide-in-from-bottom-2">
+        <div className="absolute right-0 bottom-full mb-2 w-48 bg-background-elevated border border-primary/20 rounded-xl shadow-sm overflow-hidden z-50 animate-in slide-in-from-bottom-2">
           <button 
             onClick={copyToClipboard}
             className="w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-primary/10 transition-colors"

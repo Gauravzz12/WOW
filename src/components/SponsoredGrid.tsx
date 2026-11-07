@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Clock, HeartHandshake, Sparkles, ChevronRight } from 'lucide-react'
-import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
+import { getCategoryHex, getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { InlineInteractions } from './InlineInteractions'
 import { FullscreenMessage } from './MessageFullscreen'
 import { FrameDecorator } from './FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
+import { sanitizeHtmlText } from '@/lib/sanitize'
 
 function SponsoredCard({ message }: { message: any }) {
   const categoryName = message?.category?.name || 'MESSAGE'
@@ -58,9 +59,9 @@ function SponsoredCard({ message }: { message: any }) {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className={`w-full rounded-2xl border ${cardBorder || message?.style_config?.cardBorder || borderClass} ${bg || bgClass} p-5 flex flex-col justify-between shadow-lg hover:shadow-2xl hover:border-primary/40 transition-all duration-300 relative overflow-hidden backdrop-blur-md min-h-[300px] group ${getFrameClass(message?.style_config?.frameId)}`}
+      className={`w-full rounded-lg border ${cardBorder || message?.style_config?.cardBorder || borderClass} ${bg || bgClass} p-5 flex flex-col justify-between shadow-lg hover:shadow-none hover:border-primary/40 transition-all duration-300 relative overflow-hidden min-h-[300px] group ${getFrameClass(message?.style_config?.frameId)}`}
     >
-      <FrameDecorator frameId={message?.style_config?.frameId} />
+      <FrameDecorator frameId={message?.style_config?.frameId} accentHex={getCategoryHex(categorySlug)} />
 
       {/* Custom placed stickers if present */}
       {Array.isArray(message?.style_config?.stickers) && message.style_config.stickers.map((sticker: any) => (
@@ -83,7 +84,7 @@ function SponsoredCard({ message }: { message: any }) {
       {/* Top Header */}
       <div className="flex justify-between items-center mb-2 relative z-10 shrink-0">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-widest font-bold border shadow-sm backdrop-blur-md ${
+          <span className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-widest font-bold border shadow-sm ${
             isVip
               ? 'bg-amber-400/20 border-amber-400/40 text-amber-300'
               : badgeClass
@@ -99,7 +100,7 @@ function SponsoredCard({ message }: { message: any }) {
         </div>
 
         <div className="flex items-center gap-1.5">
-        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border shadow-sm backdrop-blur-md ${timerStyle}`}>
+        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border shadow-sm ${timerStyle}`}>
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-blue-400" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
@@ -121,6 +122,7 @@ function SponsoredCard({ message }: { message: any }) {
             sponsorNote: message?.style_config?.sponsorNote,
             stickers: message?.style_config?.stickers,
             frameId: message?.style_config?.frameId,
+            categorySlug,
           }}
           appearance={{
             bg: bg || bgClass,
@@ -134,8 +136,8 @@ function SponsoredCard({ message }: { message: any }) {
             paddingClass: 'p-5',
             bodyClassName: 'relative z-10 flex-1 my-2 overflow-y-auto overscroll-contain custom-scrollbar pr-1 flex flex-col justify-center min-h-[90px]',
             bodyInnerClassName: 'w-full',
-            htmlTextClass: `max-w-none text-center leading-relaxed text-base md:text-lg ${message?.style_config?.font || ''} ${textColor}`,
-            plainTextClass: `text-center leading-relaxed text-base md:text-lg ${message?.style_config?.font || 'font-serif italic'} ${textColor}`,
+            htmlTextClass: `max-w-none text-center leading-relaxed [overflow-wrap:anywhere] text-base md:text-lg ${message?.style_config?.font || ''} ${textColor}`,
+            plainTextClass: `text-center leading-relaxed [overflow-wrap:anywhere] text-base md:text-lg ${message?.style_config?.font || 'font-serif italic'} ${textColor}`,
           }}
         />
         </div>
@@ -145,12 +147,12 @@ function SponsoredCard({ message }: { message: any }) {
       <div className="relative z-10 flex-1 my-2 overflow-y-auto overscroll-contain custom-scrollbar pr-1 flex flex-col justify-center min-h-[90px]">
         {message?.style_config?.html ? (
           <div 
-            className={`max-w-none text-center leading-relaxed text-base md:text-lg ${message.style_config?.font || ''} ${textColor}`}
+            className={`max-w-none text-center leading-relaxed [overflow-wrap:anywhere] text-base md:text-lg ${message.style_config?.font || ''} ${textColor}`}
             style={{ color: inlineColor }}
-            dangerouslySetInnerHTML={{ __html: message.style_config.html }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtmlText(message.style_config.html) }}
           />
         ) : (
-          <p className={`text-center leading-relaxed text-base md:text-lg ${message?.style_config?.font || 'font-serif italic'} ${textColor}`}>
+          <p className={`text-center leading-relaxed [overflow-wrap:anywhere] text-base md:text-lg ${message?.style_config?.font || 'font-serif italic'} ${textColor}`}>
             &ldquo;{message?.content}&rdquo;
           </p>
         )}
@@ -173,8 +175,8 @@ function SponsoredCard({ message }: { message: any }) {
       )}
 
       {/* Sponsor Indication / Note */}
-      <div className={`relative z-10 my-2 px-3 py-2 rounded-xl border shadow-sm backdrop-blur-sm flex items-start gap-2.5 ${sponsorStyle}`}>
-        <span className="text-amber-500 shrink-0 text-xs mt-0.5">✨</span>
+      <div className={`relative z-10 my-2 px-3 py-2 rounded-xl border shadow-sm flex items-start gap-2.5 ${sponsorStyle}`}>
+        <Sparkles size={13} className="text-amber-500 shrink-0 mt-0.5" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 text-[11px] leading-tight">
             <span className={`text-[9px] uppercase font-bold tracking-wider shrink-0 ${sponsorLabelStyle}`}>
@@ -207,12 +209,14 @@ function SponsoredCard({ message }: { message: any }) {
   )
 }
 
-export function SponsoredGrid({ 
-  messages = [], 
-  waitingCount = 0 
-}: { 
-  messages: any[], 
-  waitingCount?: number 
+export function SponsoredGrid({
+  messages = [],
+  awaitingCount = 0,
+  inQueueCount = 0
+}: {
+  messages: any[],
+  awaitingCount?: number,
+  inQueueCount?: number
 }) {
   const activeGridMessages = messages.slice(0, 10)
 
@@ -237,9 +241,14 @@ export function SponsoredGrid({
         <div className="flex items-center gap-3">
           <div className="px-3 py-1 rounded-full bg-background-elevated border border-primary/10 text-[11px] font-mono text-secondary">
             <span className="font-bold text-primary">{activeGridMessages.length}</span> Active
-            {waitingCount > 0 && (
+            {awaitingCount > 0 && (
               <>
-                {' '}• <span className="font-bold text-blue-600 dark:text-blue-400">{waitingCount}</span> in queue
+                {' '}• <span className="font-bold text-blue-600 dark:text-blue-400">{awaitingCount}</span> Awaiting a sponsor
+              </>
+            )}
+            {inQueueCount > 0 && (
+              <>
+                {' '}• <span className="font-bold text-blue-600 dark:text-blue-400">{inQueueCount}</span> Sponsored · in queue
               </>
             )}
           </div>
@@ -260,7 +269,7 @@ export function SponsoredGrid({
           ))}
         </div>
       ) : (
-        <div className="w-full max-w-xl aspect-[16/10] border border-primary/10 rounded-3xl flex flex-col items-center justify-center p-8 text-center bg-background-elevated/30 backdrop-blur-md relative overflow-hidden shadow-xl my-6">
+        <div className="w-full max-w-xl aspect-[16/10] border border-primary/10 rounded-lg flex flex-col items-center justify-center p-8 text-center bg-background-elevated/30 relative overflow-hidden shadow-sm my-6">
           <div className="w-14 h-14 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
             <HeartHandshake size={24} />
           </div>

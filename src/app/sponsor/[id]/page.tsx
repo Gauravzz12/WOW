@@ -5,7 +5,7 @@ import { ArrowLeft, Lock, PartyPopper, Radio } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { sponsorTokenCookieName, verifySponsorEditToken, issueSponsorEditToken } from '@/lib/sponsorToken'
-import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
+import { getCategoryHex, getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { FrameDecorator } from '@/components/FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
 import { SponsorShoutoutForm } from './SponsorShoutoutForm'
@@ -73,7 +73,7 @@ export default async function SponsorShoutoutPage({
               </Link>
             </header>
             <main className="flex-1 max-w-2xl w-full mx-auto p-4 md:p-8">
-              <div className="bg-background-elevated border border-primary/10 rounded-2xl p-8 md:p-12 text-center shadow-lg">
+              <div className="bg-background-elevated border border-primary/10 rounded-lg p-8 md:p-12 text-center shadow-lg">
                 <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
                   <Lock size={20} />
                 </div>
@@ -181,7 +181,7 @@ export default async function SponsorShoutoutPage({
       <main className="flex-1 max-w-3xl w-full mx-auto p-4 md:p-6 space-y-6 pb-16">
         {/* Celebration hero */}
         <div className="text-center space-y-3 pt-2">
-          <div className="w-14 h-14 rounded-3xl bg-amber-500/15 border border-amber-500/30 text-amber-500 flex items-center justify-center mx-auto shadow-sm">
+          <div className="w-14 h-14 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-500 flex items-center justify-center mx-auto shadow-sm">
             <PartyPopper size={26} />
           </div>
           <p className="text-[11px] uppercase tracking-[0.2em] text-secondary font-bold">
@@ -201,10 +201,10 @@ export default async function SponsorShoutoutPage({
         </div>
 
         {/* Revealed message card */}
-        <div className={`${bg || 'bg-background-elevated'} border ${cardBorder || (message as any).style_config?.cardBorder || 'border-primary/10'} rounded-3xl p-6 sm:p-10 md:p-12 text-center shadow-md relative overflow-hidden transition-colors ${getFrameClass((message as any).style_config?.frameId)}`}>
-          <FrameDecorator frameId={(message as any).style_config?.frameId} />
+        <div className={`${bg || 'bg-background-elevated'} border ${cardBorder || (message as any).style_config?.cardBorder || 'border-primary/10'} rounded-lg p-6 sm:p-10 md:p-12 text-center shadow-md relative overflow-hidden transition-colors ${getFrameClass((message as any).style_config?.frameId)}`}>
+          <FrameDecorator frameId={(message as any).style_config?.frameId} accentHex={getCategoryHex(categorySlug)} />
           <div className="flex flex-col items-center gap-2 mb-6">
-            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border shadow-sm backdrop-blur-md ${badgeClass}`}>
+            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border shadow-sm ${badgeClass}`}>
               {categoryName}
             </span>
           </div>
@@ -228,7 +228,7 @@ export default async function SponsorShoutoutPage({
           )}
 
           {((message as any).style_config?.sponsorName || (message as any).style_config?.sponsorNote) && (
-            <div className={`mb-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-2 rounded-2xl border text-xs shadow-sm backdrop-blur-md max-w-xl mx-auto text-center ${sponsorStyle}`}>
+            <div className={`mb-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-2 rounded-lg border text-xs shadow-sm max-w-xl mx-auto text-center ${sponsorStyle}`}>
               <span className="text-amber-500 shrink-0">✨</span>
               <span className={`${sponsorLabelStyle} text-[10px] uppercase font-bold tracking-wider shrink-0`}>Sponsored by</span>
               <span className={`font-semibold shrink-0 ${sponsorNameStyle}`}>{(message as any).style_config.sponsorName || 'Community'}</span>
@@ -248,7 +248,7 @@ export default async function SponsorShoutoutPage({
             token={activeToken || undefined}
           />
         ) : (
-          <div className="bg-background-elevated border border-primary/10 rounded-3xl p-6 md:p-8 text-center shadow-lg space-y-3">
+          <div className="bg-background-elevated border border-primary/10 rounded-lg p-6 md:p-8 text-center shadow-lg space-y-3">
             <h2 className="text-lg font-serif font-bold">Shoutout finalized</h2>
             <p className="text-sm text-secondary">
               This sponsor dedication has been saved and locked for broadcasting worldwide.

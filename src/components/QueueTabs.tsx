@@ -23,6 +23,13 @@ export interface QueueItem {
   is_reserved_slot?: boolean
 }
 
+// One definition of "locked" for the whole panel: unpaid PENDING rows are
+// locked teasers ("Awaiting a sponsor"); paid QUEUED rows are unlocked
+// ("Sponsored · in queue"). The header counts and the row badges both use it.
+function isLockedQueueItem(msg: QueueItem): boolean {
+  return msg.isLocked !== false && (!msg.content || !!msg.teaser || !!msg.isLocked)
+}
+
 function getLockedTeaser(msg: QueueItem): { teaser: string; totalLength: number } {
   if (msg.teaser) return { teaser: msg.teaser, totalLength: msg.contentLength ?? msg.teaser.length }
   // Fallback for legacy rows: never show full content for locked items — truncate hard.
@@ -31,17 +38,17 @@ function getLockedTeaser(msg: QueueItem): { teaser: string; totalLength: number 
   return { teaser, totalLength: plain.length }
 }
 
-export function QueueTabs({ 
-  globalQueue = [], 
-  specialQueue = [], 
+export function QueueTabs({
+  globalQueue = [],
+  specialQueue = [],
   sponsoredQueue = [],
-  activeTab, 
+  activeTab,
   activeMsg,
   isOpen = false,
   onClose
-}: { 
-  globalQueue?: QueueItem[], 
-  specialQueue?: QueueItem[], 
+}: {
+  globalQueue?: QueueItem[],
+  specialQueue?: QueueItem[],
   sponsoredQueue?: QueueItem[],
   activeTab: 'NORMAL' | 'SPECIAL' | 'SPONSORED',
   activeMsg?: any,
@@ -54,6 +61,8 @@ export function QueueTabs({
   const [isBumpModalOpen, setIsBumpModalOpen] = useState(false)
   const [initialBumpToken, setInitialBumpToken] = useState('')
   const [bumpSuccessNotice, setBumpSuccessNotice] = useState(false)
+  const awaitingSponsorCount = sponsoredQueue.filter(isLockedQueueItem).length
+  const sponsoredInQueueCount = sponsoredQueue.length - awaitingSponsorCount
 
   useEffect(() => {
     setIsMounted(true)
@@ -63,6 +72,11 @@ export function QueueTabs({
     if (urlBumpToken) {
       setInitialBumpToken(urlBumpToken)
       setIsBumpModalOpen(true)
+      // DAT-8: the bump token is a bearer credential — scrub it from the
+      // address bar (and history) as soon as it has been read.
+      const clean = new URL(window.location.href)
+      clean.searchParams.delete('bumpToken')
+      window.history.replaceState(null, '', clean.toString())
     }
 
     if (searchParams?.get('bumpSuccess') === '1') {
@@ -92,12 +106,12 @@ export function QueueTabs({
       <aside 
         aria-label="Queue navigation panel"
         className={`
-          fixed inset-y-0 right-0 z-50 w-80 lg:w-80
-          bg-background/95 lg:bg-background/80 backdrop-blur-xl
+          fixed inset-y-0 right-0 z-50 w-[86vw] max-w-80 lg:w-80
+          bg-background/95 lg:bg-background/80
           border-l border-primary/10 p-5 pt-16 lg:pt-24
           flex flex-col h-[100dvh]
           transition-transform duration-300 ease-in-out
-          ${isOpen ? 'translate-x-0 shadow-2xl' : 'translate-x-full'}
+          ${isOpen ? 'translate-x-0 shadow-none' : 'translate-x-full'}
           lg:translate-x-0 lg:static lg:flex lg:shadow-none
         `}
       >
@@ -119,9 +133,9 @@ export function QueueTabs({
             <div>
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${
-                  activeTab === 'NORMAL' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 
-                  activeTab === 'SPECIAL' ? 'bg-violet-400 shadow-[0_0_8px_rgba(167,139,250,0.8)]' : 
-                  'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)]'
+                  activeTab === 'NORMAL' ? 'bg-emerald-400' : 
+                  activeTab === 'SPECIAL' ? 'bg-violet-400' : 
+                  'bg-blue-400'
                 }`} />
                 <h2 className="text-xs font-bold tracking-widest uppercase text-secondary">
                   {activeTab === 'NORMAL' ? 'Priority Queue' : activeTab === 'SPECIAL' ? '✦ Special Slots' : 'Waiting Room'}
@@ -130,7 +144,7 @@ export function QueueTabs({
               <p className="text-[11px] text-secondary/70 mt-1">
                 {activeTab === 'NORMAL' ? `${globalQueue.length} message${globalQueue.length !== 1 ? 's' : ''} in live bid queue` :
                  activeTab === 'SPECIAL' ? `${specialQueue.length} booked slot${specialQueue.length !== 1 ? 's' : ''} coming up` :
-                 `${sponsoredQueue.length}/100 awaiting sponsorship`}
+                 `${awaitingSponsorCount} Awaiting a sponsor · ${sponsoredInQueueCount} Sponsored · in queue`}
               </p>
             </div>
             
@@ -200,7 +214,7 @@ export function QueueTabs({
         </div>
 
         {/* Tab Content List */}
-        <div className="flex-1 overflow-y-auto pr-1 space-y-3 custom-scrollbar mask-image-bottom pb-12">
+        <div className="flex-1 overflow-y-auto pr-1 space-y-3 custom-scrollbar pb-12">
           
           {/* 1. NORMAL QUEUE */}
           {activeTab === 'NORMAL' && (
@@ -213,11 +227,11 @@ export function QueueTabs({
                   return (
                     <div 
                       key={msg.id} 
-                      className={`p-3 rounded-2xl border transition-all ${
+                      className={`p-3 rounded-lg border transition-all ${
                         isFirst 
-                          ? 'border-emerald-500/40 bg-emerald-500/5 shadow-[0_0_15px_rgba(16,185,129,0.06)]' 
+                          ? 'border-emerald-500/40 bg-emerald-500/5' 
                           : 'border-background-elevated bg-background/50 hover:border-primary/20'
-                      } backdrop-blur-sm`}
+                      }`}
                     >
                       {/* Top Header */}
                       <div className="flex justify-between items-center mb-1.5">
@@ -258,7 +272,7 @@ export function QueueTabs({
                   )
                 })
               ) : (
-                <div className="text-center py-10 px-4 border border-dashed border-primary/10 rounded-2xl bg-background-elevated/20">
+                <div className="text-center py-10 px-4 border border-dashed border-primary/10 rounded-lg bg-background-elevated/20">
                   <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-3">
                     <Zap size={20} />
                   </div>
@@ -286,7 +300,7 @@ export function QueueTabs({
                   return (
                       <div 
                       key={msg.id} 
-                      className="p-3.5 rounded-2xl border border-violet-500/30 bg-violet-500/[0.06] backdrop-blur-sm shadow-sm"
+                      className="p-3.5 rounded-lg border border-violet-500/30 bg-violet-500/[0.06] shadow-sm"
                     >
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-[10px] uppercase tracking-wider font-semibold text-violet-800 dark:text-violet-300 bg-violet-500/15 px-2 py-0.5 rounded-md">
@@ -335,7 +349,7 @@ export function QueueTabs({
                   )
                 })
               ) : (
-                <div className="text-center py-10 px-4 border border-dashed border-violet-500/20 rounded-2xl bg-violet-500/5">
+                <div className="text-center py-10 px-4 border border-dashed border-violet-500/20 rounded-lg bg-violet-500/5">
                   <div className="w-10 h-10 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center mx-auto mb-3">
                     <Sparkles size={20} />
                   </div>
@@ -359,7 +373,7 @@ export function QueueTabs({
               {sponsoredQueue.length > 0 ? (
                 sponsoredQueue.map((msg, i) => {
                   const catName = getCategoryName(msg)
-                  const isLocked = msg.isLocked !== false && (!msg.content || msg.teaser || msg.isLocked)
+                  const isLocked = isLockedQueueItem(msg)
                   // Paid QUEUED sponsored rows carry full `content` (safe). Locked PENDING rows
                   // carry only `teaser` — never render full text for locked items.
                   const paidSnippet = !isLocked && msg.content ? msg.content.replace(/<[^>]*>/g, '').trim().slice(0, 140) : ''
@@ -368,14 +382,14 @@ export function QueueTabs({
                   return (
                     <div 
                       key={msg.id} 
-                      className="p-3.5 rounded-2xl border border-blue-500/25 bg-blue-500/5 backdrop-blur-sm shadow-sm hover:border-blue-500/40 transition-colors"
+                      className="p-3.5 rounded-lg border border-blue-500/25 bg-blue-500/5 shadow-sm hover:border-blue-500/40 transition-colors"
                     >
                       <div className="flex justify-between items-center mb-1.5">
                         <span className="text-[10px] uppercase tracking-wider font-semibold text-blue-800 dark:text-blue-300 bg-blue-500/15 px-2 py-0.5 rounded-md">
                           {catName}
                         </span>
                         <span className="text-[10px] text-blue-800 dark:text-blue-300 font-bold bg-blue-500/15 border border-blue-500/30 px-2 py-0.5 rounded-full">
-                          {isLocked ? 'LOCKED' : 'WAITING ROOM'}
+                          {isLocked ? 'AWAITING A SPONSOR' : 'SPONSORED · IN QUEUE'}
                         </span>
                       </div>
 
@@ -420,7 +434,7 @@ export function QueueTabs({
                   )
                 })
               ) : (
-                <div className="text-center py-10 px-4 border border-dashed border-blue-500/20 rounded-2xl bg-blue-500/5">
+                <div className="text-center py-10 px-4 border border-dashed border-blue-500/20 rounded-lg bg-blue-500/5">
                   <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-3">
                     <HeartHandshake size={20} />
                   </div>

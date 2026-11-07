@@ -58,7 +58,7 @@ export function LeftSidebar({ isOpen, onClose }: { isOpen: boolean, onClose: () 
         
         <div className="mt-8">
           <Link href="/create">
-            <button className="w-full py-3 bg-primary text-background rounded-full font-medium hover:opacity-90 transition-all shadow-[0_0_20px_rgba(0,0,0,0.1)] hover:shadow-[0_0_30px_rgba(0,0,0,0.2)] mb-4">
+            <button className="w-full py-3 bg-primary text-background rounded-full font-medium hover:opacity-90 transition-all mb-4">
               Speak to the World
             </button>
           </Link>

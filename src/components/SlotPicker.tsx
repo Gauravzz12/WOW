@@ -232,7 +232,7 @@ export function SlotPicker({ onSelect, selectedSlotIds = [], initialDate, initia
       </div>
 
       {/* Date navigator (UTC Days) */}
-      <div className="flex items-center justify-between bg-background-elevated border border-primary/10 rounded-2xl p-3 shadow-xs">
+      <div className="flex items-center justify-between bg-background-elevated border border-primary/10 rounded-lg p-3 shadow-xs">
         <button
           type="button"
           onClick={() => changeDate(-1)}
@@ -272,7 +272,7 @@ export function SlotPicker({ onSelect, selectedSlotIds = [], initialDate, initia
           <span>Loading slots…</span>
         </div>
       ) : slots.length === 0 ? (
-        <div className="text-center py-8 text-secondary text-sm bg-background-elevated/40 rounded-2xl border border-primary/10">
+        <div className="text-center py-8 text-secondary text-sm bg-background-elevated/40 rounded-lg border border-primary/10">
           No slots available for this date.
           <br />
           <span className="text-xs opacity-60">Please select another date.</span>
@@ -376,7 +376,7 @@ export function SlotPicker({ onSelect, selectedSlotIds = [], initialDate, initia
 
       {/* Multi-slot continuous selection summary & 20% discount breakdown */}
       {selectedSlots.length > 0 && (
-        <div className="p-4 rounded-2xl bg-violet-500/10 border border-violet-500/25 space-y-2.5">
+        <div className="p-4 rounded-lg bg-violet-500/10 border border-violet-500/25 space-y-2.5">
           <div className="flex justify-between items-center text-xs">
             <span className="font-bold text-violet-900 dark:text-violet-300 flex items-center gap-1.5">
               <Sparkles size={14} className="text-amber-500" />
@@ -399,7 +399,7 @@ export function SlotPicker({ onSelect, selectedSlotIds = [], initialDate, initia
 
           {selectedSlots.length > 1 ? (
             <div className="flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-300 font-semibold pt-1 border-t border-violet-500/15">
-              <span>🎉 20% off for booking together!</span>
+              <span>20% off for booking together!</span>
               <span className="font-mono">Save ${pricing.savings.toFixed(2)}</span>
             </div>
           ) : (

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, X, Check, Copy, AlertTriangle, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react'
-import { verifyTokenAction, createBumpCheckoutAction, createMockBumpAction } from '@/app/actions/bumpActions'
+import { verifyTokenAction, createBumpCheckoutAction } from '@/app/actions/bumpActions'
 import type { VerifiedBumpMessage } from '@/lib/bumpToken'
 import { toast } from '@/components/Toast'
 
@@ -93,28 +93,6 @@ export function BumpBidModal({
     }
   }
 
-  const [isMockCheckingOut, setIsMockCheckingOut] = useState(false)
-
-  const handleMockBump = async () => {
-    if (!verifiedMsg || !activeToken || !isBidValid) return
-
-    setIsMockCheckingOut(true)
-    setCheckoutError(null)
-
-    const res = await createMockBumpAction(activeToken, candidateBid)
-    setIsMockCheckingOut(false)
-
-    if (res.error) {
-      setCheckoutError(res.error)
-    } else {
-      toast.success(`Bid boosted to $${candidateBid.toFixed(2)}! Your updated bump token was sent to your email.`, {
-        title: 'Priority Bumped (Mock)'
-      })
-      onClose()
-      window.location.href = '/?tab=NORMAL&bumpSuccess=1'
-    }
-  }
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -128,7 +106,7 @@ export function BumpBidModal({
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ duration: 0.2 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-lg bg-background-elevated border border-primary/20 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col space-y-6 text-left"
+            className="relative w-full max-w-lg bg-background-elevated border border-primary/20 rounded-lg p-6 md:p-8 shadow-none flex flex-col space-y-6 text-left"
           >
             {/* Top Close Button */}
             <button
@@ -142,7 +120,7 @@ export function BumpBidModal({
 
             {/* Modal Header */}
             <div className="flex items-center gap-3 pr-8">
-              <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-500 flex items-center justify-center shrink-0 shadow-sm">
+              <div className="w-11 h-11 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-500 flex items-center justify-center shrink-0 shadow-sm">
                 <Zap size={22} className="fill-amber-500/50" />
               </div>
               <div>
@@ -206,7 +184,7 @@ export function BumpBidModal({
               /* STEP 2: VERIFIED MESSAGE & BID SELECTION */
               <div className="space-y-5">
                 {/* Message & Current Stats Card */}
-                <div className="p-4 rounded-2xl bg-background border border-primary/10 space-y-3">
+                <div className="p-4 rounded-lg bg-background border border-primary/10 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-secondary">
                       {verifiedMsg.categoryName} • Rank #{verifiedMsg.currentRank}
@@ -312,7 +290,7 @@ export function BumpBidModal({
                 </div>
 
                 {/* Calculation Summary */}
-                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-between text-xs">
+                <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/25 flex items-center justify-between text-xs">
                   <div>
                     <span className="text-secondary block text-[11px]">Total You Pay Today (Difference):</span>
                     <span className="text-[10px] text-secondary/70">
@@ -335,7 +313,7 @@ export function BumpBidModal({
                   <button
                     type="button"
                     onClick={onClose}
-                    disabled={isCheckingOut || isMockCheckingOut}
+                    disabled={isCheckingOut}
                     className="flex-1 py-3 rounded-full border border-primary/20 hover:bg-background-muted text-primary text-xs font-bold transition-colors disabled:opacity-50"
                   >
                     Cancel
@@ -343,7 +321,7 @@ export function BumpBidModal({
                   <button
                     type="button"
                     onClick={handleCheckout}
-                    disabled={isCheckingOut || isMockCheckingOut || !isBidValid}
+                    disabled={isCheckingOut || !isBidValid}
                     className="flex-1 py-3 rounded-full bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-1.5"
                   >
                     {isCheckingOut ? (
@@ -356,21 +334,6 @@ export function BumpBidModal({
                     )}
                   </button>
                 </div>
-
-                {/* Instant Mock Bump for Testing */}
-                <button
-                  type="button"
-                  onClick={handleMockBump}
-                  disabled={isCheckingOut || isMockCheckingOut || !isBidValid}
-                  className="w-full py-2.5 rounded-full font-bold text-xs bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/40 transition-all flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
-                >
-                  <Zap size={14} className="text-amber-500 fill-amber-500" />
-                  <span>
-                    {isMockCheckingOut
-                      ? 'Processing Mock Bump...'
-                      : `⚡ Instant Mock Bump (+${difference.toFixed(2)} Test Mode)`}
-                  </span>
-                </button>
               </div>
             )}
           </motion.div>

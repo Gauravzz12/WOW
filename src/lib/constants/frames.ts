@@ -4,6 +4,10 @@ export interface FrameDef {
   description: string
   emoji: string
   cssClass: string
+  /** Retired from the picker, but the def stays so existing messages keep rendering. */
+  pickerHidden?: boolean
+  /** Only offered in the picker for the Special tier (rendering is never gated). */
+  specialOnly?: boolean
 }
 
 export const FRAMES: FrameDef[] = [
@@ -34,13 +38,15 @@ export const FRAMES: FrameDef[] = [
     description: 'Rich golden filigree frame',
     emoji: '🏛️',
     cssClass: 'frame-golden-filigree',
+    pickerHidden: true,
   },
   {
     id: 'postage-stamp',
     name: 'Vintage Postage',
     description: 'Classic stamp-style perforated border',
     emoji: '📮',
-    cssClass: 'frame-postage-stamp',
+    // SVG-only (FrameDecorator) — no CSS class.
+    cssClass: '',
   },
   {
     id: 'stepped-inset',
@@ -56,6 +62,7 @@ export const FRAMES: FrameDef[] = [
     description: 'Scattered hearts around the edges',
     emoji: '💕',
     cssClass: 'frame-love-hearts',
+    pickerHidden: true,
   },
   {
     id: 'celebration-confetti',
@@ -63,6 +70,7 @@ export const FRAMES: FrameDef[] = [
     description: 'Festive confetti dots & shapes',
     emoji: '🎉',
     cssClass: 'frame-celebration-confetti',
+    pickerHidden: true,
   },
   {
     id: 'nature-vines',
@@ -90,7 +98,52 @@ export const FRAMES: FrameDef[] = [
     name: 'Sketch',
     description: 'Hand-drawn dashed border look',
     emoji: '✏️',
-    cssClass: 'frame-dashed-sketch',
+    // SVG-only (FrameDecorator) — no CSS class.
+    cssClass: '',
+  },
+  // ── Editorial frames ──
+  {
+    id: 'double-rule',
+    name: 'Double Rule',
+    description: 'Front-page double rule frame',
+    emoji: '▦',
+    cssClass: 'frame-double-rule',
+  },
+  {
+    id: 'corner-ticks',
+    name: 'Corner Ticks',
+    description: 'Minimal corner marks only',
+    emoji: '⌜',
+    cssClass: '',
+  },
+  {
+    id: 'ticket-stub',
+    name: 'Ticket Stub',
+    description: 'Perforated edge with a tear line',
+    emoji: '✂',
+    cssClass: '',
+  },
+  {
+    id: 'ledger',
+    name: 'Ledger',
+    description: 'Dotted rule with a double top line',
+    emoji: '☰',
+    cssClass: 'frame-ledger',
+  },
+  {
+    id: 'top-band',
+    name: 'Top Band',
+    description: 'Solid band in your category colour',
+    emoji: '▬',
+    cssClass: '',
+  },
+  {
+    id: 'laurel',
+    name: 'Laurel',
+    description: 'Brass laurel sprigs — Special only',
+    emoji: '❦',
+    cssClass: '',
+    specialOnly: true,
   },
 ]
 

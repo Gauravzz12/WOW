@@ -2,10 +2,10 @@
 
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { 
-  verifyAdminPassword, 
-  getExpectedAdminToken, 
-  ADMIN_COOKIE_CONFIG 
+import {
+  verifyAdminPassword,
+  createAdminSessionToken,
+  ADMIN_COOKIE_CONFIG
 } from '@/lib/adminAuth'
 
 export async function loginWithPassword(formData: FormData) {
@@ -15,7 +15,7 @@ export async function loginWithPassword(formData: FormData) {
     return { error: 'Invalid master access key. Access denied.' }
   }
 
-  const token = await getExpectedAdminToken()
+  const token = await createAdminSessionToken()
   const cookieStore = cookies()
   
   cookieStore.set(

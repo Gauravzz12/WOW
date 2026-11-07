@@ -96,6 +96,25 @@ export async function addComment(messageId: string, content: string) {
   return { comment: data }
 }
 
+/**
+ * DAT-3: returns the ids of the CALLER's own comments on a message.
+ * Ownership display used to require shipping every commenter's device_id
+ * to every browser — and that id is the ownership credential. Now the
+ * client only ever learns which rows are its own, never anyone's id.
+ */
+export async function getMyCommentIds(messageId: string) {
+  if (!messageId) return { ids: [] as string[] }
+  const deviceId = getDeviceIdOrNull()
+  if (!deviceId) return { ids: [] as string[] }
+  const supabaseAdmin = getAdmin()
+  const { data } = await supabaseAdmin
+    .from('comments')
+    .select('id')
+    .eq('message_id', messageId)
+    .eq('device_id', deviceId)
+  return { ids: ((data as any[]) || []).map(r => r.id as string) }
+}
+
 export async function deleteComment(messageId: string, commentId: string) {
   if (!messageId || !commentId) {
     return { error: 'Invalid comment.' }

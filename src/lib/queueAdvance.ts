@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from './supabase/admin'
 import { getMessageEndTimeMs } from './messageExpiry'
+import { MIN_NORMAL_BID } from './constants/pricing'
 
 const supabaseAdmin = getSupabaseAdmin()
 
@@ -25,6 +26,18 @@ export async function runQueueAdvance() {
     .eq('status', 'PENDING_PAYMENT')
     .lt('created_at', twelveHoursAgo)
     .select('id')
+
+  // PAY-3: slots are marked BOOKED at checkout start, before payment.
+  // Expiring the unpaid message must release its still-future slots or
+  // abandoned checkouts permanently drain Special inventory at $0 cost.
+  if (expiredWaiting && expiredWaiting.length > 0) {
+    await supabaseAdmin
+      .from('reserved_slots')
+      .update({ status: 'AVAILABLE', message_id: null, bid_amount: 0 })
+      .in('message_id', expiredWaiting.map(m => m.id))
+      .eq('status', 'BOOKED')
+      .gt('scheduled_end', nowIso)
+  }
 
   // 1. Check all ACTIVE messages and mark them COMPLETED if expired
   const { data: activeMessages } = await supabaseAdmin
@@ -81,10 +94,10 @@ export async function runQueueAdvance() {
           }
         }
       } else {
-        // Still active — categorize using same thresholds as client (>= 10 = normal, < 10 = sponsored)
+        // Still active — categorize using same threshold as client (>= MIN_NORMAL_BID = normal, below = sponsored)
         if (msg.is_reserved_slot) {
           currentActives.special++
-        } else if (msg.bid_amount < 10) {
+        } else if (msg.bid_amount < MIN_NORMAL_BID) {
           currentActives.sponsored++
         } else {
           currentActives.normal++
@@ -96,7 +109,7 @@ export async function runQueueAdvance() {
   // 2. Promote next queued messages if slots are empty
   const promoted: string[] = []
 
-  // Normal Queue Promotion — highest bid wins, then FIFO for ties
+  // Normal Queue Promotion — paid before free (launch promo), then highest bid wins, then FIFO for ties
   if (currentActives.normal === 0) {
     // Re-verify that no active normal message exists before promoting (concurrency guard)
     const { data: latestActiveNormal } = await supabaseAdmin
@@ -104,7 +117,7 @@ export async function runQueueAdvance() {
       .select('id')
       .eq('status', 'ACTIVE')
       .eq('is_reserved_slot', false)
-      .gte('bid_amount', 10)
+      .gte('bid_amount', MIN_NORMAL_BID)
       .limit(1)
 
     if (!latestActiveNormal || latestActiveNormal.length === 0) {
@@ -113,7 +126,8 @@ export async function runQueueAdvance() {
         .select('id, style_config, content, reminder_email')
         .eq('status', 'QUEUED')
         .eq('is_reserved_slot', false)
-        .gte('bid_amount', 10)
+        .gte('bid_amount', MIN_NORMAL_BID)
+        .order('is_promo_free', { ascending: true })
         .order('bid_amount', { ascending: false })
         .order('created_at', { ascending: true })
         .limit(1)
@@ -144,7 +158,7 @@ export async function runQueueAdvance() {
     }
   }
 
-  // Sponsored Queue Promotion — bid < 10 threshold, FIFO order (up to 10 active at once in grid)
+  // Sponsored Queue Promotion — bid < MIN_NORMAL_BID threshold, FIFO order (up to 10 active at once in grid)
   if (currentActives.sponsored < 10) {
     // Re-verify the live count first (concurrency guard, mirrors normal/VIP):
     // two overlapping runs must not both promote up to the cap.
@@ -153,7 +167,7 @@ export async function runQueueAdvance() {
       .select('id')
       .eq('status', 'ACTIVE')
       .eq('is_reserved_slot', false)
-      .lt('bid_amount', 10)
+      .lt('bid_amount', MIN_NORMAL_BID)
       .limit(10)
 
     const liveSponsored = latestActiveSponsored?.length ?? currentActives.sponsored
@@ -164,7 +178,7 @@ export async function runQueueAdvance() {
       .select('id, style_config, content, reminder_email')
       .eq('status', 'QUEUED')
       .eq('is_reserved_slot', false)
-      .lt('bid_amount', 10)
+      .lt('bid_amount', MIN_NORMAL_BID)
       .order('created_at', { ascending: true })
       .limit(needed)
 
@@ -200,26 +214,17 @@ export async function runQueueAdvance() {
   // 1. Expire any queued VIP slots whose scheduled end time has already elapsed.
   //    Their slots intentionally stay BOOKED (never re-released for elapsed
   //    time); only future-windowed releases happen on the ACTIVE path above.
-  const { data: expiredVip } = await supabaseAdmin
+  await supabaseAdmin
     .from('messages')
     .update({ status: 'EXPIRED' })
     .eq('status', 'QUEUED')
     .eq('is_reserved_slot', true)
     .lte('scheduled_end', nowIso)
     .select('id, scheduled_end')
-
-  if (expiredVip && expiredVip.length > 0) {
-    const releasable = expiredVip
-      .filter((m: any) => m.scheduled_end && new Date(m.scheduled_end).getTime() > now.getTime())
-      .map((m: any) => m.id)
-    if (releasable.length > 0) {
-      await supabaseAdmin
-        .from('reserved_slots')
-        .update({ status: 'AVAILABLE' })
-        .in('message_id', releasable)
-        .eq('status', 'BOOKED')
-    }
-  }
+  // (The release block that used to sit here was dead code — it selected
+  // rows with scheduled_end <= now and then kept only scheduled_end >
+  // now, so it could never release anything. Removed; elapsed slots
+  // staying BOOKED is the intended behaviour per the comment above.)
 
   if (!currentActives.special) {
     const { data: latestActiveVip } = await supabaseAdmin

@@ -1,6 +1,7 @@
 'use server'
 
 import { sendEmail } from '@/lib/email'
+import { SITE_URL } from '@/lib/site'
 
 export interface ReportPayload {
   messageId: string
@@ -8,14 +9,43 @@ export interface ReportPayload {
   details?: string
 }
 
-export async function submitContentReport(payload: ReportPayload) {
-  const { messageId, reason, details } = payload
+// API-5: this action is public, so every field is attacker-controlled.
+// Reason is pinned to the modal's fixed category set, messageId must be
+// a real UUID, and everything interpolated into the admin email's HTML
+// is escaped — otherwise a reporter could inject arbitrary HTML/links
+// into the admin's inbox from the site's own trusted relay.
+const ALLOWED_REASONS = new Set([
+  'hate', 'Hate Speech, Slurs, or Discrimination',
+  'violence', 'Violent Threats, Harassment, or Doxxing',
+  'nsfw', 'Sexually Explicit or Prohibited NSFW Content',
+  'scam', 'Financial Scam, Crypto Drainer, or Phishing',
+  'drugs', 'Illegal Drugs, Weapons, or Contraband',
+  'language', 'Non-English Script or Text',
+  'other', 'Other Guidelines Violation',
+])
 
-  if (!messageId || !reason) {
-    return { error: 'Message ID and reason are required.' }
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+export async function submitContentReport(payload: ReportPayload) {
+  const { messageId, details } = payload
+  const reason = ALLOWED_REASONS.has(payload.reason) ? payload.reason : 'Other Guidelines Violation'
+
+  if (!messageId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(messageId)) {
+    return { error: 'A valid message ID and reason are required.' }
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://words.world'
+  const safeMessageId = escapeHtml(messageId)
+  const safeReason = escapeHtml(reason)
+  const safeDetails = details ? escapeHtml(details.slice(0, 500)) : ''
+
+  const appUrl = SITE_URL
   const messageUrl = `${appUrl}/w/${messageId}`
   const adminUrl = `${appUrl}/admin`
   const timestamp = new Date().toUTCString()
@@ -51,18 +81,18 @@ export async function submitContentReport(payload: ReportPayload) {
             
             <div class="field">
               <div class="label">Message ID</div>
-              <div class="value">${messageId}</div>
+              <div class="value">${safeMessageId}</div>
             </div>
 
             <div class="field">
               <div class="label">Violation Category</div>
-              <div class="value" style="color: #dc2626;">${reason}</div>
+              <div class="value" style="color: #dc2626;">${safeReason}</div>
             </div>
 
-            ${details ? `
+            ${safeDetails ? `
             <div class="field">
               <div class="label">User Note / Context</div>
-              <div class="value" style="font-weight: normal;">${details.slice(0, 500)}</div>
+              <div class="value" style="font-weight: normal;">${safeDetails}</div>
             </div>` : ''}
 
             <div class="field">

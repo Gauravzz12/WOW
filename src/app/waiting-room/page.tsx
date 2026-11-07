@@ -4,6 +4,12 @@ import { ArrowLeft, Lock } from 'lucide-react'
 import { getCategoryStyles } from '@/lib/utils/colors'
 import { toLockedSponsoredCard } from '@/lib/masking'
 import { WaitingRoomTimer } from '@/components/WaitingRoomTimer'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Waiting Room',
+  description: 'Messages waiting for a sponsor. Sponsor a voice and put it on the world stage.',
+}
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -53,7 +59,7 @@ export default async function WaitingRoomPage() {
 
   return (
     <div className="min-h-screen bg-background text-primary p-4 md:p-8 max-w-6xl mx-auto">
-      <header className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <header className="mb-12 flex flex-col md:flex-row md:items-center md:flex-wrap justify-between gap-4">
         <div>
           <Link href="/" className="inline-flex items-center text-secondary hover:text-primary transition-colors mb-4">
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -63,9 +69,9 @@ export default async function WaitingRoomPage() {
           <p className="text-secondary mt-2">These messages are waiting to be heard. Sponsor one for $3 to broadcast it worldwide — unpaid messages are removed after 12 hours.</p>
         </div>
         
-        <div className="flex items-center gap-2 self-start md:self-auto px-3.5 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-xs font-mono text-blue-700 dark:text-blue-300 shadow-sm">
-          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-          <span>Waiting List: {maskedMessages.length} / 100 max</span>
+        <div className="flex items-center gap-2 self-start md:self-auto shrink-0 px-3.5 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-[11px] sm:text-xs font-mono text-blue-700 dark:text-blue-300 shadow-sm">
+          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
+          <span className="whitespace-nowrap">Waiting List: {maskedMessages.length} / 100 max</span>
         </div>
       </header>
 
@@ -76,9 +82,9 @@ export default async function WaitingRoomPage() {
           const { borderClass, bgClass, badgeClass } = getCategoryStyles(categorySlug)
 
           return (
-            <div key={msg.id} className={`flex flex-col border ${borderClass} bg-background-elevated rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all min-h-[320px]`}>
+            <div key={msg.id} className={`flex flex-col border ${borderClass} bg-background-elevated rounded-lg p-6 shadow-lg hover:shadow-sm transition-all min-h-[320px]`}>
               <div className="flex justify-between items-start mb-4">
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border shadow-sm backdrop-blur-md ${badgeClass}`}>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border shadow-sm ${badgeClass}`}>
                   {categoryName}
                 </span>
                 <WaitingRoomTimer createdAt={msg.created_at} />
@@ -112,7 +118,7 @@ export default async function WaitingRoomPage() {
         })}
 
         {maskedMessages.length === 0 && (
-          <div className="col-span-full py-20 text-center text-secondary border border-dashed border-primary/20 rounded-3xl">
+          <div className="col-span-full py-20 text-center text-secondary border border-dashed border-primary/20 rounded-lg">
             <p>The waiting room is empty.</p>
           </div>
         )}

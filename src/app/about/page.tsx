@@ -80,10 +80,7 @@ export default function AboutPage() {
   }, [])
 
   return (
-    <div className="min-h-[100dvh] bg-background dark:bg-grid-white/[0.03] bg-grid-black/[0.03] relative flex flex-col pt-20 px-6 pb-24 overflow-x-hidden">
-      
-      {/* Radial fade mask */}
-      <div className="absolute pointer-events-none inset-0 flex items-center justify-center bg-background [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]"></div>
+    <div className="min-h-[100dvh] bg-background relative flex flex-col pt-20 px-6 pb-24 overflow-x-hidden">
       
       <div className="max-w-3xl mx-auto w-full relative z-10">
         
@@ -113,9 +110,8 @@ export default function AboutPage() {
           </section>
 
           {/* Live Network Telemetry / About Stats Top Section */}
-          <section className="rounded-3xl border border-primary/15 bg-background-elevated/40 backdrop-blur-md p-6 md:p-8 relative overflow-hidden shadow-xl">
-            {/* Subtle corner radial gradient */}
-            <div className="absolute -top-24 -right-24 w-72 h-72 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+          <section className="rounded-lg border border-primary/15 bg-background-elevated/40 p-6 md:p-8 relative overflow-hidden shadow-sm">
+            {/* Corner rule */}
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-6 pb-4 border-b border-primary/10">
               <div className="flex items-center gap-2.5">
@@ -134,7 +130,7 @@ export default function AboutPage() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {/* Total Revenue */}
-              <div className="p-4 rounded-2xl bg-background/60 border border-emerald-500/20 backdrop-blur-sm flex flex-col justify-between hover:border-emerald-500/40 transition-colors shadow-sm">
+              <div className="p-4 rounded-lg bg-background/60 border border-emerald-500/20 flex flex-col justify-between hover:border-emerald-500/40 transition-colors shadow-sm">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-secondary">
                     Total Revenue
@@ -156,7 +152,7 @@ export default function AboutPage() {
               </div>
 
               {/* Messages Delivered */}
-              <div className="p-4 rounded-2xl bg-background/60 border border-violet-500/20 backdrop-blur-sm flex flex-col justify-between hover:border-violet-500/40 transition-colors shadow-sm">
+              <div className="p-4 rounded-lg bg-background/60 border border-violet-500/20 flex flex-col justify-between hover:border-violet-500/40 transition-colors shadow-sm">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-secondary">
                     Delivered
@@ -178,7 +174,7 @@ export default function AboutPage() {
               </div>
 
               {/* Broadcast Airtime */}
-              <div className="p-4 rounded-2xl bg-background/60 border border-blue-500/20 backdrop-blur-sm flex flex-col justify-between hover:border-blue-500/40 transition-colors shadow-sm">
+              <div className="p-4 rounded-lg bg-background/60 border border-blue-500/20 flex flex-col justify-between hover:border-blue-500/40 transition-colors shadow-sm">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-secondary">
                     Total Airtime
@@ -202,7 +198,7 @@ export default function AboutPage() {
               </div>
 
               {/* Community Interactions */}
-              <div className="p-4 rounded-2xl bg-background/60 border border-rose-500/20 backdrop-blur-sm flex flex-col justify-between hover:border-rose-500/40 transition-colors shadow-sm">
+              <div className="p-4 rounded-lg bg-background/60 border border-rose-500/20 flex flex-col justify-between hover:border-rose-500/40 transition-colors shadow-sm">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-secondary">
                     Interactions
@@ -232,7 +228,7 @@ export default function AboutPage() {
             </h2>
             
             <div className="grid gap-6 sm:grid-cols-2">
-              <div className="p-6 rounded-2xl bg-background-elevated/40 border border-primary/5 backdrop-blur-sm">
+              <div className="p-6 rounded-lg bg-background-elevated/40 border border-primary/5">
                 <Globe className="text-blue-500 mb-4" size={24} />
                 <h3 className="font-bold text-primary mb-2">The Global Stage</h3>
                 <p className="text-sm text-secondary leading-relaxed">
@@ -240,7 +236,7 @@ export default function AboutPage() {
                 </p>
               </div>
 
-              <div className="p-6 rounded-2xl bg-background-elevated/40 border border-primary/5 backdrop-blur-sm">
+              <div className="p-6 rounded-lg bg-background-elevated/40 border border-primary/5">
                 <Clock className="text-emerald-500 mb-4" size={24} />
                 <h3 className="font-bold text-primary mb-2">Fleeting Moments</h3>
                 <p className="text-sm text-secondary leading-relaxed">
@@ -248,7 +244,7 @@ export default function AboutPage() {
                 </p>
               </div>
 
-              <div className="p-6 rounded-2xl bg-background-elevated/40 border border-primary/5 backdrop-blur-sm sm:col-span-2">
+              <div className="p-6 rounded-lg bg-background-elevated/40 border border-primary/5 sm:col-span-2">
                 <Sparkles className="text-violet-500 mb-4" size={24} />
                 <h3 className="font-bold text-primary mb-2">Pay It Forward</h3>
                 <p className="text-sm text-secondary leading-relaxed">
@@ -265,7 +261,7 @@ export default function AboutPage() {
             </p>
             <div className="flex justify-center mt-10">
               <Link href="/create">
-                <button className="px-8 py-4 bg-primary text-background rounded-full font-bold uppercase tracking-widest text-sm hover:scale-105 transition-transform shadow-xl">
+                <button className="px-8 py-4 bg-primary text-background rounded-full font-bold uppercase tracking-widest text-sm hover:scale-105 transition-transform shadow-sm">
                   Leave a Message
                 </button>
               </Link>

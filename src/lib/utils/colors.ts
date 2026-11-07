@@ -1,10 +1,10 @@
 /**
  * Detects whether a background string is inherently dark in ALL themes
- * (i.e. dark VIP gradients that never switch to a light variant).
+ * (i.e. dark VIP card backgrounds that never switch to a light variant).
  */
 function isBgAlwaysDark(bg: string): boolean {
   if (!bg || bg.includes('dark:bg-')) return false
-  if (bg.includes('from-[#') || bg.includes('bg-gradient')) {
+  if (bg.includes('bg-[#') || bg.includes('from-[#')) {
     const hexes = bg.match(/#[0-9A-Fa-f]{6}/g) || []
     if (hexes.length === 0) return false
     return hexes.every(hex => {
@@ -187,46 +187,105 @@ export const CANONICAL_TEMPLATES: Record<string, {
     cardBorder: 'border-neutral-400 dark:border-neutral-700'
   },
 
-  // ── VIP Luxury (always-dark gradients → always-bright text) ─────────────
+  // ── VIP Luxury (always-dark solids → always-bright text) ─────────────
   'vip-birthday': {
-    bg: 'bg-gradient-to-br from-[#1C1304] via-[#0E0A02] to-[#2B1D06]',
+    bg: 'bg-[#1C1304]',
     textColor: 'text-[#FEF3C7]',
     lightHex: '#FEF3C7',
     darkHex: '#FEF3C7',
-    cardBorder: 'border-amber-400/50 shadow-[0_0_40px_rgba(251,191,36,0.25)]',
+    cardBorder: 'border-amber-400/50',
     isVip: true
   },
   'vip-romance': {
-    bg: 'bg-gradient-to-br from-[#290714] via-[#140209] to-[#3B0A1D]',
+    bg: 'bg-[#290714]',
     textColor: 'text-[#FFE4E6]',
     lightHex: '#FFE4E6',
     darkHex: '#FFE4E6',
-    cardBorder: 'border-rose-400/50 shadow-[0_0_40px_rgba(244,63,94,0.25)]',
+    cardBorder: 'border-rose-400/50',
     isVip: true
   },
   'vip-brand': {
-    bg: 'bg-gradient-to-br from-[#031326] via-[#010914] to-[#06203D]',
+    bg: 'bg-[#031326]',
     textColor: 'text-[#E0F2FE]',
     lightHex: '#E0F2FE',
     darkHex: '#E0F2FE',
-    cardBorder: 'border-cyan-400/50 shadow-[0_0_40px_rgba(6,182,212,0.25)]',
+    cardBorder: 'border-cyan-400/50',
     isVip: true
   },
   'vip-wisdom': {
-    bg: 'bg-gradient-to-br from-[#081C13] via-[#040D09] to-[#0E2C1E]',
+    bg: 'bg-[#081C13]',
     textColor: 'text-[#ECFDF5]',
     lightHex: '#ECFDF5',
     darkHex: '#ECFDF5',
-    cardBorder: 'border-emerald-400/50 shadow-[0_0_40px_rgba(16,185,129,0.25)]',
+    cardBorder: 'border-emerald-400/50',
     isVip: true
   },
   'vip-noir': {
-    bg: 'bg-gradient-to-b from-[#0C0B12] via-[#020204] to-[#0A0910]',
+    bg: 'bg-[#0C0B12]',
     textColor: 'text-[#F3E8FF]',
     lightHex: '#F3E8FF',
     darkHex: '#F3E8FF',
-    cardBorder: 'border-purple-400/50 shadow-[0_0_40px_rgba(168,85,247,0.25)]',
+    cardBorder: 'border-purple-400/50',
     isVip: true
+  },
+  'night-edition': {
+    bg: 'bg-[#141118]',
+    textColor: 'text-[#F5EFE6]',
+    lightHex: '#F5EFE6',
+    darkHex: '#F5EFE6',
+    cardBorder: 'border-amber-400/50',
+    isVip: true
+  },
+
+  // ── Editorial additions (dual-theme, contrast-guaranteed) ────────────
+  'broadsheet': {
+    bg: 'bg-[#FBFAF7] dark:bg-[#121212]',
+    textColor: 'text-[#141414] dark:text-[#EDEDE6]',
+    lightHex: '#141414',
+    darkHex: '#EDEDE6',
+    cardBorder: 'border-neutral-300 dark:border-neutral-700'
+  },
+  'vow': {
+    bg: 'bg-[#FDF2F4] dark:bg-[#20060D]',
+    textColor: 'text-[#701A2E] dark:text-[#FBDCE2]',
+    lightHex: '#701A2E',
+    darkHex: '#FBDCE2',
+    cardBorder: 'border-rose-300 dark:border-rose-400/30'
+  },
+  'first-light': {
+    bg: 'bg-[#FDF6EC] dark:bg-[#1D1508]',
+    textColor: 'text-[#6B4423] dark:text-[#F3E3C2]',
+    lightHex: '#6B4423',
+    darkHex: '#F3E3C2',
+    cardBorder: 'border-amber-300 dark:border-amber-500/30'
+  },
+  'ember': {
+    bg: 'bg-[#FFF4ED] dark:bg-[#1C0B03]',
+    textColor: 'text-[#7C2D12] dark:text-[#FCD9B8]',
+    lightHex: '#7C2D12',
+    darkHex: '#FCD9B8',
+    cardBorder: 'border-orange-300 dark:border-orange-500/30'
+  },
+  'confessional': {
+    bg: 'bg-[#F4F1FA] dark:bg-[#0E0A1A]',
+    textColor: 'text-[#3B2764] dark:text-[#DDD0F5]',
+    lightHex: '#3B2764',
+    darkHex: '#DDD0F5',
+    cardBorder: 'border-violet-300 dark:border-violet-400/30'
+  },
+  'summit': {
+    bg: 'bg-[#EEF4F6] dark:bg-[#061419]',
+    textColor: 'text-[#123B4F] dark:text-[#CFE8EF]',
+    lightHex: '#123B4F',
+    darkHex: '#CFE8EF',
+    cardBorder: 'border-cyan-600/30 dark:border-cyan-500/40'
+  },
+  'telegram': {
+    bg: 'bg-[#F7F3E8] dark:bg-[#161410]',
+    textColor: 'text-[#33302A] dark:text-[#E8E2D2]',
+    lightHex: '#33302A',
+    darkHex: '#E8E2D2',
+    cardBorder: 'border-stone-300 dark:border-stone-600'
   }
 }
 
@@ -348,10 +407,18 @@ export function resolveCardStyles(styleConfig?: any, templateId?: string): {
     else if (rawBg.includes('#031326')) tid = 'vip-brand'
     else if (rawBg.includes('#081C13')) tid = 'vip-wisdom'
     else if (rawBg.includes('#0C0B12')) tid = 'vip-noir'
+    else if (rawBg.includes('#141118')) tid = 'night-edition'
+    else if (rawBg.includes('#FBFAF7')) tid = 'broadsheet'
+    else if (rawBg.includes('#FDF2F4') || rawBg.includes('#20060D')) tid = 'vow'
+    else if (rawBg.includes('#FDF6EC') || rawBg.includes('#1D1508')) tid = 'first-light'
+    else if (rawBg.includes('#FFF4ED') || rawBg.includes('#1C0B03')) tid = 'ember'
+    else if (rawBg.includes('#F4F1FA') || rawBg.includes('#0E0A1A')) tid = 'confessional'
+    else if (rawBg.includes('#EEF4F6') || rawBg.includes('#061419')) tid = 'summit'
+    else if (rawBg.includes('#F7F3E8') || rawBg.includes('#161410')) tid = 'telegram'
     else if (rawBg === 'bg-background') tid = 'a'
   }
 
-  const isVip = !!(cfg.isVip || (tid && tid.startsWith('vip-')))
+  const isVip = !!(cfg.isVip || (tid && (tid.startsWith('vip-') || tid === 'night-edition')))
   const safeBg = resolveThemeSafeBg(cfg.bg, tid)
   const safeTextColor = resolveThemeSafeTextColor(cfg.textColor, safeBg, tid)
   const isDarkCard = isVip || isBgAlwaysDark(safeBg)

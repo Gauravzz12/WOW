@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { updateCategoryDuration } from '@/app/admin/actions'
 import { MessageModerationTable } from './MessageModerationTable'
 import { getMessageTypeInfo, AdminMessage } from './adminUtils'
@@ -6,10 +6,7 @@ import { Zap, Sparkles, Radio } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabaseAdmin = getSupabaseAdmin()
 
 export default async function AdminDashboard() {
   // Fetch data with superuser privileges
@@ -39,7 +36,7 @@ export default async function AdminDashboard() {
   const queuedCount = messages.filter(m => m.status === 'QUEUED').length
   const servedCount = messages.filter(m => m.status === 'COMPLETED').length
   // Revenue from actual bid amounts on paid messages
-  const mockRevenue = messages
+  const grossRevenue = messages
     .filter(m => m.status === 'ACTIVE' || m.status === 'QUEUED' || m.status === 'COMPLETED')
     .reduce((sum, msg) => sum + (msg.bid_amount || 0), 0)
 
@@ -56,17 +53,17 @@ export default async function AdminDashboard() {
 
       {/* Analytics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-background-elevated border border-primary/10 rounded-2xl p-6 shadow-sm">
+        <div className="bg-background-elevated border border-primary/10 rounded-lg p-6 shadow-sm">
           <div className="text-xs text-secondary font-semibold uppercase tracking-wider mb-2">Total Queued</div>
           <div className="text-4xl font-serif font-bold">{queuedCount}</div>
         </div>
-        <div className="bg-background-elevated border border-primary/10 rounded-2xl p-6 shadow-sm">
+        <div className="bg-background-elevated border border-primary/10 rounded-lg p-6 shadow-sm">
           <div className="text-xs text-secondary font-semibold uppercase tracking-wider mb-2">Total Served</div>
           <div className="text-4xl font-serif font-bold">{servedCount}</div>
         </div>
-        <div className="bg-background-elevated border border-primary/10 rounded-2xl p-6 shadow-sm">
+        <div className="bg-background-elevated border border-primary/10 rounded-lg p-6 shadow-sm">
           <div className="text-xs text-secondary font-semibold uppercase tracking-wider mb-2">Gross Revenue</div>
-          <div className="text-4xl font-serif font-bold text-green-600">${mockRevenue.toFixed(2)}</div>
+          <div className="text-4xl font-serif font-bold text-green-600">${grossRevenue.toFixed(2)}</div>
         </div>
       </div>
 
@@ -78,7 +75,7 @@ export default async function AdminDashboard() {
         </h2>
         
         {activeMessage ? (
-          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6 space-y-3">
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-6 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-xs text-primary font-bold uppercase tracking-widest flex items-center gap-2">
                 <span>Now Showing Live</span>
@@ -110,7 +107,7 @@ export default async function AdminDashboard() {
             </div>
           </div>
         ) : (
-          <div className="bg-background-elevated border border-primary/10 rounded-2xl p-8 text-center text-secondary text-sm">
+          <div className="bg-background-elevated border border-primary/10 rounded-lg p-8 text-center text-secondary text-sm">
             No message currently active in the spotlight.
           </div>
         )}
@@ -156,7 +153,7 @@ export default async function AdminDashboard() {
       {/* Category Management */}
       <div>
         <h2 className="text-xl font-serif font-semibold mb-4">Category Configuration</h2>
-        <div className="bg-background-elevated border border-primary/10 rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-background-elevated border border-primary/10 rounded-lg overflow-hidden shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="bg-background-muted/50 border-b border-primary/10 text-secondary text-xs uppercase tracking-wider">
               <tr>

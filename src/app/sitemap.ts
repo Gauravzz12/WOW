@@ -1,13 +1,15 @@
 import { MetadataRoute } from 'next'
 import { createClient } from '@supabase/supabase-js'
+import { SITE_URL } from '@/lib/site'
+import { CATEGORY_METADATA } from '@/lib/constants/templates'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
   )
 
-  const baseUrl = 'https://words.world'
+  const baseUrl = SITE_URL
 
   // Get active or queued messages
   const { data: messages } = await supabase
@@ -24,43 +26,57 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }))
 
-  const categories = [
-    'love', 'proposal', 'celebration', 'confession',
-    'heartbreak', 'gratitude', 'awareness', 'tribute'
-  ]
-
-  const categoryUrls = categories.map(category => ({
-    url: `${baseUrl}/${category}`,
-    lastModified: new Date(),
+  // Category pages live at /category/<slug>; slugs are the keys of
+  // CATEGORY_METADATA (the same taxonomy the create flow uses).
+  const categoryUrls = Object.keys(CATEGORY_METADATA).map((slug) => ({
+    url: `${baseUrl}/category/${slug}`,
     changeFrequency: 'hourly' as const,
     priority: 0.9,
   }))
 
-  return [
+  // Static pages: no lastModified — a fabricated "now" on every request makes
+  // search engines distrust the field. Add real dates here if pages gain
+  // tracked update timestamps.
+  const staticUrls: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
-      lastModified: new Date(),
       changeFrequency: 'always',
       priority: 1,
     },
     {
+      url: `${baseUrl}/create`,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/leaderboard`,
+      changeFrequency: 'hourly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/waiting-room`,
+      changeFrequency: 'hourly',
+      priority: 0.8,
+    },
+    {
       url: `${baseUrl}/about`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
+      changeFrequency: 'weekly',
       priority: 0.7,
     },
     {
       url: `${baseUrl}/content-policy`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
+      changeFrequency: 'weekly',
       priority: 0.7,
     },
     {
       url: `${baseUrl}/guidelines`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
+      changeFrequency: 'weekly',
       priority: 0.7,
     },
+  ]
+
+  return [
+    ...staticUrls,
     ...categoryUrls,
     ...messageUrls,
   ]

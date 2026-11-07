@@ -6,10 +6,11 @@ import { ArrowLeft, Check, Zap, CheckCircle2, Sparkles, ExternalLink, Globe, X, 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createMessage, verifyMessageWithJev } from "./actions";
+import { getDeviceId } from '@/lib/deviceId';
 import { createClient } from '@/lib/supabase/client'
 import { sanitizeHtmlText } from '@/lib/sanitize'
 import { validateContentModeration } from '@/lib/moderation'
-import { getCategoryStyles, resolveCardStyles, resolveThemeSafeTextColor } from '@/lib/utils/colors'
+import { CANONICAL_TEMPLATES, getCategoryStyles, getCategoryHex, resolveCardStyles, resolveThemeSafeTextColor } from '@/lib/utils/colors'
 import { FrameDecorator } from '@/components/FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -34,6 +35,8 @@ import {
   BASE_NORMAL_MINS, 
   MAX_NORMAL_MINS,
   EXTENSION_STEP_MINS,
+  EXTENSION_COST_PER_STEP,
+  MIN_NORMAL_BID,
   SPECIAL_SLOT_PRICE,
   calculateSpecialPrice,
   SPONSORED_PRICE,
@@ -43,6 +46,7 @@ import {
 import {
   ALL_TEMPLATES,
   STANDARD_TEMPLATES,
+  VIP_SPECIAL_TEMPLATES,
   CATEGORY_METADATA,
   Template
 } from '@/lib/constants/templates';
@@ -68,7 +72,7 @@ function CreateMessageContent() {
   const [templatePage, setTemplatePage] = useState(0);
   const [hoveredTemplate, setHoveredTemplate] = useState<string | null>(null);
   const [queueBids, setQueueBids] = useState<number[]>([]);
-  const [normalDuration, setNormalDuration] = useState(60);
+  const [normalDuration, setNormalDuration] = useState(BASE_NORMAL_MINS);
   const [messageHtml, setMessageHtml] = useState("");
   const [messageText, setMessageText] = useState("");
   const [identityType, setIdentityType] = useState("anonymous");
@@ -83,7 +87,11 @@ function CreateMessageContent() {
   const slotParam = searchParams?.get('slot');
   const prefillParam = searchParams?.get('prefill');
 
-  const [bidAmount, setBidAmount] = useState(15);
+  const [bidAmount, setBidAmount] = useState(calculateNormalMinBid(BASE_NORMAL_MINS));
+  // Launch promo (first 500 Normal broadcasts free): status from
+  // /api/promo/status; the toggle is on by default when this device is eligible.
+  const [promoStatus, setPromoStatus] = useState<{ claimed: number; remaining: number; limit: number; deviceUsed: boolean } | null>(null);
+  const [usePromoFree, setUsePromoFree] = useState(true);
   // Delivery tier: Normal (bid queue) · Special (reserved slots) · Sponsored ($3 grid)
   const [tier, setTier] = useState<'normal' | 'special' | 'sponsored'>('normal');
   const isReserved = tier === 'special';
@@ -216,7 +224,7 @@ function CreateMessageContent() {
           .select('bid_amount')
           .eq('status', 'QUEUED')
           .eq('is_reserved_slot', false)
-          .gte('bid_amount', 10);
+          .gte('bid_amount', MIN_NORMAL_BID);
         if (data) {
           setQueueBids(data.map(d => d.bid_amount || 0).sort((a, b) => b - a));
         }
@@ -235,7 +243,31 @@ function CreateMessageContent() {
     }
   }, [step]);
 
-  // Minimum bid is derived from 1 hour base + 10-minute extensions (+$5/10m)
+  // Fetch launch-promo availability when the delivery step is shown for the
+  // Normal tier. Display-only — the create action re-validates server-side.
+  useEffect(() => {
+    if (step === 4 && tier === 'normal') {
+      fetch(`/api/promo/status?deviceId=${encodeURIComponent(getDeviceId())}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data && typeof data.remaining === 'number') setPromoStatus(data);
+        })
+        .catch(() => {});
+    }
+  }, [step, tier]);
+
+  const promoAvailable = !!promoStatus && promoStatus.remaining > 0 && !promoStatus.deviceUsed;
+  const promoOn = tier === 'normal' && promoAvailable && usePromoFree;
+
+  // While the free broadcast is on, duration and bid are locked to the base.
+  useEffect(() => {
+    if (promoOn) {
+      setNormalDuration(BASE_NORMAL_MINS);
+      setBidAmount(calculateNormalMinBid(BASE_NORMAL_MINS));
+    }
+  }, [promoOn]);
+
+  // Minimum bid is derived from 2 hour base + 10-minute extensions (+$2/10m)
   const minBid = calculateNormalMinBid(normalDuration);
 
   const selectedTemplate = ALL_TEMPLATES.find(t => t.id === template) || STANDARD_TEMPLATES[0];
@@ -255,6 +287,60 @@ function CreateMessageContent() {
       // Suggest / unlock special slot automatically when picking a VIP template
       setTier('special');
     }
+  };
+
+  /** Shared Step-3 preview card — used by both the Special stage styles and the classic grid. */
+  const renderTemplateCard = (t: Template) => {
+    const isSelected = template === t.id;
+    // VIP templates render always-dark on stage (CANONICAL_TEMPLATES), in both site
+    // themes. Preview them with the canonical dark bg so the picker shows the true
+    // stage colours — the templates.ts light variant (pale bg) under the canonical
+    // bright text washes out to near-invisible in light theme.
+    const canonical = t.isVip ? CANONICAL_TEMPLATES[t.id] : undefined;
+    const tStyles = resolveCardStyles({ bg: canonical ? canonical.bg : t.bg, textColor: t.textColor, cardBorder: t.cardBorder, isVip: t.isVip || false }, t.id);
+    return (
+      <button
+        key={t.id}
+        type="button"
+        onClick={() => handleSelectTemplate(t)}
+        className="group flex flex-col gap-2 text-left focus:outline-none"
+      >
+        <div
+          className={`w-full aspect-[4/3] rounded-lg p-4 flex flex-col justify-center items-center relative overflow-hidden transition-all duration-200 ${tStyles.bg} ${
+            isSelected
+              ? 'ring-2 ring-primary shadow-lg border-transparent scale-[1.02]'
+              : `${tStyles.cardBorder || 'border border-primary/10 hover:border-primary/30'} shadow-sm hover:shadow`
+          }`}
+        >
+          {/* Accent stripe */}
+          {t.accent && (
+            <div className={`absolute top-0 left-0 right-0 h-1 ${t.accent}`} />
+          )}
+
+          {isSelected && (
+            <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary text-background flex items-center justify-center shadow-md">
+              <Check className="w-3 h-3 stroke-[3]" />
+            </div>
+          )}
+
+          <p
+            className={`text-[10px] leading-snug sm:text-sm sm:leading-relaxed text-center font-medium select-none [overflow-wrap:anywhere] ${t.font} ${tStyles.textColor}`}
+            style={{ color: tStyles.inlineColor !== 'inherit' ? tStyles.inlineColor : undefined }}
+          >
+            &ldquo;{dummyMessage}&rdquo;
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between px-1">
+          <span className={`text-xs font-medium transition-colors ${isSelected ? 'text-primary font-bold' : 'text-secondary group-hover:text-primary'}`}>
+            {t.name}
+          </span>
+          {isSelected && (
+            <span className="text-[10px] uppercase font-bold tracking-wider text-primary">Selected</span>
+          )}
+        </div>
+      </button>
+    );
   };
 
   const handleApplyStarter = (starterText: string) => {
@@ -289,6 +375,8 @@ function CreateMessageContent() {
       bidAmount: isSponsored ? SPONSORED_PRICE : isReserved ? specialPricing.finalPrice : Math.max(bidAmount, minBid),
       isReservedSlot: isReserved,
       isSponsored,
+      usePromoFree: promoOn,
+      deviceId: getDeviceId(),
       styleConfig: JSON.stringify({ 
         html: messageHtml,
         bg: cardStyles.bg,
@@ -321,6 +409,12 @@ function CreateMessageContent() {
 
     if (result.error) {
       toast.error(result.error, { title: 'Submission Error' });
+    } else if ((result as any).promoApplied) {
+      // Launch promo: no checkout — the free broadcast is already queued.
+      toast.success('Your free launch broadcast is in the queue! Paid bids are promoted first, then free broadcasts in order.', {
+        title: 'Free Broadcast Queued'
+      });
+      window.location.href = '/waiting-room';
     } else if (isSponsored) {
       // Sponsored messages have no pay-and-broadcast: they sit in the Waiting
       // Room (PENDING_PAYMENT) until someone else sponsors them for $3.
@@ -391,7 +485,7 @@ function CreateMessageContent() {
     <main className="min-h-screen bg-background text-primary flex flex-col items-center">
       
       {/* Header */}
-      <header className="w-full max-w-2xl flex items-center justify-between p-6 z-20 sticky top-0 bg-background/80 backdrop-blur-md">
+      <header className="w-full max-w-2xl flex items-center justify-between p-6 z-20 sticky top-0 bg-background/80">
         {step === 1 ? (
           <Link href="/">
             <button className="flex items-center gap-2 text-secondary hover:text-primary transition-colors">
@@ -428,7 +522,7 @@ function CreateMessageContent() {
               {categoriesLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[1,2,3,4,5,6].map(i => (
-                    <div key={i} className="w-full h-24 rounded-2xl border border-background-elevated bg-background-elevated/50 animate-pulse" />
+                    <div key={i} className="w-full h-24 rounded-lg border border-background-elevated bg-background-elevated/50 animate-pulse" />
                   ))}
                 </div>
               ) : (
@@ -446,7 +540,7 @@ function CreateMessageContent() {
                           setCategory(cat.slug); 
                           handleNext(); 
                         }}
-                        className={`group relative text-left p-4 rounded-2xl border transition-all duration-200 active:scale-[0.98] flex flex-col justify-between overflow-hidden ${
+                        className={`group relative text-left p-4 rounded-lg border transition-all duration-200 active:scale-[0.98] flex flex-col justify-between overflow-hidden ${
                           isSelected 
                             ? `${bgClass} ${borderClass} ring-2 ring-primary/40 shadow-md` 
                             : 'border-background-elevated hover:border-secondary/40 bg-background-muted hover:bg-background-elevated/60'
@@ -491,7 +585,7 @@ function CreateMessageContent() {
           {step === 2 && (
             <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex flex-col h-full">
               {/* Category Impact Banner */}
-              <div className={`p-4 rounded-2xl border ${catBorder} bg-gradient-to-r ${categoryMeta.gradientAccent} mb-6 flex items-start gap-3.5 shadow-sm`}>
+              <div className={`p-4 rounded-lg border ${catBorder} ${categoryMeta.accentBg} mb-6 flex items-start gap-3.5 shadow-none`}>
                 <span className="text-3xl select-none shrink-0 mt-0.5">{categoryMeta.icon}</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
@@ -551,7 +645,7 @@ function CreateMessageContent() {
 
                 {/* Category-Tailored Fields */}
                 {category === 'promotion' ? (
-                  <div className="p-4 rounded-2xl border border-cyan-500/30 bg-cyan-500/5 space-y-3">
+                  <div className="p-4 rounded-lg border border-cyan-500/30 bg-cyan-500/5 space-y-3">
                     <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 font-bold text-xs uppercase tracking-wider">
                       <Globe size={14} />
                       <span>Brand / Launch Details</span>
@@ -613,7 +707,7 @@ function CreateMessageContent() {
                 {/* Optional link — every category. Shown centered on its own
                     line right after the message on the live card. */}
                 {category !== 'promotion' && (
-                  <div className="p-4 rounded-2xl border border-background-elevated bg-background-muted/40 space-y-3">
+                  <div className="p-4 rounded-lg border border-background-elevated bg-background-muted/40 space-y-3">
                     <div className="flex items-center gap-2 text-secondary font-bold text-xs uppercase tracking-wider">
                       <Globe size={14} />
                       <span>Link (optional)</span>
@@ -699,7 +793,7 @@ function CreateMessageContent() {
                     )}
 
                     {isBlocked && (
-                      <div className="mt-4 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs flex items-start gap-3">
+                      <div className="mt-4 p-3.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs flex items-start gap-3">
                         <ShieldAlert size={18} className="shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
                         <div className="space-y-1">
                           <span className="font-bold block">
@@ -775,19 +869,35 @@ function CreateMessageContent() {
               <div className="mb-6">
                 <span className="text-xs uppercase tracking-widest font-bold text-secondary">Step 3 of 5</span>
                 <h2 className="text-2xl sm:text-3xl font-serif mt-1 mb-2">Select Your Visual Style</h2>
-                <p className="text-secondary text-sm">Pick a classic style.</p>
+                <p className="text-secondary text-sm">{isReserved ? 'Your Special broadcast unlocks the stage styles below.' : 'Pick a classic style.'}</p>
               </div>
+
+              {/* SPECIAL STAGE STYLES — VIP templates, unlocked by the Special tier */}
+              {isReserved && (
+                <div className="mb-8">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-3">
+                    <h3 className="text-xs uppercase tracking-widest font-bold text-secondary">
+                      ✦ Special Stage Styles
+                    </h3>
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-violet-600 dark:text-violet-400">Special only</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    {VIP_SPECIAL_TEMPLATES.map(t => renderTemplateCard(t))}
+                  </div>
+                </div>
+              )}
 
               {/* CLASSIC EDITORIAL TEMPLATES */}
               <div className="mb-8">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-3">
                   <h3 className="text-xs uppercase tracking-widest font-bold text-secondary">
                     Classic Editorial Styles
                   </h3>
                   <button
                     type="button"
                     onClick={() => setTemplatePage(p => (p + 1) % Math.ceil(STANDARD_TEMPLATES.length / 6))}
-                    className="text-xs font-semibold text-primary hover:text-primary/70 bg-background-elevated px-2.5 py-1 rounded-full transition-colors flex items-center gap-1.5 shadow-sm border border-primary/10"
+                    className="shrink-0 text-xs font-semibold text-primary hover:text-primary/70 bg-background-elevated px-2.5 py-1 rounded-full transition-colors flex items-center gap-1.5 shadow-sm border border-primary/10"
                   >
                     More Templates
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 22v-6h6"/></svg>
@@ -795,53 +905,7 @@ function CreateMessageContent() {
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  {STANDARD_TEMPLATES.slice(templatePage * 6, (templatePage + 1) * 6).map(t => {
-                    const isSelected = template === t.id;
-                    const tStyles = resolveCardStyles({ bg: t.bg, textColor: t.textColor, cardBorder: t.cardBorder, isVip: false }, t.id);
-                    return (
-                      <button 
-                        key={t.id}
-                        type="button"
-                        onClick={() => handleSelectTemplate(t)}
-                        className="group flex flex-col gap-2 text-left focus:outline-none"
-                      >
-                        <div 
-                          className={`w-full aspect-[4/3] rounded-2xl p-4 flex flex-col justify-center items-center relative overflow-hidden transition-all duration-200 ${tStyles.bg} ${
-                            isSelected 
-                              ? 'ring-2 ring-primary shadow-lg border-transparent scale-[1.02]' 
-                              : `${tStyles.cardBorder || 'border border-primary/10 hover:border-primary/30'} shadow-sm hover:shadow`
-                          }`}
-                        >
-                          {/* Accent stripe */}
-                          {t.accent && (
-                            <div className={`absolute top-0 left-0 right-0 h-1 ${t.accent}`} />
-                          )}
-
-                          {isSelected && (
-                            <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary text-background flex items-center justify-center shadow-md">
-                              <Check className="w-3 h-3 stroke-[3]" />
-                            </div>
-                          )}
-
-                          <p 
-                            className={`text-xs sm:text-sm leading-relaxed text-center line-clamp-3 font-medium select-none ${t.font} ${tStyles.textColor}`}
-                            style={{ color: tStyles.inlineColor !== 'inherit' ? tStyles.inlineColor : undefined }}
-                          >
-                            &ldquo;{dummyMessage}&rdquo;
-                          </p>
-                        </div>
-
-                        <div className="flex items-center justify-between px-1">
-                          <span className={`text-xs font-medium transition-colors ${isSelected ? 'text-primary font-bold' : 'text-secondary group-hover:text-primary'}`}>
-                            {t.name}
-                          </span>
-                          {isSelected && (
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-primary">Selected</span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
+                  {STANDARD_TEMPLATES.slice(templatePage * 6, (templatePage + 1) * 6).map(t => renderTemplateCard(t))}
                 </div>
               </div>
 
@@ -889,7 +953,7 @@ function CreateMessageContent() {
               
               <div className="space-y-6 mb-8">
                 {/* Standard Queue Option */}
-                <label className={`block p-6 rounded-2xl border cursor-pointer transition-all ${tier === 'normal' ? 'border-primary bg-background-elevated ring-1 ring-primary/30' : 'border-background-elevated hover:border-secondary/50'}`}>
+                <label className={`block p-6 rounded-lg border cursor-pointer transition-all ${tier === 'normal' ? 'border-primary bg-background-elevated ring-1 ring-primary/30' : 'border-background-elevated hover:border-secondary/50'}`}>
                   <div className="flex items-start gap-4">
                     <input type="radio" checked={tier === 'normal'} onChange={() => setTier('normal')} className="mt-1 accent-primary w-4 h-4" />
                     <div className="flex-1">
@@ -898,14 +962,41 @@ function CreateMessageContent() {
                       
                       {tier === 'normal' && (
                         <div className="flex flex-col gap-4 bg-background p-4 rounded-xl border border-background-elevated">
+                          {/* Launch promo — first 500 Normal broadcasts free */}
+                          {promoStatus && !promoStatus.deviceUsed && (
+                            promoStatus.remaining > 0 ? (
+                              <div className="p-3.5 rounded-xl border border-emerald-600/30 bg-emerald-500/10 flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Launch Offer — Free Broadcast</p>
+                                  <p className="text-xs text-secondary mt-1">
+                                    The first {promoStatus.limit} Normal broadcasts are free. {promoStatus.claimed} of {promoStatus.limit} claimed — {promoStatus.remaining} left.
+                                    Free broadcasts run the base {BASE_NORMAL_MINS / 60} hours, and paid bids are promoted ahead of them.
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  aria-checked={usePromoFree}
+                                  aria-label="Use my free broadcast"
+                                  onClick={() => setUsePromoFree(v => !v)}
+                                  className={`shrink-0 w-11 h-6 rounded-full p-0.5 transition-colors ${usePromoFree ? 'bg-emerald-600' : 'bg-primary/20'}`}
+                                >
+                                  <span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${usePromoFree ? 'translate-x-5' : 'translate-x-0'}`} />
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-secondary italic">Launch offer ended — all {promoStatus.limit} free broadcasts have been claimed.</p>
+                            )
+                          )}
+
                           <div className="flex flex-col gap-3">
                             <div className="flex justify-between items-center text-xs">
                               <div>
                                 <span className="font-bold uppercase tracking-wider text-primary">Airtime Duration</span>
-                                <p className="text-[11px] text-secondary">Base 1 hour • Extend up to 2 hours (+$5 per 10 mins)</p>
+                                <p className="text-[11px] text-secondary">Base {BASE_NORMAL_MINS / 60} hours • Extend up to {MAX_NORMAL_MINS / 60} hours (+${EXTENSION_COST_PER_STEP} per 10 mins)</p>
                               </div>
                               <span className="text-xs font-mono font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded">
-                                Min Bid: ${minBid}
+                                {promoOn ? 'FREE — Launch Offer' : `Min Bid: $${minBid}`}
                               </span>
                             </div>
 
@@ -918,6 +1009,9 @@ function CreateMessageContent() {
                                     key={opt.mins}
                                     type="button"
                                     onClick={() => {
+                                      // Changing duration while the free broadcast
+                                      // is on switches this message to paid.
+                                      if (promoOn && opt.mins !== BASE_NORMAL_MINS) setUsePromoFree(false);
                                       setNormalDuration(opt.mins);
                                       setBidAmount(prev => Math.max(prev, opt.minBid));
                                     }}
@@ -939,7 +1033,7 @@ function CreateMessageContent() {
                               <div className="flex items-center gap-2">
                                 <button
                                   type="button"
-                                  disabled={normalDuration <= BASE_NORMAL_MINS}
+                                  disabled={promoOn || normalDuration <= BASE_NORMAL_MINS}
                                   onClick={() => {
                                     const next = Math.max(BASE_NORMAL_MINS, normalDuration - EXTENSION_STEP_MINS);
                                     setNormalDuration(next);
@@ -954,7 +1048,7 @@ function CreateMessageContent() {
                                 </span>
                                 <button
                                   type="button"
-                                  disabled={normalDuration >= MAX_NORMAL_MINS}
+                                  disabled={promoOn || normalDuration >= MAX_NORMAL_MINS}
                                   onClick={() => {
                                     const next = Math.min(MAX_NORMAL_MINS, normalDuration + EXTENSION_STEP_MINS);
                                     setNormalDuration(next);
@@ -967,12 +1061,13 @@ function CreateMessageContent() {
                               </div>
 
                               <span className="text-[11px] text-secondary">
-                                {normalDuration === 60 ? 'Base 1-hour broadcast' : `+${normalDuration - 60}m extension (+$${(normalDuration - 60) / 10 * 5})`}
+                                {normalDuration === BASE_NORMAL_MINS ? `Base ${BASE_NORMAL_MINS / 60}-hour broadcast` : `+${normalDuration - BASE_NORMAL_MINS}m extension (+$${((normalDuration - BASE_NORMAL_MINS) / EXTENSION_STEP_MINS) * EXTENSION_COST_PER_STEP})`}
                               </span>
                             </div>
                           </div>
 
-                          {/* Bid Input & 1-Click Outbid Button */}
+                          {/* Bid Input & 1-Click Outbid Button — replaced by a note while the free broadcast is on */}
+                          {!promoOn ? (
                           <div className="flex flex-col gap-3 pt-3 border-t border-background-elevated">
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium">Your Priority Bid:</span>
@@ -1016,7 +1111,12 @@ function CreateMessageContent() {
                               );
                             })()}
                           </div>
-                          
+                          ) : (
+                            <div className="pt-3 border-t border-background-elevated text-xs text-secondary">
+                              No payment needed — this broadcast is free under the launch offer. It joins the queue at the base bid; paid bids are promoted first.
+                            </div>
+                          )}
+
                           <div className="text-xs text-secondary flex flex-wrap items-center gap-1.5 pt-1">
                             <span className="font-medium text-secondary/80">Top bids in queue: </span>
                             {queueBids.length > 0 ? (
@@ -1035,7 +1135,11 @@ function CreateMessageContent() {
                           </div>
                           <div className="text-xs font-medium text-primary bg-primary/5 p-3 rounded-lg border border-primary/10 flex items-center justify-between">
                             <span>Selected Duration: {Math.floor(normalDuration / 60)}h {normalDuration % 60 > 0 ? `${normalDuration % 60}m` : ''}</span>
-                            <span className="font-bold">Estimated Rank: #{queueBids.filter(b => b >= bidAmount).length + 1}</span>
+                            {promoOn ? (
+                              <span className="font-bold">Free — after paid bids in queue</span>
+                            ) : (
+                              <span className="font-bold">Estimated Rank: #{queueBids.filter(b => b >= bidAmount).length + 1}</span>
+                            )}
                           </div>
                         </div>
                       )}
@@ -1044,7 +1148,7 @@ function CreateMessageContent() {
                 </label>
 
                 {/* ✦ Special option */}
-                <label className={`block p-6 rounded-2xl border cursor-pointer transition-all ${tier === 'special' ? 'border-violet-500/60 bg-violet-500/[0.06] ring-2 ring-violet-500/25 shadow-sm' : 'border-background-elevated hover:border-violet-500/40'}`}>
+                <label className={`block p-6 rounded-lg border cursor-pointer transition-all ${tier === 'special' ? 'border-violet-500/60 bg-violet-500/[0.06] ring-2 ring-violet-500/25 shadow-sm' : 'border-background-elevated hover:border-violet-500/40'}`}>
                   <div className="flex items-start gap-4">
                     <input type="radio" checked={tier === 'special'} onChange={() => setTier('special')} className="mt-1 accent-violet-600 w-4 h-4" />
                     <div className="w-full">
@@ -1069,7 +1173,7 @@ function CreateMessageContent() {
                       </p>
                       
                       <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-violet-500/20 text-xs text-violet-700 dark:text-violet-300">
-                        <span className="font-semibold">✨ Save 20% on 2–3 slots together</span>
+                        <span className="font-semibold">Save 20% on 2–3 slots together</span>
                         <span>•</span>
                         <span>Up to 9 hours</span>
                         <span>•</span>
@@ -1106,7 +1210,7 @@ function CreateMessageContent() {
                 </label>
 
                 {/* ♥ Sponsored option — free post, waits for a $3 community sponsor */}
-                <label className={`block p-6 rounded-2xl border cursor-pointer transition-all ${tier === 'sponsored' ? 'border-blue-500/60 bg-blue-500/[0.06] ring-2 ring-blue-500/25 shadow-sm' : 'border-background-elevated hover:border-blue-500/40'}`}>
+                <label className={`block p-6 rounded-lg border cursor-pointer transition-all ${tier === 'sponsored' ? 'border-blue-500/60 bg-blue-500/[0.06] ring-2 ring-blue-500/25 shadow-sm' : 'border-background-elevated hover:border-blue-500/40'}`}>
                   <div className="flex items-start gap-4">
                     <input type="radio" checked={tier === 'sponsored'} onChange={() => setTier('sponsored')} className="mt-1 accent-blue-600 w-4 h-4" />
                     <div className="w-full">
@@ -1124,7 +1228,7 @@ function CreateMessageContent() {
                       </p>
 
                       <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-blue-500/20 text-xs text-blue-700 dark:text-blue-300">
-                        <span className="font-semibold">✨ No pay-and-broadcast</span>
+                        <span className="font-semibold">No pay-and-broadcast</span>
                         <span>•</span>
                         <span>Waits until sponsored</span>
                         <span>•</span>
@@ -1177,9 +1281,9 @@ function CreateMessageContent() {
               <div 
                 ref={previewCardRef}
                 onClick={() => setSelectedStickerId(null)}
-                className={`w-full max-w-4xl aspect-square md:aspect-video mx-auto border ${cardStyles.cardBorder || 'border-primary/20'} rounded-2xl flex flex-col p-6 md:p-12 relative overflow-hidden shadow-2xl backdrop-blur-md select-none ${cardStyles.bg} ${getFrameClass(frameId || undefined)}`}
+                className={`w-full max-w-4xl aspect-square md:aspect-video mx-auto border ${cardStyles.cardBorder || 'border-primary/20'} rounded-lg flex flex-col p-6 md:p-12 relative overflow-hidden shadow-none select-none ${cardStyles.bg} ${getFrameClass(frameId || undefined)}`}
               >
-                {!isSponsored && <FrameDecorator frameId={frameId || undefined} />}
+                {!isSponsored && <FrameDecorator frameId={frameId || undefined} accentHex={getCategoryHex(category)} />}
 
                 {/* Interactive Draggable & Stretchable Stickers (disabled for Sponsored) */}
                 {!isSponsored && stickers.map(sticker => {
@@ -1194,8 +1298,8 @@ function CreateMessageContent() {
                       }}
                       className={`group absolute select-none leading-none z-30 touch-none transition-transform ${
                         isSelected 
-                          ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-black/50 rounded-2xl p-1 bg-amber-400/20 cursor-grab active:cursor-grabbing scale-105 shadow-xl' 
-                          : 'cursor-grab hover:scale-105 hover:ring-1 hover:ring-amber-400/60 rounded-2xl p-1'
+                          ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-black/50 rounded-lg p-1 bg-amber-400/20 cursor-grab active:cursor-grabbing scale-105 shadow-sm' 
+                          : 'cursor-grab hover:scale-105 hover:ring-1 hover:ring-amber-400/60 rounded-lg p-1'
                       }`}
                       style={{
                         left: `${sticker.x}%`,
@@ -1297,14 +1401,14 @@ function CreateMessageContent() {
 
               {/* ✦ Sticker Decoration Panel directly below Preview Card (not for Sponsored) */}
               {isSponsored ? (
-                <div className="w-full mt-6 p-4 rounded-2xl border border-blue-500/25 bg-blue-500/5 text-center">
+                <div className="w-full mt-6 p-4 rounded-lg border border-blue-500/25 bg-blue-500/5 text-center">
                   <p className="text-xs text-secondary">
                     Stickers aren&apos;t available on Sponsored messages — your card stays clean on the grid.
                   </p>
                 </div>
               ) : (
               <div className="w-full mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 sm:p-5 rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 via-background-elevated/40 to-background-elevated/20 shadow-md flex flex-col">
+                <div className="p-4 sm:p-5 rounded-lg border border-amber-500/30 bg-amber-500/10 shadow-none flex flex-col">
                   <StickerPicker 
                     stickers={stickers} 
                     onChange={setStickers}
@@ -1312,13 +1416,13 @@ function CreateMessageContent() {
                     onSelectId={setSelectedStickerId}
                   />
                 </div>
-                <div className="p-4 sm:p-5 rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 via-background-elevated/40 to-background-elevated/20 shadow-md flex flex-col">
-                  <FramePicker selectedId={frameId} onChange={setFrameId} />
+                <div className="p-4 sm:p-5 rounded-lg border border-amber-500/30 bg-amber-500/10 shadow-none flex flex-col">
+                  <FramePicker selectedId={frameId} onChange={setFrameId} tier={tier} />
                 </div>
               </div>
               )}
 
-              <div className="w-full mt-6 p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 text-xs text-secondary space-y-2">
+              <div className="w-full mt-6 p-4 rounded-lg bg-rose-500/5 border border-rose-500/20 text-xs text-secondary space-y-2">
                 <div className="flex items-center gap-2 font-bold text-primary">
                   <ShieldCheck size={16} className="text-rose-500" />
                   <span>Content Moderation & Strict No-Refund Notice</span>
@@ -1351,7 +1455,7 @@ function CreateMessageContent() {
                   disabled={isSubmitting}
                   className="w-full py-4 bg-primary text-background rounded-full font-medium disabled:opacity-50 transition-opacity"
                 >
-                  {isSubmitting ? 'Submitting...' : isSponsored ? 'Post to Waiting Room' : 'Proceed to Checkout'}
+                  {isSubmitting ? 'Submitting...' : isSponsored ? 'Post to Waiting Room' : promoOn ? 'Queue My Free Broadcast' : 'Proceed to Checkout'}
                 </button>
               </div>
             </motion.div>

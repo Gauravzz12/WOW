@@ -1,23 +1,26 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { runQueueAdvance } from '@/lib/queueAdvance'
 import {
   BASE_NORMAL_MINS,
   MAX_NORMAL_MINS,
+  MIN_NORMAL_BID,
   SPONSORED_PRICE,
   calculateNormalMinBid,
   calculateSpecialPrice,
 } from '@/lib/constants/pricing'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder', {
-  apiVersion: '2026-08-26.dahlia' as any,
-})
+// Fail closed: never fall back to a placeholder key. Lazy so the build
+// stays hermetic — a missing env var surfaces as a 500 on the webhook
+// call itself, not a silently dummy-initialised client.
+function getStripe(): Stripe {
+  const key = process.env.STRIPE_SECRET_KEY
+  if (!key) throw new Error('STRIPE_SECRET_KEY is not configured')
+  return new Stripe(key, { apiVersion: '2026-08-26.dahlia' as any })
+}
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabaseAdmin = getSupabaseAdmin()
 
 /**
  * Recomputes the official price (cents) for a session and rejects mismatches.
@@ -66,7 +69,7 @@ export async function POST(req: Request) {
   let event: Stripe.Event
 
   try {
-    event = stripe.webhooks.constructEvent(
+    event = getStripe().webhooks.constructEvent(
       body,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
@@ -122,7 +125,7 @@ export async function POST(req: Request) {
       console.warn('[Stripe Webhook] Unpaid session completed:', session.id)
       return NextResponse.json({ error: 'Session not paid' }, { status: 400 })
     }
-    // Sponsorship is normal-messages only (mirrors the mock payment path).
+    // Sponsorship is normal-messages only (same rule as the standard checkout path).
     if (isSponsorMode && (message as any).is_reserved_slot) {
       return NextResponse.json({ error: 'Reserved messages cannot be sponsored' }, { status: 400 })
     }
@@ -189,10 +192,23 @@ export async function POST(req: Request) {
         .select('id')
 
       if (msgError || !updatedMsg || updatedMsg.length === 0) {
-        await supabaseAdmin
-          .from('reserved_slots')
-          .update({ status: 'AVAILABLE', message_id: null, bid_amount: 0 })
-          .in('id', targetSlotIds)
+        // PAY-4: a 0-row update can mean a CONCURRENT delivery of this same
+        // event already fulfilled the message (status now QUEUED and the
+        // slots legitimately booked to it). Only roll the slots back when
+        // the message is still unpaid — never free a winner's slots.
+        const { data: current } = await supabaseAdmin
+          .from('messages')
+          .select('status')
+          .eq('id', messageId)
+          .single()
+        if (current?.status === 'PENDING_PAYMENT') {
+          await supabaseAdmin
+            .from('reserved_slots')
+            .update({ status: 'AVAILABLE', message_id: null, bid_amount: 0 })
+            .in('id', targetSlotIds)
+            .eq('status', 'BOOKED')
+            .eq('message_id', messageId)
+        }
         return NextResponse.json({ error: 'Order already processed.' }, { status: 409 })
       }
 
@@ -232,7 +248,7 @@ export async function POST(req: Request) {
         .select('id')
         .eq('status', 'ACTIVE')
         .eq('is_reserved_slot', false)
-        .filter('bid_amount', isSponsorMode ? 'lt' : 'gte', 10)
+        .filter('bid_amount', isSponsorMode ? 'lt' : 'gte', MIN_NORMAL_BID)
 
       const canActivate = isSponsorMode ? (!actives || actives.length < 10) : (!actives || actives.length === 0)
 
@@ -249,7 +265,8 @@ export async function POST(req: Request) {
             .select('id')
             .eq('status', 'QUEUED')
             .eq('is_reserved_slot', false)
-            .gte('bid_amount', 10)
+            .gte('bid_amount', MIN_NORMAL_BID)
+            .order('is_promo_free', { ascending: true })
             .order('bid_amount', { ascending: false })
             .order('created_at', { ascending: true })
             .limit(1)

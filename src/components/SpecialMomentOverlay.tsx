@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
+import { sanitizeHtmlText } from '@/lib/sanitize'
 
 interface SpecialMomentMessage {
   id: string
@@ -45,7 +46,7 @@ export function SpecialMomentOverlay({ message, timeLeft }: SpecialMomentOverlay
           className="fixed inset-0 z-[100] flex items-center justify-center"
         >
           {/* Backdrop blur */}
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-xl" />
+          <div className="absolute inset-0 bg-black/70" />
 
 
 
@@ -55,7 +56,7 @@ export function SpecialMomentOverlay({ message, timeLeft }: SpecialMomentOverlay
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.9, y: -20 }}
             transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-            className={`relative w-[90vw] max-w-2xl min-h-[50vh] flex flex-col border-2 ${cardBorder || message?.style_config?.cardBorder || borderClass} rounded-3xl p-10 md:p-16 text-center shadow-2xl ${bg || 'bg-background-elevated/60'} backdrop-blur-2xl overflow-hidden`}
+            className={`relative w-[90vw] max-w-2xl min-h-[50vh] flex flex-col border-2 ${cardBorder || message?.style_config?.cardBorder || borderClass} rounded-lg p-10 md:p-16 text-center shadow-none ${bg || 'bg-background-elevated/60'} overflow-hidden`}
           >
             {/* Stickers */}
             {Array.isArray(message?.style_config?.stickers) && message!.style_config.stickers.map((sticker: any) => (
@@ -75,8 +76,8 @@ export function SpecialMomentOverlay({ message, timeLeft }: SpecialMomentOverlay
               </span>
             ))}
             {/* Animated border shimmer */}
-            <div className={`absolute inset-0 rounded-3xl pointer-events-none`}>
-              <div className={`absolute inset-0 rounded-3xl opacity-30 blur-sm ${glowColor} animate-pulse`} 
+            <div className={`absolute inset-0 rounded-lg pointer-events-none`}>
+              <div className={`absolute inset-0 rounded-lg opacity-30 blur-sm ${glowColor} animate-pulse`} 
                 style={{ boxShadow: 'inset 0 0 60px 20px currentColor' }} />
             </div>
 
@@ -87,7 +88,7 @@ export function SpecialMomentOverlay({ message, timeLeft }: SpecialMomentOverlay
               transition={{ delay: 0.5 }}
               className="flex flex-col items-center gap-2 mb-8"
             >
-              <div className={`px-4 py-1 rounded-full text-xs uppercase tracking-[0.3em] font-bold border shadow-sm backdrop-blur-md ${isVip ? 'bg-amber-400/20 border-amber-400/40 text-amber-300' : badgeClass}`}>
+              <div className={`px-4 py-1 rounded-full text-xs uppercase tracking-[0.3em] font-bold border shadow-sm ${isVip ? 'bg-amber-400/20 border-amber-400/40 text-amber-300' : badgeClass}`}>
                 {message?.style_config?.vipBadge || '✦ Special Moment ✦'}
               </div>
               <div className={`text-[10px] uppercase tracking-widest font-semibold ${isDarkCard ? 'text-white/70' : 'text-secondary/80'}`}>
@@ -109,7 +110,7 @@ export function SpecialMomentOverlay({ message, timeLeft }: SpecialMomentOverlay
                       (message!.content?.length || 0) > 300 ? 'text-xl md:text-3xl' : 'text-3xl md:text-5xl'
                     }`}
                     style={{ color: inlineColor }}
-                    dangerouslySetInnerHTML={{ __html: message.style_config.html }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtmlText(message.style_config.html) }}
                   />
                 ) : (
                   <p className={`leading-relaxed text-balance ${textColor} ${message?.style_config?.font || 'font-serif italic'} ${
