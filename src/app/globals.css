@@ -115,13 +115,7 @@ textarea:disabled,
   background: rgba(128,128,128,0.5);
 }
 
-/* Fade-out mask at the bottom of scrollable containers */
-.mask-image-bottom {
-  -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
-  mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
-}
-
-/* ── Special spotlight motion (flat colors only, no gradients) ── */
+/* ── Special spotlight motion (flat colors only) ── */
 @keyframes special-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
@@ -140,10 +134,6 @@ textarea:disabled,
   90% { opacity: 1; }
   100% { left: 98%; opacity: 0; }
 }
-@keyframes special-glow {
-  0%, 100% { box-shadow: none; }
-  50% { box-shadow: none; }
-}
 .special-float { animation: special-float 7s ease-in-out infinite; }
 .special-twinkle { animation: special-twinkle 4s ease-in-out infinite; }
 .special-eq-bar {
@@ -151,14 +141,12 @@ textarea:disabled,
   transform-origin: bottom;
 }
 .special-sweep-dot { animation: special-sweep 5s ease-in-out infinite; }
-.special-glow { animation: special-glow 5s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   .special-float,
   .special-twinkle,
   .special-eq-bar,
-  .special-sweep-dot,
-  .special-glow {
+  .special-sweep-dot {
     animation: none !important;
   }
 }
@@ -244,12 +232,8 @@ html.dark .tiptap [style*="color: black"] {
 /* Postage Stamp — repeating dot pattern edge */
 .frame-postage-stamp {
   border: none !important;
-  background-image:
-    radial-gradient(circle at 50% 0%, transparent 5px, currentColor 5px, currentColor 6px, transparent 6px),
-    radial-gradient(circle at 50% 100%, transparent 5px, currentColor 5px, currentColor 6px, transparent 6px),
-    radial-gradient(circle at 0% 50%, transparent 5px, currentColor 5px, currentColor 6px, transparent 6px),
-    radial-gradient(circle at 100% 50%, transparent 5px, currentColor 5px, currentColor 6px, transparent 6px);
-  background-size: 14px 100%, 14px 100%, 100% 14px, 100% 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Ccircle cx='7' cy='7' r='5.5' fill='none' stroke='%23888888' stroke-opacity='0.55'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Ccircle cx='7' cy='7' r='5.5' fill='none' stroke='%23888888' stroke-opacity='0.55'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Ccircle cx='7' cy='7' r='5.5' fill='none' stroke='%23888888' stroke-opacity='0.55'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Ccircle cx='7' cy='7' r='5.5' fill='none' stroke='%23888888' stroke-opacity='0.55'/%3E%3C/svg%3E");
+  background-size: 14px 14px, 14px 14px, 14px 14px, 14px 14px;
   background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
   background-position: top, bottom, left, right;
   opacity: 1;

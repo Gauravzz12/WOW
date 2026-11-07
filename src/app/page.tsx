@@ -127,6 +127,7 @@ export default async function Home() {
           initialSpecialQueue={specialQueue || []}
           initialSponsoredQueue={sponsoredQueue || []}
           initialLeaderboardQueue={leaderboardQueue || []}
+          allowMock={process.env.ALLOW_MOCK_PAYMENTS === 'true'}
         />
       </Suspense>
     </main>
