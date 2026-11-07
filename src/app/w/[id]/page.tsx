@@ -326,7 +326,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
             )}
           </div>
           
-          <h1 className={`${textSizeClass} ${fontStyle} leading-relaxed mb-6 ${textColor}`} style={{ color: inlineColor }}>
+          <h1 className={`${textSizeClass} ${fontStyle} leading-relaxed [overflow-wrap:anywhere] mb-6 ${textColor}`} style={{ color: inlineColor }}>
             &quot;{message.content}&quot;
           </h1>
 
