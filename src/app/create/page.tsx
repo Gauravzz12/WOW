@@ -391,7 +391,7 @@ function CreateMessageContent() {
     <main className="min-h-screen bg-background text-primary flex flex-col items-center">
       
       {/* Header */}
-      <header className="w-full max-w-2xl flex items-center justify-between p-6 z-20 sticky top-0 bg-background/80 backdrop-blur-md">
+      <header className="w-full max-w-2xl flex items-center justify-between p-6 z-20 sticky top-0 bg-background/80">
         {step === 1 ? (
           <Link href="/">
             <button className="flex items-center gap-2 text-secondary hover:text-primary transition-colors">
@@ -428,7 +428,7 @@ function CreateMessageContent() {
               {categoriesLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[1,2,3,4,5,6].map(i => (
-                    <div key={i} className="w-full h-24 rounded-2xl border border-background-elevated bg-background-elevated/50 animate-pulse" />
+                    <div key={i} className="w-full h-24 rounded-lg border border-background-elevated bg-background-elevated/50 animate-pulse" />
                   ))}
                 </div>
               ) : (
@@ -446,7 +446,7 @@ function CreateMessageContent() {
                           setCategory(cat.slug); 
                           handleNext(); 
                         }}
-                        className={`group relative text-left p-4 rounded-2xl border transition-all duration-200 active:scale-[0.98] flex flex-col justify-between overflow-hidden ${
+                        className={`group relative text-left p-4 rounded-lg border transition-all duration-200 active:scale-[0.98] flex flex-col justify-between overflow-hidden ${
                           isSelected 
                             ? `${bgClass} ${borderClass} ring-2 ring-primary/40 shadow-md` 
                             : 'border-background-elevated hover:border-secondary/40 bg-background-muted hover:bg-background-elevated/60'
@@ -491,7 +491,7 @@ function CreateMessageContent() {
           {step === 2 && (
             <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex flex-col h-full">
               {/* Category Impact Banner */}
-              <div className={`p-4 rounded-2xl border ${catBorder} bg-gradient-to-r ${categoryMeta.gradientAccent} mb-6 flex items-start gap-3.5 shadow-sm`}>
+              <div className={`p-4 rounded-lg border ${catBorder} ${categoryMeta.accentBg} mb-6 flex items-start gap-3.5 shadow-none`}>
                 <span className="text-3xl select-none shrink-0 mt-0.5">{categoryMeta.icon}</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
@@ -551,7 +551,7 @@ function CreateMessageContent() {
 
                 {/* Category-Tailored Fields */}
                 {category === 'promotion' ? (
-                  <div className="p-4 rounded-2xl border border-cyan-500/30 bg-cyan-500/5 space-y-3">
+                  <div className="p-4 rounded-lg border border-cyan-500/30 bg-cyan-500/5 space-y-3">
                     <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 font-bold text-xs uppercase tracking-wider">
                       <Globe size={14} />
                       <span>Brand / Launch Details</span>
@@ -613,7 +613,7 @@ function CreateMessageContent() {
                 {/* Optional link — every category. Shown centered on its own
                     line right after the message on the live card. */}
                 {category !== 'promotion' && (
-                  <div className="p-4 rounded-2xl border border-background-elevated bg-background-muted/40 space-y-3">
+                  <div className="p-4 rounded-lg border border-background-elevated bg-background-muted/40 space-y-3">
                     <div className="flex items-center gap-2 text-secondary font-bold text-xs uppercase tracking-wider">
                       <Globe size={14} />
                       <span>Link (optional)</span>
@@ -699,7 +699,7 @@ function CreateMessageContent() {
                     )}
 
                     {isBlocked && (
-                      <div className="mt-4 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs flex items-start gap-3">
+                      <div className="mt-4 p-3.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs flex items-start gap-3">
                         <ShieldAlert size={18} className="shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
                         <div className="space-y-1">
                           <span className="font-bold block">
@@ -806,7 +806,7 @@ function CreateMessageContent() {
                         className="group flex flex-col gap-2 text-left focus:outline-none"
                       >
                         <div 
-                          className={`w-full aspect-[4/3] rounded-2xl p-4 flex flex-col justify-center items-center relative overflow-hidden transition-all duration-200 ${tStyles.bg} ${
+                          className={`w-full aspect-[4/3] rounded-lg p-4 flex flex-col justify-center items-center relative overflow-hidden transition-all duration-200 ${tStyles.bg} ${
                             isSelected 
                               ? 'ring-2 ring-primary shadow-lg border-transparent scale-[1.02]' 
                               : `${tStyles.cardBorder || 'border border-primary/10 hover:border-primary/30'} shadow-sm hover:shadow`
@@ -889,7 +889,7 @@ function CreateMessageContent() {
               
               <div className="space-y-6 mb-8">
                 {/* Standard Queue Option */}
-                <label className={`block p-6 rounded-2xl border cursor-pointer transition-all ${tier === 'normal' ? 'border-primary bg-background-elevated ring-1 ring-primary/30' : 'border-background-elevated hover:border-secondary/50'}`}>
+                <label className={`block p-6 rounded-lg border cursor-pointer transition-all ${tier === 'normal' ? 'border-primary bg-background-elevated ring-1 ring-primary/30' : 'border-background-elevated hover:border-secondary/50'}`}>
                   <div className="flex items-start gap-4">
                     <input type="radio" checked={tier === 'normal'} onChange={() => setTier('normal')} className="mt-1 accent-primary w-4 h-4" />
                     <div className="flex-1">
@@ -1044,7 +1044,7 @@ function CreateMessageContent() {
                 </label>
 
                 {/* ✦ Special option */}
-                <label className={`block p-6 rounded-2xl border cursor-pointer transition-all ${tier === 'special' ? 'border-violet-500/60 bg-violet-500/[0.06] ring-2 ring-violet-500/25 shadow-sm' : 'border-background-elevated hover:border-violet-500/40'}`}>
+                <label className={`block p-6 rounded-lg border cursor-pointer transition-all ${tier === 'special' ? 'border-violet-500/60 bg-violet-500/[0.06] ring-2 ring-violet-500/25 shadow-sm' : 'border-background-elevated hover:border-violet-500/40'}`}>
                   <div className="flex items-start gap-4">
                     <input type="radio" checked={tier === 'special'} onChange={() => setTier('special')} className="mt-1 accent-violet-600 w-4 h-4" />
                     <div className="w-full">
@@ -1069,7 +1069,7 @@ function CreateMessageContent() {
                       </p>
                       
                       <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-violet-500/20 text-xs text-violet-700 dark:text-violet-300">
-                        <span className="font-semibold">✨ Save 20% on 2–3 slots together</span>
+                        <span className="font-semibold">Save 20% on 2–3 slots together</span>
                         <span>•</span>
                         <span>Up to 9 hours</span>
                         <span>•</span>
@@ -1106,7 +1106,7 @@ function CreateMessageContent() {
                 </label>
 
                 {/* ♥ Sponsored option — free post, waits for a $3 community sponsor */}
-                <label className={`block p-6 rounded-2xl border cursor-pointer transition-all ${tier === 'sponsored' ? 'border-blue-500/60 bg-blue-500/[0.06] ring-2 ring-blue-500/25 shadow-sm' : 'border-background-elevated hover:border-blue-500/40'}`}>
+                <label className={`block p-6 rounded-lg border cursor-pointer transition-all ${tier === 'sponsored' ? 'border-blue-500/60 bg-blue-500/[0.06] ring-2 ring-blue-500/25 shadow-sm' : 'border-background-elevated hover:border-blue-500/40'}`}>
                   <div className="flex items-start gap-4">
                     <input type="radio" checked={tier === 'sponsored'} onChange={() => setTier('sponsored')} className="mt-1 accent-blue-600 w-4 h-4" />
                     <div className="w-full">
@@ -1124,7 +1124,7 @@ function CreateMessageContent() {
                       </p>
 
                       <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-blue-500/20 text-xs text-blue-700 dark:text-blue-300">
-                        <span className="font-semibold">✨ No pay-and-broadcast</span>
+                        <span className="font-semibold">No pay-and-broadcast</span>
                         <span>•</span>
                         <span>Waits until sponsored</span>
                         <span>•</span>
@@ -1177,7 +1177,7 @@ function CreateMessageContent() {
               <div 
                 ref={previewCardRef}
                 onClick={() => setSelectedStickerId(null)}
-                className={`w-full max-w-4xl aspect-square md:aspect-video mx-auto border ${cardStyles.cardBorder || 'border-primary/20'} rounded-2xl flex flex-col p-6 md:p-12 relative overflow-hidden shadow-2xl backdrop-blur-md select-none ${cardStyles.bg} ${getFrameClass(frameId || undefined)}`}
+                className={`w-full max-w-4xl aspect-square md:aspect-video mx-auto border ${cardStyles.cardBorder || 'border-primary/20'} rounded-lg flex flex-col p-6 md:p-12 relative overflow-hidden shadow-none select-none ${cardStyles.bg} ${getFrameClass(frameId || undefined)}`}
               >
                 {!isSponsored && <FrameDecorator frameId={frameId || undefined} />}
 
@@ -1194,8 +1194,8 @@ function CreateMessageContent() {
                       }}
                       className={`group absolute select-none leading-none z-30 touch-none transition-transform ${
                         isSelected 
-                          ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-black/50 rounded-2xl p-1 bg-amber-400/20 cursor-grab active:cursor-grabbing scale-105 shadow-xl' 
-                          : 'cursor-grab hover:scale-105 hover:ring-1 hover:ring-amber-400/60 rounded-2xl p-1'
+                          ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-black/50 rounded-lg p-1 bg-amber-400/20 cursor-grab active:cursor-grabbing scale-105 shadow-sm' 
+                          : 'cursor-grab hover:scale-105 hover:ring-1 hover:ring-amber-400/60 rounded-lg p-1'
                       }`}
                       style={{
                         left: `${sticker.x}%`,
@@ -1297,14 +1297,14 @@ function CreateMessageContent() {
 
               {/* ✦ Sticker Decoration Panel directly below Preview Card (not for Sponsored) */}
               {isSponsored ? (
-                <div className="w-full mt-6 p-4 rounded-2xl border border-blue-500/25 bg-blue-500/5 text-center">
+                <div className="w-full mt-6 p-4 rounded-lg border border-blue-500/25 bg-blue-500/5 text-center">
                   <p className="text-xs text-secondary">
                     Stickers aren&apos;t available on Sponsored messages — your card stays clean on the grid.
                   </p>
                 </div>
               ) : (
               <div className="w-full mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 sm:p-5 rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 via-background-elevated/40 to-background-elevated/20 shadow-md flex flex-col">
+                <div className="p-4 sm:p-5 rounded-lg border border-amber-500/30 bg-amber-500/10 shadow-none flex flex-col">
                   <StickerPicker 
                     stickers={stickers} 
                     onChange={setStickers}
@@ -1312,13 +1312,13 @@ function CreateMessageContent() {
                     onSelectId={setSelectedStickerId}
                   />
                 </div>
-                <div className="p-4 sm:p-5 rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 via-background-elevated/40 to-background-elevated/20 shadow-md flex flex-col">
+                <div className="p-4 sm:p-5 rounded-lg border border-amber-500/30 bg-amber-500/10 shadow-none flex flex-col">
                   <FramePicker selectedId={frameId} onChange={setFrameId} />
                 </div>
               </div>
               )}
 
-              <div className="w-full mt-6 p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 text-xs text-secondary space-y-2">
+              <div className="w-full mt-6 p-4 rounded-lg bg-rose-500/5 border border-rose-500/20 text-xs text-secondary space-y-2">
                 <div className="flex items-center gap-2 font-bold text-primary">
                   <ShieldCheck size={16} className="text-rose-500" />
                   <span>Content Moderation & Strict No-Refund Notice</span>
