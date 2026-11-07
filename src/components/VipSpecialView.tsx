@@ -29,6 +29,7 @@ import { InlineInteractions } from './InlineInteractions'
 import { FullscreenMessage } from './MessageFullscreen'
 import { FrameDecorator } from './FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
+import { sanitizeHtmlText } from '@/lib/sanitize'
 
 export interface VipSpecialViewProps {
   activeSpecialMsg: any | null
@@ -288,12 +289,6 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
 
   return (
     <div className="w-full flex flex-col items-center max-w-5xl mx-auto px-4 sm:px-6 space-y-10 py-6 font-sans relative">
-      {/* Special ambience — soft violet + gold glow, distinct from Normal's neutral feed */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-[36rem] h-[16rem] rounded-full bg-violet-500/[0.10] dark:bg-violet-500/[0.14] blur-3xl" />
-        <div className="absolute top-40 -left-24 w-72 h-72 rounded-full bg-fuchsia-500/[0.07] dark:bg-fuchsia-500/[0.10] blur-3xl" />
-        <div className="absolute top-40 -right-24 w-72 h-72 rounded-full bg-amber-400/[0.07] dark:bg-amber-400/[0.10] blur-3xl" />
-      </div>
 
       {/* ── 1. HEADER (supporting role — the live message below is the hero) ── */}
       <motion.header
@@ -304,7 +299,7 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
       >
         {/* Eyebrow badge */}
         <div className="inline-flex items-center justify-center gap-2.5 px-4 py-1 border border-violet-500/30 rounded-full font-mono text-[11px] tracking-[0.2em] uppercase text-secondary bg-violet-500/[0.08]">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)]" />
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
           <span>Special spotlight &middot; <span className="text-amber-600 dark:text-amber-300 font-semibold">$30 for 3 hours</span></span>
           <span className="text-secondary/40">/</span>
           <span suppressHydrationWarning className="text-primary font-semibold">
@@ -365,13 +360,13 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className={`special-glow w-full ${msgBg} border ${msgBorder || 'border-violet-500/30'} ring-1 ring-violet-500/20 rounded-2xl px-6 py-9 sm:px-10 sm:py-12 md:px-14 md:py-14 shadow-sm text-primary relative overflow-hidden flex flex-col justify-between ${getFrameClass(activeSpecialMsg.style_config?.frameId)}`}
+            className={`w-full ${msgBg} border ${msgBorder || 'border-violet-500/30'} ring-1 ring-violet-500/20 rounded-lg px-6 py-9 sm:px-10 sm:py-12 md:px-14 md:py-14 shadow-sm text-primary relative overflow-hidden flex flex-col justify-between ${getFrameClass(activeSpecialMsg.style_config?.frameId)}`}
           >
             <FrameDecorator frameId={activeSpecialMsg.style_config?.frameId} />
 
-            {/* Solid gold hairline with a traveling light dot — premium marker, no gradient */}
+            {/* Solid gold hairline with a traveling light dot — premium marker */}
             <span aria-hidden="true" className="absolute top-0 left-10 right-10 h-[2px] bg-amber-400/70">
-              <span className="special-sweep-dot absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-amber-300 shadow-[0_0_10px_rgba(252,211,77,1)]" />
+              <span className="special-sweep-dot absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-amber-300" />
             </span>
 
             {/* Floating sparkle SVGs — flat accent shapes that drift and twinkle */}
@@ -440,7 +435,7 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
                     color: inlineColor,
                     textShadow: isDarkCard ? '0 2px 24px rgba(0,0,0,0.5)' : 'none',
                   }}
-                  dangerouslySetInnerHTML={{ __html: activeSpecialMsg.style_config.html }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtmlText(activeSpecialMsg.style_config.html) }}
                 />
               ) : (
                 <blockquote
@@ -541,7 +536,7 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="w-full bg-[#FAF8F5] dark:bg-[#0E0E10] border border-violet-500/30 rounded-2xl p-10 sm:p-14 md:p-18 text-center text-primary relative overflow-hidden flex flex-col items-center shadow-sm"
+            className="w-full bg-[#FAF8F5] dark:bg-[#0E0E10] border border-violet-500/30 rounded-lg p-10 sm:p-14 md:p-18 text-center text-primary relative overflow-hidden flex flex-col items-center shadow-sm"
           >
             <span aria-hidden="true" className="absolute top-0 left-8 right-8 h-[2px] bg-amber-400" />
             {/* Corner marks */}
@@ -596,7 +591,7 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
             exit={{ opacity: 0, height: 0 }}
             className="w-full overflow-hidden"
           >
-            <div className="w-full bg-background-elevated border border-violet-500/25 rounded-2xl p-6 sm:p-8 space-y-6 shadow-sm">
+            <div className="w-full bg-background-elevated border border-violet-500/25 rounded-lg p-6 sm:p-8 space-y-6 shadow-sm">
               <div className="flex items-center justify-between border-b border-violet-500/15 pb-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 font-mono text-xs text-violet-600 dark:text-violet-300 font-semibold uppercase tracking-wider">
@@ -737,7 +732,7 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
 
         {activeTabMode === 'ASTROLABE' ? (
           /* ── SLOT GLOBE ── */
-          <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-background-elevated border border-violet-500/25 rounded-2xl p-6 sm:p-10 shadow-sm">
+          <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-background-elevated border border-violet-500/25 rounded-lg p-6 sm:p-10 shadow-sm">
             
             {/* Left: The Astrolabe Interactive SVG */}
             <div className="lg:col-span-7 flex flex-col items-center justify-center relative">
@@ -925,7 +920,7 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
                     {selectedQuadrantMeta.title}
                   </h3>
                   <div className="text-xs font-mono text-secondary mt-1">
-                    {selectedSlotDef.label} UTC
+                    {selectedSlotDef.label}
                   </div>
                 </div>
 
@@ -1022,7 +1017,7 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
                   onClick={() => setSelectedSlotNumber(def.slotNumber)}
                   className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between min-h-[160px] ${
                     isLive 
-                      ? 'border-violet-500 bg-violet-500/10 shadow-[0_0_24px_rgba(139,92,246,0.25)] ring-1 ring-violet-500' 
+                      ? 'border-violet-500 bg-violet-500/10 ring-1 ring-violet-500' 
                       : booked 
                       ? 'border-primary/20 bg-background-elevated' 
                       : 'border-violet-500/20 bg-background hover:border-violet-500/50 hover:bg-violet-500/[0.04]'

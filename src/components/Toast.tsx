@@ -124,7 +124,7 @@ function ToastCard({ toastItem, onDismiss }: { toastItem: ToastItem; onDismiss: 
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 40, scale: 0.95 }}
       transition={{ type: 'spring', damping: 22, stiffness: 300 }}
-      className={`pointer-events-auto flex items-start gap-3 w-full min-w-[260px] p-4 rounded-2xl bg-background-elevated/95 backdrop-blur-xl border ${borders[toastItem.type]} ${glows[toastItem.type]} shadow-2xl text-primary`}
+      className={`pointer-events-auto flex items-start gap-3 w-full min-w-[260px] p-4 rounded-lg bg-background-elevated/95 border ${borders[toastItem.type]} ${glows[toastItem.type]} shadow-none text-primary`}
     >
       {icons[toastItem.type]}
       <div className="flex-1 min-w-0 pr-1">

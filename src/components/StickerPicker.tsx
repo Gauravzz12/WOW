@@ -282,7 +282,7 @@ export function StickerPicker({
       </div>
 
       {/* Scrollable Sticker Grid */}
-      <div className="relative border border-primary/10 rounded-2xl p-2.5 bg-background-muted/40">
+      <div className="relative border border-primary/10 rounded-lg p-2.5 bg-background-muted/40">
         <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 max-h-52 overflow-y-auto custom-scrollbar pr-1">
           {currentStickers.map(({ emoji, label }) => {
             const alreadyPlaced = stickers.some(s => s.emoji === emoji)
