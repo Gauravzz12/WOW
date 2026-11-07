@@ -23,23 +23,23 @@ async function runTests() {
   // 1. Check Pricing Constants & Formulas
   console.log('Test 1: Normal Duration & Pricing Logic')
   function calculateNormalMinBid(mins) {
-    const BASE_NORMAL_MINS = 60
+    const BASE_NORMAL_MINS = 120
     const EXTENSION_STEP_MINS = 10
-    const EXTENSION_COST_PER_STEP = 5
-    const BASE_NORMAL_PRICE = 15
+    const EXTENSION_COST_PER_STEP = 2
+    const BASE_NORMAL_PRICE = 5
     const extraMins = Math.max(0, mins - BASE_NORMAL_MINS)
     const steps = Math.ceil(extraMins / EXTENSION_STEP_MINS)
     return BASE_NORMAL_PRICE + (steps * EXTENSION_COST_PER_STEP)
   }
 
   const normalExpectations = [
-    { mins: 60, expected: 15 },
-    { mins: 70, expected: 20 },
-    { mins: 80, expected: 25 },
-    { mins: 90, expected: 30 },
-    { mins: 100, expected: 35 },
-    { mins: 110, expected: 40 },
-    { mins: 120, expected: 45 },
+    { mins: 120, expected: 5 },
+    { mins: 130, expected: 7 },
+    { mins: 140, expected: 9 },
+    { mins: 150, expected: 11 },
+    { mins: 160, expected: 13 },
+    { mins: 170, expected: 15 },
+    { mins: 180, expected: 17 },
   ]
   for (const { mins, expected } of normalExpectations) {
     const actual = calculateNormalMinBid(mins)
