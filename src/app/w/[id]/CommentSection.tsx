@@ -108,7 +108,7 @@ export function CommentSection({ messageId }: { messageId: string }) {
   }
 
   return (
-    <div className="flex flex-col h-[500px] bg-background-elevated border border-primary/10 rounded-2xl overflow-hidden">
+    <div className="flex flex-col h-[500px] bg-background-elevated border border-primary/10 rounded-lg overflow-hidden">
 
       {/* Comments List */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
