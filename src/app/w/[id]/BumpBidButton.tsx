@@ -6,12 +6,10 @@ import { BumpBidModal } from '@/components/BumpBidModal'
 
 export function BumpBidButton({
   messageId,
-  currentBid,
-  allowMock = false
+  currentBid
 }: {
   messageId: string
   currentBid: number
-  allowMock?: boolean
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
@@ -32,7 +30,6 @@ export function BumpBidButton({
       </div>
 
       <BumpBidModal
-        allowMock={allowMock}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />

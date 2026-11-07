@@ -13,13 +13,14 @@ import {
   verifySponsorEditToken,
 } from '@/lib/sponsorToken'
 import { ShareMenu } from '@/components/ShareMenu'
-import { getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
+import { getCategoryHex, getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { getSponsoredTeaser } from '@/lib/masking'
 import { FullscreenMessage } from '@/components/MessageFullscreen'
 import { FrameDecorator } from '@/components/FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
 import { BumpBidButton } from './BumpBidButton'
 import { SITE_URL } from '@/lib/site'
+import { MIN_NORMAL_BID } from '@/lib/constants/pricing'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -246,7 +247,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
   const isShoutoutLocked = Boolean((message.style_config as any)?.shoutoutLocked)
   const canEditShoutout =
     !(message as any).is_reserved_slot &&
-    ((message as any).bid_amount ?? 0) < 10 &&
+    ((message as any).bid_amount ?? 0) < MIN_NORMAL_BID &&
     !isShoutoutLocked &&
     isSponsorTokenValid
   
@@ -304,7 +305,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
         
         {/* Message Presentation */}
         <div className={`${bg || 'bg-background-elevated'} border ${cardBorder || message.style_config?.cardBorder || borderColor} rounded-lg p-6 sm:p-10 md:p-12 text-center shadow-md relative overflow-hidden transition-colors ${getFrameClass(message.style_config?.frameId)}`}>
-          <FrameDecorator frameId={message.style_config?.frameId} />
+          <FrameDecorator frameId={message.style_config?.frameId} accentHex={getCategoryHex(categorySlug)} />
 
           {message.status === 'ACTIVE' && (
             <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-600 text-[11px] font-bold uppercase tracking-wider rounded-full">
@@ -373,7 +374,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
 
           {currentRank !== null && (
             <div className="mb-6 max-w-xl mx-auto text-left">
-              <BumpBidButton messageId={message.id} currentBid={(message as any).bid_amount} allowMock={process.env.ALLOW_MOCK_PAYMENTS === 'true'} />
+              <BumpBidButton messageId={message.id} currentBid={(message as any).bid_amount} />
             </div>
           )}
           
