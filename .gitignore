@@ -36,3 +36,6 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# Local security runbooks (may reference key material)
+supabase-key-rotation-runbook.md
