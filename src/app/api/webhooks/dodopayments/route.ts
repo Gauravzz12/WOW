@@ -5,10 +5,18 @@ import DodoPayments from 'dodopayments'
 
 const supabaseAdmin = getSupabaseAdmin()
 
-const dodoClient = new DodoPayments({
-  bearerToken: process.env.DODO_PAYMENTS_API_KEY,
-  webhookKey: process.env.DODO_PAYMENTS_WEBHOOK_SECRET,
-})
+// Lazy: constructing the SDK at module scope can throw while `next build`
+// imports the route to collect page data (e.g. with no env vars set).
+let _dodoClient: DodoPayments | null = null
+function getDodoClient(): DodoPayments {
+  if (!_dodoClient) {
+    _dodoClient = new DodoPayments({
+      bearerToken: process.env.DODO_PAYMENTS_API_KEY,
+      webhookKey: process.env.DODO_PAYMENTS_WEBHOOK_SECRET,
+    })
+  }
+  return _dodoClient
+}
 
 export async function POST(req: Request) {
   const payload = await req.text();
@@ -16,7 +24,7 @@ export async function POST(req: Request) {
 
   let event: any;
   try {
-    event = dodoClient.webhooks.unwrap(payload, { headers });
+    event = getDodoClient().webhooks.unwrap(payload, { headers });
   } catch (err: any) {
     console.error('DodoPayments Webhook signature verification failed.', err.message);
     return NextResponse.json({ error: 'Webhook signature verification failed.' }, { status: 400 })
