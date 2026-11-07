@@ -46,7 +46,7 @@ export default async function CheckoutPage({
             <span>Back to World</span>
           </Link>
         </div>
-        <div className="max-w-md w-full bg-background-elevated border border-primary/10 rounded-3xl p-8 shadow-2xl text-center">
+        <div className="max-w-md w-full bg-background-elevated border border-primary/10 rounded-lg p-8 shadow-none text-center">
           <h1 className="text-2xl font-serif">Special messages can&apos;t be sponsored</h1>
           <p className="text-sm text-secondary mt-2">
             This is a ✦ Special (VIP) message with a reserved time slot. Sponsorship is only for normal community messages — the owner completes payment for specials.
@@ -82,7 +82,7 @@ export default async function CheckoutPage({
         </Link>
       </div>
 
-      <div className="max-w-md w-full bg-background-elevated border border-primary/10 rounded-3xl p-8 shadow-2xl">
+      <div className="max-w-md w-full bg-background-elevated border border-primary/10 rounded-lg p-8 shadow-none">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-serif">
             {isSponsorMode ? 'Sponsor this Message' : 'Complete Your Order'}
@@ -95,7 +95,7 @@ export default async function CheckoutPage({
         </div>
 
         {isSponsorMode && (
-          <div className="mb-6 p-4 rounded-2xl bg-background border border-primary/10 text-center">
+          <div className="mb-6 p-4 rounded-lg bg-background border border-primary/10 text-center">
             <span className="text-[10px] uppercase font-bold tracking-widest text-secondary block mb-1.5">
               Message to Broadcast ({categoryName})
             </span>
@@ -160,8 +160,9 @@ export default async function CheckoutPage({
             : (rawSlots ? (typeof rawSlots === 'string' ? rawSlots.split(',').filter(Boolean) : rawSlots) : [])
 
           return (
-            <CheckoutForm 
-              messageId={message.id} 
+            <CheckoutForm
+              allowMock={process.env.ALLOW_MOCK_PAYMENTS === 'true'}
+              messageId={message.id}
               baseAmount={message.bid_amount}
               isReservedSlot={message.is_reserved_slot}
               isSponsorMode={isSponsorMode}

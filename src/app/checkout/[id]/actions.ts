@@ -8,6 +8,7 @@ import { issueSponsorEditToken, sponsorTokenCookieName } from '@/lib/sponsorToke
 import { validateContentModeration } from '@/lib/moderation'
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { SITE_URL } from '@/lib/site'
 
 const supabaseAdmin = getSupabaseAdmin()
 
@@ -193,7 +194,7 @@ export async function processPayment(
           quantity: 1,
           amount: Math.round(officialVipPrice * 100),
         }],
-        return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=SPECIAL`,
+        return_url: `${SITE_URL}/?tab=SPECIAL`,
         ...(currentMsg.reminder_email ? { customer: { email: currentMsg.reminder_email } } : {}),
         metadata: {
           messageId,
@@ -274,7 +275,7 @@ export async function processPayment(
     })
 
     try {
-      let returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=NORMAL`
+      let returnUrl = `${SITE_URL}/?tab=NORMAL`
       let initialBumpToken: string | null = null
       let sponsorToken: string | null = null
 
@@ -287,7 +288,7 @@ export async function processPayment(
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
         })
-        returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/sponsor/${messageId}?token=${sponsorToken}`
+        returnUrl = `${SITE_URL}/sponsor/${messageId}?token=${sponsorToken}`
       } else {
         // Standard priority queue bid: generate secret bump token
         const { generateBumpToken, hashBumpToken } = await import('@/lib/bumpToken')
@@ -302,7 +303,7 @@ export async function processPayment(
           })
           .eq('id', messageId)
 
-        returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=NORMAL`
+        returnUrl = `${SITE_URL}/?tab=NORMAL`
       }
 
       const session = await client.checkoutSessions.create({
@@ -333,12 +334,17 @@ export async function processPayment(
 }
 
 export async function processMockPayment(
-  messageId: string, 
-  slotId: string | string[] | null, 
-  total: number, 
+  messageId: string,
+  slotId: string | string[] | null,
+  total: number,
   isSponsorMode: boolean = false,
   sponsorData?: { sponsorName?: string; sponsorNote?: string }
 ) {
+  // Kill-switch: test payments are disabled unless explicitly enabled via
+  // the ALLOW_MOCK_PAYMENTS env var (never set it in production).
+  if (process.env.ALLOW_MOCK_PAYMENTS !== 'true') {
+    return { error: 'Test payments are disabled.' }
+  }
   // 1. Fetch current message record
   const { data: currentMsg, error: msgFetchError } = await supabaseAdmin
     .from('messages')
@@ -355,7 +361,9 @@ export async function processMockPayment(
     try { style = JSON.parse(style) } catch (e) { style = {} }
   }
 
-  const emailTo = currentMsg.reminder_email || process.env.TEST_EMAIL_FALLBACK || 'gthakurzzz424@gmail.com'
+  // No personal-inbox fallback: if the buyer left no email and no test
+  // fallback is configured, confirmation mail is skipped entirely.
+  const emailTo = currentMsg.reminder_email || process.env.TEST_EMAIL_FALLBACK || null
   const targetSlotIds: string[] = Array.isArray(slotId) ? slotId : (slotId ? [slotId] : [])
 
   if (targetSlotIds.length > 0) {
@@ -471,7 +479,7 @@ export async function processMockPayment(
     })
 
     // Send confirmation email with sponsor edit token!
-    try {
+    if (emailTo) try {
       const { sendSponsorConfirmationEmail } = await import('@/lib/email')
       await sendSponsorConfirmationEmail({
         to: emailTo,
@@ -539,7 +547,7 @@ export async function processMockPayment(
     })
 
     // Send confirmation email with secret bump token!
-    try {
+    if (emailTo) try {
       const { sendBumpTokenEmail } = await import('@/lib/email')
       await sendBumpTokenEmail({
         to: emailTo,
@@ -609,7 +617,7 @@ export async function bumpBid(messageId: string, additionalAmount: number) {
         quantity: 1,
         amount: Math.round(additionalAmount * 100),
       }],
-      return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://wow-murex-nu.vercel.app'}/?tab=NORMAL&bumpSuccess=1`,
+      return_url: `${SITE_URL}/?tab=NORMAL&bumpSuccess=1`,
       ...(currentMsg.reminder_email ? { customer: { email: currentMsg.reminder_email } } : {}),
       metadata: {
         messageId,
