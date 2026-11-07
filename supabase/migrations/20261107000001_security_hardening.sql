@@ -25,11 +25,14 @@ DROP POLICY IF EXISTS "Anyone can insert payments." ON public.payments;
 
 -- 4. Defense in depth for DAT-1: messages.status was free text. Pin it
 --    to the values the application actually writes (REJECTED is never
---    written today but is part of the promo counting contract).
+--    written today but is part of the promo counting contract; REMOVED
+--    is written by the admin moderation action — it was missing from
+--    the first version of this list, which blocked the migration on
+--    databases already holding removed messages).
 ALTER TABLE public.messages
   ADD CONSTRAINT messages_status_check
   CHECK (status IN ('DRAFT', 'PENDING_PAYMENT', 'QUEUED', 'ACTIVE',
-                    'COMPLETED', 'EXPIRED', 'REJECTED'));
+                    'COMPLETED', 'EXPIRED', 'REJECTED', 'REMOVED'));
 
 -- 5. CRE-4: promo eligibility was count-then-insert with no constraint —
 --    parallel creates overshot the 500 cap and the per-device rule.
