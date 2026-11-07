@@ -210,7 +210,7 @@ export function LeaderboardView({ items }: { items: LeaderboardItem[] }) {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative flex-1 min-w-[110px] sm:min-w-[130px] py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold transition-colors z-10 ${
+                className={`relative shrink-0 whitespace-nowrap py-2.5 px-3.5 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold transition-colors z-10 ${
                   isActive ? 'text-primary' : 'text-secondary hover:text-primary'
                 }`}
               >
@@ -321,15 +321,15 @@ export function LeaderboardView({ items }: { items: LeaderboardItem[] }) {
                           </div>
 
                           {/* Message Content */}
-                          <p className="text-base sm:text-lg font-serif text-primary/95 group-hover:text-primary transition-colors line-clamp-3 leading-snug">
+                          <p className="text-base sm:text-lg font-serif text-primary/95 group-hover:text-primary transition-colors line-clamp-3 leading-snug [overflow-wrap:anywhere]">
                             "{msg.content}"
                           </p>
 
                           {/* Sponsor dedication badge if applicable */}
                           {msg.tier === 'sponsored' && (cfg.sponsorName || cfg.sponsorNote) && (
-                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-300 font-medium">
-                              <Sparkles className="w-3 h-3 shrink-0" />
-                              <span>
+                            <div className="inline-flex max-w-full items-start gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-300 font-medium">
+                              <Sparkles className="w-3 h-3 shrink-0 mt-0.5" />
+                              <span className="min-w-0 [overflow-wrap:anywhere]">
                                 {cfg.sponsorName ? `Sponsored by ${cfg.sponsorName}` : 'Community Sponsored'}
                                 {cfg.sponsorNote ? `: "${cfg.sponsorNote}"` : ''}
                               </span>
