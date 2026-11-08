@@ -1,49 +1,48 @@
 import type { Metadata } from "next";
-import {
-  Inter,
-  Cormorant_Garamond,
-  Playfair_Display,
-  Outfit,
-  Caveat,
-  Cinzel,
-  Space_Mono,
-} from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { CSPostHogProvider, PostHogPageView } from "@/lib/posthog";
 import { Suspense } from 'react';
 import { ToastContainer } from '@/components/Toast';
 import { SITE_URL } from "@/lib/site";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+// Self-hosted fonts (next/font/local) — same 7 families, weights and CSS
+// variables as before, but the woff2 files live in src/app/fonts/ so a
+// Vercel build never fetches Google Fonts. On 2026-11-07 a build failed
+// with next/font's Google loader (TypeError reading '1') on a transient
+// fetch; this removes that dependency entirely.
+const inter = localFont({
+  src: "./fonts/inter-100-900.woff2",
+  variable: "--font-inter",
+});
+const cormorant = localFont({
+  src: "./fonts/cormorant-garamond-300-700.woff2",
   variable: "--font-cormorant",
 });
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  style: ["normal", "italic"],
+const playfair = localFont({
+  src: [
+    { path: "./fonts/playfair-display-400-900.woff2", style: "normal" },
+    { path: "./fonts/playfair-display-400-900-italic.woff2", style: "italic" },
+  ],
   variable: "--font-playfair",
 });
-const outfit = Outfit({
-  subsets: ["latin"],
-  weight: ["300", "400", "600"],
+const outfit = localFont({
+  src: "./fonts/outfit-100-900.woff2",
   variable: "--font-outfit",
 });
-const caveat = Caveat({
-  subsets: ["latin"],
-  weight: ["400", "600"],
+const caveat = localFont({
+  src: "./fonts/caveat-400-700.woff2",
   variable: "--font-caveat",
 });
-const cinzel = Cinzel({
-  subsets: ["latin"],
-  weight: ["400", "600"],
+const cinzel = localFont({
+  src: "./fonts/cinzel-400-900.woff2",
   variable: "--font-cinzel",
 });
-const spaceMono = Space_Mono({
-  subsets: ["latin"],
-  weight: ["400", "700"],
+const spaceMono = localFont({
+  src: [
+    { path: "./fonts/space-mono-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/space-mono-700.woff2", weight: "700", style: "normal" },
+  ],
   variable: "--font-space-mono",
 });
 
