@@ -239,6 +239,11 @@ export async function processPayment(
       if (currentMsg.is_reserved_slot) {
         return { error: 'Reserved slot messages cannot be sponsored through the community pool.' }
       }
+      // Sponsoring exists ONLY for the Sponsored tier — a Normal post must
+      // never be converted into a $3 sponsored grid message.
+      if (!isSponsoredTier) {
+        return { error: 'Only Sponsored posts can be sponsored. This post must be paid for by its owner.' }
+      }
       // Sponsor cost is strictly SPONSORED_PRICE
       officialTotal = SPONSORED_PRICE
 

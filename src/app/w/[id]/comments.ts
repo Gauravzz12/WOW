@@ -68,12 +68,19 @@ export async function addComment(messageId: string, content: string) {
   // Only live/paid messages accept comments — never locked paywall rows.
   const { data: message } = await supabaseAdmin
     .from('messages')
-    .select('id, status')
+    .select('id, status, style_config')
     .eq('id', messageId)
     .maybeSingle()
   if (!message) return { error: 'Message not found.' }
   if ((message as any).status === 'PENDING_PAYMENT') {
     return { error: 'Comments open after this message goes live.' }
+  }
+  // Sponsored posts have no comments feature.
+  const mStyle = typeof (message as any).style_config === 'string'
+    ? (() => { try { return JSON.parse((message as any).style_config) } catch { return {} } })()
+    : ((message as any).style_config || {})
+  if ((mStyle as any)?.isSponsored === true) {
+    return { error: 'Comments are turned off for Sponsored posts.' }
   }
 
   const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString()

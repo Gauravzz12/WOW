@@ -196,12 +196,13 @@ function SponsoredCard({ message }: { message: any }) {
 
       {/* Action Footer */}
       <div className={`mt-1 pt-2.5 border-t relative z-10 w-full shrink-0 ${dividerStyle}`}>
-        <InlineInteractions 
-          messageId={message.id} 
-          categorySlug={categorySlug} 
+        <InlineInteractions
+          messageId={message.id}
+          categorySlug={categorySlug}
           compact={true}
           isVip={isVip}
           isDark={isDarkCard}
+          commentsDisabled={true}
           buttonClassName={buttonStyle}
         />
       </div>

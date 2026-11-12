@@ -59,6 +59,35 @@ export default async function CheckoutPage({
     )
   }
 
+  // Sponsoring exists ONLY for the Sponsored tier. A Normal post can only
+  // go live via its owner's own payment — never via a $3 sponsor slot.
+  if (isSponsorMode) {
+    const sc = typeof message.style_config === 'string'
+      ? (() => { try { return JSON.parse(message.style_config || '{}') } catch { return {} } })()
+      : (message.style_config || {})
+    if ((sc as any)?.isSponsored !== true) {
+      return (
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+          <div className="w-full max-w-md mb-4">
+            <Link href="/" className="inline-flex items-center gap-2 text-secondary hover:text-primary text-sm transition-colors">
+              <ArrowLeft size={16} />
+              <span>Back to World</span>
+            </Link>
+          </div>
+          <div className="max-w-md w-full bg-background-elevated border border-primary/10 rounded-lg p-8 shadow-none text-center">
+            <h1 className="text-2xl font-serif">This post can&rsquo;t be sponsored</h1>
+            <p className="text-sm text-secondary mt-2">
+              Only Sponsored posts wait for a sponsor. Normal posts go live when their owner completes payment.
+            </p>
+            <Link href="/waiting-room" className="inline-block mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-sm font-bold transition-colors">
+              Back to Waiting Room
+            </Link>
+          </div>
+        </div>
+      )
+    }
+  }
+
   const categoryName = (message.category as any)?.name || 'Message'
   // Self-served Sponsored tier (first-party $3 grid message) is marked on the
   // row itself. Legacy sponsor mode (paying for someone else's message) is the

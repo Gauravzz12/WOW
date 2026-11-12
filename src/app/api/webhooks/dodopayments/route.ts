@@ -163,7 +163,11 @@ export async function POST(req: Request) {
     // duration minimum); sponsor/reserved require their exact prices.
     const paidCents = Math.round(payment.total_amount || 0)
     let amountError: string | null = null
-    if (isSponsorMode) {
+    if (isSponsorMode && (style as any)?.isSponsored !== true) {
+      // Sponsorship is a Sponsored-tier feature only. A sponsor payment
+      // against a Normal post must never convert it into a grid message.
+      amountError = 'Sponsor payments are only valid for Sponsored-tier messages.'
+    } else if (isSponsorMode) {
       if (paidCents !== Math.round(SPONSORED_PRICE * 100)) {
         amountError = `Sponsor amount must be exactly $${SPONSORED_PRICE.toFixed(2)}.`
       }
@@ -318,7 +322,7 @@ export async function POST(req: Request) {
       }
     }
 
-    await supabaseAdmin.from('payments').insert({
+    const { error: paymentInsertError } = await supabaseAdmin.from('payments').insert({
       message_id: messageId,
       provider: 'dodopayments',
       provider_payment_id: payment.payment_id,
@@ -326,6 +330,11 @@ export async function POST(req: Request) {
       currency: payment.currency || 'usd',
       status: 'SUCCESS',
     })
+    if (paymentInsertError) {
+      // Fulfillment already happened above; never 400 (Dodo would retry and
+      // hit the idempotent path), but make a missing ledger row loud.
+      console.error('[Dodo Webhook] payments insert failed:', paymentInsertError.message, 'message:', messageId, 'payment:', payment.payment_id)
+    }
 
 
 
