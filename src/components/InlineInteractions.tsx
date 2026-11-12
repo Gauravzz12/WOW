@@ -36,19 +36,21 @@ const REACTIONS = [
   { id: 'RESPECT', emoji: '🙏' },
 ]
 
-export function InlineInteractions({ 
-  messageId, 
-  categorySlug, 
+export function InlineInteractions({
+  messageId,
+  categorySlug,
   compact = false,
   isVip = false,
   isDark = false,
+  commentsDisabled = false,
   buttonClassName
-}: { 
-  messageId: string, 
-  categorySlug: string, 
+}: {
+  messageId: string,
+  categorySlug: string,
   compact?: boolean,
   isVip?: boolean,
   isDark?: boolean,
+  commentsDisabled?: boolean,
   buttonClassName?: string
 }) {
   const [supabase] = useState(() => createClient())
@@ -117,7 +119,8 @@ export function InlineInteractions({
       
       if (data) setComments(data)
     }
-    fetchComments()
+    // Sponsored posts have no comments feature: never fetch them.
+    if (!commentsDisabled) fetchComments()
 
     const fetchReactions = async () => {
       const { data } = await supabase
@@ -159,6 +162,7 @@ export function InlineInteractions({
     // Realtime for new comments and reactions
     const channel = supabase.channel(`interactions_${messageId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments', filter: `message_id=eq.${messageId}` }, (payload) => {
+        if (commentsDisabled) return
         const newComment = { id: payload.new.id, content: payload.new.content, created_at: payload.new.created_at }
         // Dedupe: our own server-action insert already prepends the row below,
         // and realtime may deliver the same row a moment later.
@@ -172,7 +176,7 @@ export function InlineInteractions({
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [messageId, supabase])
+  }, [messageId, supabase, commentsDisabled])
 
   // Trigger 10-second cycling popup every 60 seconds (only when list is not open)
   useEffect(() => {
@@ -320,7 +324,7 @@ export function InlineInteractions({
     <div className="w-full relative">
       
       {/* Cycling Comments Ticker (hidden when panel or modal is open) */}
-      {currentCycle.length > 0 && isPopUpActive && commentMode === 'none' && !isModalOpen && (
+      {!commentsDisabled && currentCycle.length > 0 && isPopUpActive && commentMode === 'none' && !isModalOpen && (
         <div className="absolute bottom-full mb-4 left-0 w-full flex justify-center">
           <AnimatePresence mode="wait">
             <motion.button
@@ -372,7 +376,7 @@ export function InlineInteractions({
 
       {/* Comments Panel — slides up from bottom of action bar */}
       <AnimatePresence>
-        {commentMode !== 'none' && (
+        {!commentsDisabled && commentMode !== 'none' && (
           <motion.div
             initial={{ opacity: 0, y: 12, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -536,8 +540,10 @@ export function InlineInteractions({
             </div>
 
             <div className="flex gap-2 items-center">
-              {/* Comment button shows count + opens panel / modal */}
-              <button 
+              {/* Comment button shows count + opens panel / modal (absent on Sponsored posts) */}
+              {!commentsDisabled && (
+              <>
+              <button
                 onClick={toggleCommentPanel}
                 className={`flex items-center gap-2 transition-all px-3 py-1.5 md:px-4 md:py-2 rounded-full border shadow-sm active:scale-95 ${commentMode !== 'none' || isModalOpen ? 'bg-primary text-background border-primary' : btnStyle}`}
               >
@@ -560,8 +566,10 @@ export function InlineInteractions({
                   <Maximize2 size={15} />
                 </button>
               )}
-              
-              <ShareMenu 
+              </>
+              )}
+
+              <ShareMenu
                 url={`${typeof window !== 'undefined' ? window.location.origin : SITE_URL}/w/${messageId}`} 
                 text="Check out this message on Words of the World" 
                 isVip={isVip}
@@ -585,7 +593,7 @@ export function InlineInteractions({
 
       {/* Full-View Comments Modal Overlay */}
       <AnimatePresence>
-        {isModalOpen && (
+        {!commentsDisabled && isModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             {/* Backdrop */}
             <motion.div

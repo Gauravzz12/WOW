@@ -63,9 +63,12 @@ export default async function Home() {
       .limit(25),
     supabaseAdmin
       .from('messages')
-      .select('id, content, created_at, bid_amount, category:categories(name, slug)')
+      .select('id, content, created_at, bid_amount, style_config, category:categories(name, slug)')
       .eq('status', 'PENDING_PAYMENT')
       .eq('is_reserved_slot', false)
+      // Sponsorship is Sponsored-tier only: unpaid Normal posts are
+      // owner-paid and must never surface as sponsorable teasers.
+      .eq('style_config->>isSponsored', 'true')
       .order('created_at', { ascending: true })
       .limit(100),
     supabase.rpc('get_leaderboard'),
@@ -78,7 +81,13 @@ export default async function Home() {
   ])
 
   // Mask unpaid rows: drop `content`, keep teaser + length only.
-  const sponsoredPendingTeasers = (sponsoredPendingRaw || []).map((msg: any) =>
+  // Defense-in-depth: keep only Sponsored-tier rows (see query filter).
+  const sponsoredPendingTeasers = (sponsoredPendingRaw || []).filter((msg: any) => {
+    const sc = typeof msg.style_config === 'string'
+      ? (() => { try { return JSON.parse(msg.style_config) } catch { return {} } })()
+      : (msg.style_config || {})
+    return sc.isSponsored === true
+  }).map((msg: any) =>
     toLockedSponsoredCard({
       id: msg.id,
       content: msg.content || '',

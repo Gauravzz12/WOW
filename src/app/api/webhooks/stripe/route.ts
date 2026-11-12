@@ -129,6 +129,16 @@ export async function POST(req: Request) {
     if (isSponsorMode && (message as any).is_reserved_slot) {
       return NextResponse.json({ error: 'Reserved messages cannot be sponsored' }, { status: 400 })
     }
+    // Sponsorship is a Sponsored-tier feature only: a sponsor payment
+    // against a Normal post must never convert it into a grid message.
+    if (isSponsorMode) {
+      const sc = typeof message.style_config === 'string'
+        ? (() => { try { return JSON.parse(message.style_config || '{}') } catch { return {} } })()
+        : (message.style_config || {})
+      if ((sc as any)?.isSponsored !== true) {
+        return NextResponse.json({ error: 'Sponsor payments are only valid for Sponsored-tier messages' }, { status: 400 })
+      }
+    }
 
     const amountTotal = (session.amount_total || 0) / 100
     const amountCents = Math.round((session.amount_total || 0))

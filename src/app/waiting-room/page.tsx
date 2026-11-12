@@ -28,13 +28,17 @@ export default async function WaitingRoomPage() {
     .eq('status', 'PENDING_PAYMENT')
     .lt('created_at', twelveHoursAgo)
 
-  // Fetch unpaid NORMAL messages only — VIP/Special (is_reserved_slot) can never
-  // be sponsored for $3; the owner must complete their own $30+ checkout.
+  // Fetch SPONSORED-tier messages only. Sponsorship exists solely for the
+  // Sponsored tier: Normal posts are owner-paid (an unpaid Normal post must
+  // never appear here or be sponsorable), and VIP/Special
+  // (is_reserved_slot) can never be sponsored for $3 — the owner completes
+  // their own checkout.
   const { data: unpaidMessages, error: unpaidError } = await supabase
     .from('messages')
-    .select('id, content, bid_amount, is_reserved_slot, created_at, category:categories(name, slug)')
+    .select('id, content, bid_amount, is_reserved_slot, style_config, created_at, category:categories(name, slug)')
     .eq('status', 'PENDING_PAYMENT')
     .eq('is_reserved_slot', false)
+    .eq('style_config->>isSponsored', 'true')
     .order('created_at', { ascending: false })
     .limit(100)
 
@@ -44,9 +48,16 @@ export default async function WaitingRoomPage() {
 
   // Server-side masking: NEVER forward full `content` to the client.
   // Only teaser + length + masked placeholder are exposed — full text unlocks after payment.
-  // Defense-in-depth: drop any reserved rows even if the filter above is bypassed.
+  // Defense-in-depth: drop any reserved or non-Sponsored rows even if the
+  // filter above is bypassed.
   const maskedMessages = (unpaidMessages || [])
-    .filter((msg: any) => !(msg as any).is_reserved_slot)
+    .filter((msg: any) => {
+      if ((msg as any).is_reserved_slot) return false
+      const sc = typeof msg.style_config === 'string'
+        ? (() => { try { return JSON.parse(msg.style_config) } catch { return {} } })()
+        : (msg.style_config || {})
+      return sc.isSponsored === true
+    })
     .map(msg =>
     toLockedSponsoredCard({
       id: msg.id,

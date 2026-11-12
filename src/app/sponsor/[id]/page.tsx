@@ -106,8 +106,10 @@ export default async function SponsorShoutoutPage({
   let activeToken = sponsorToken
 
   if (!isLocked) {
-    // If returning from checkout and still marked PENDING_PAYMENT, activate immediately
-    if ((message as any).status === 'PENDING_PAYMENT') {
+    // If returning from checkout and still marked PENDING_PAYMENT, activate immediately.
+    // Sponsored tier ONLY: this fallback must never activate a Normal post —
+    // Normal goes live via its owner's payment + webhook, not this page.
+    if ((message as any).status === 'PENDING_PAYMENT' && (style as any)?.isSponsored === true) {
       try {
         await admin
           .from('messages')

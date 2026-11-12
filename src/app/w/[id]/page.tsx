@@ -429,11 +429,13 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
               <ReactionBar messageId={message.id} />
             </div>
 
-            {/* Comments */}
-            <div className="md:col-span-7 space-y-4">
-              <h2 className="text-lg font-serif">Comments</h2>
-              <CommentSection messageId={message.id} />
-            </div>
+            {/* Comments — Sponsored posts have no comments feature */}
+            {(message.style_config as any)?.isSponsored !== true && (
+              <div className="md:col-span-7 space-y-4">
+                <h2 className="text-lg font-serif">Comments</h2>
+                <CommentSection messageId={message.id} />
+              </div>
+            )}
           </div>
         )}
 

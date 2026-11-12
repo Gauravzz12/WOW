@@ -368,12 +368,13 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
 
               <div className="mt-2 relative z-10 w-full flex items-center justify-between gap-4 shrink-0">
                 <div className="flex-1">
-                  <InlineInteractions 
-                    messageId={message.id} 
-                    categorySlug={categorySlug} 
+                  <InlineInteractions
+                    messageId={message.id}
+                    categorySlug={categorySlug}
                     compact={compact}
                     isVip={isVip}
                     isDark={isDarkCard}
+                    commentsDisabled={(message.style_config as any)?.isSponsored === true}
                     buttonClassName={buttonStyle}
                   />
                 </div>
