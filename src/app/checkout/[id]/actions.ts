@@ -8,6 +8,7 @@ import { validateContentModeration } from '@/lib/moderation'
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { SITE_URL } from '@/lib/site'
+import { DODO_ENVIRONMENT } from '@/lib/dodo'
 
 const supabaseAdmin = getSupabaseAdmin()
 
@@ -195,7 +196,7 @@ export async function processPayment(
     const DodoPayments = (await import('dodopayments')).default
     const client = new DodoPayments({
       bearerToken: process.env.DODO_PAYMENTS_API_KEY,
-      environment: 'test_mode'
+      environment: DODO_ENVIRONMENT
     })
 
     try {
@@ -205,6 +206,7 @@ export async function processPayment(
           quantity: 1,
           amount: Math.round(officialVipPrice * 100),
         }],
+        billing_currency: 'USD',
         return_url: `${SITE_URL}/?tab=SPECIAL`,
         ...(currentMsg.reminder_email ? { customer: { email: currentMsg.reminder_email } } : {}),
         metadata: {
@@ -287,7 +289,7 @@ export async function processPayment(
     const DodoPayments = (await import('dodopayments')).default
     const client = new DodoPayments({
       bearerToken: process.env.DODO_PAYMENTS_API_KEY,
-      environment: 'test_mode'
+      environment: DODO_ENVIRONMENT
     })
 
     try {
@@ -331,6 +333,11 @@ export async function processPayment(
           quantity: 1,
           amount: Math.round(officialTotal * 100),
         }],
+        // Charge in USD, always. Without this, Dodo's Adaptive Currency
+        // converts to the customer's local currency (e.g. INR) and the
+        // webhook's exact USD amount verification can never match —
+        // every paid order was rejected on 2026-11-12 because of this.
+        billing_currency: 'USD',
         return_url: returnUrl,
         ...(currentMsg.reminder_email ? { customer: { email: currentMsg.reminder_email } } : {}),
         metadata: {

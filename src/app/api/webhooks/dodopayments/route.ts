@@ -163,7 +163,13 @@ export async function POST(req: Request) {
     // duration minimum); sponsor/reserved require their exact prices.
     const paidCents = Math.round(payment.total_amount || 0)
     let amountError: string | null = null
-    if (isSponsorMode && (style as any)?.isSponsored !== true) {
+    if (payment.currency && String(payment.currency).toUpperCase() !== 'USD') {
+      // Site prices are USD and checkouts pin billing_currency='USD'.
+      // A non-USD total (e.g. INR via Adaptive Currency) is denominated
+      // in another currency's minor units and cannot be exact-verified
+      // against USD prices — reject loudly rather than mis-fulfill.
+      amountError = `Payment currency ${payment.currency} is not USD; amount cannot be verified against USD prices.`
+    } else if (isSponsorMode && (style as any)?.isSponsored !== true) {
       // Sponsorship is a Sponsored-tier feature only. A sponsor payment
       // against a Normal post must never convert it into a grid message.
       amountError = 'Sponsor payments are only valid for Sponsored-tier messages.'

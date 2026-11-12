@@ -2,6 +2,7 @@
 
 import { verifyBumpToken, generateBumpToken, hashBumpToken, type VerifiedBumpMessage } from '@/lib/bumpToken'
 import { SITE_URL } from '@/lib/site'
+import { DODO_ENVIRONMENT } from '@/lib/dodo'
 
 export async function verifyTokenAction(token: string): Promise<{
   error?: string
@@ -45,7 +46,7 @@ export async function createBumpCheckoutAction(token: string, newTotalBid: numbe
     const DodoPayments = (await import('dodopayments')).default
     const client = new DodoPayments({
       bearerToken: process.env.DODO_PAYMENTS_API_KEY,
-      environment: 'test_mode'
+      environment: DODO_ENVIRONMENT
     })
 
     const siteUrl = SITE_URL
@@ -57,6 +58,7 @@ export async function createBumpCheckoutAction(token: string, newTotalBid: numbe
         quantity: 1,
         amount: Math.round(difference * 100),
       }],
+      billing_currency: 'USD',
       return_url: returnUrl,
       ...(msg.reminder_email ? { customer: { email: msg.reminder_email } } : {}),
       metadata: {
