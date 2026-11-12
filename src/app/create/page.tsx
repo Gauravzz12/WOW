@@ -32,7 +32,8 @@ import type { Slot } from '@/components/SlotPicker'
 import { 
   NORMAL_DURATION_OPTIONS, 
   calculateNormalMinBid, 
-  BASE_NORMAL_MINS, 
+  BASE_NORMAL_MINS,
+  BASE_NORMAL_PRICE,
   MAX_NORMAL_MINS,
   EXTENSION_STEP_MINS,
   EXTENSION_COST_PER_STEP,
@@ -242,10 +243,11 @@ function CreateMessageContent() {
     }
   }, [step]);
 
-  // Fetch launch-promo availability when the delivery step is shown for the
-  // Normal tier. Display-only — the create action re-validates server-side.
+  // Fetch launch-promo availability when the delivery step is shown (any
+  // tier — the free-messages banner sits above the tier cards).
+  // Display-only — the create action re-validates server-side.
   useEffect(() => {
-    if (step === 4 && tier === 'normal') {
+    if (step === 4) {
       fetch(`/api/promo/status?deviceId=${encodeURIComponent(getDeviceId())}`)
         .then(r => r.json())
         .then(data => {
@@ -937,7 +939,44 @@ function CreateMessageContent() {
                 <h2 className="text-2xl sm:text-3xl font-serif mt-1 mb-2">Queue Priority &amp; Delivery</h2>
                 <p className="text-secondary text-sm">Choose how soon and for how long your message commands the world stage.</p>
               </div>
-              
+
+              {/* Launch promo banner — how many free Normal messages are left */}
+              {promoStatus && (
+                <div className="mb-6 overflow-hidden rounded-xl border border-emerald-600/30 bg-emerald-500/[0.08]">
+                  <div className="flex items-center gap-4 px-5 py-4">
+                    <div className="text-3xl shrink-0" aria-hidden="true">🎉</div>
+                    <div className="flex-1 min-w-0">
+                      {promoStatus.deviceUsed ? (
+                        <>
+                          <p className="font-serif text-lg sm:text-xl text-primary leading-snug">You already grabbed your free one</p>
+                          <p className="text-sm text-secondary mt-0.5">One free message per person — {promoStatus.remaining} of {promoStatus.limit} are still up for grabs for everyone else.</p>
+                        </>
+                      ) : promoStatus.remaining > 0 ? (
+                        <>
+                          <p className="font-serif text-lg sm:text-xl text-primary leading-snug">
+                            <span className="font-bold text-emerald-700 dark:text-emerald-300">{promoStatus.remaining} free messages</span> left — post yours free
+                          </p>
+                          <p className="text-sm text-secondary mt-0.5">We&rsquo;re covering the first {promoStatus.limit} Normal posts. No card, no catch — pick Standard Queue below and it&rsquo;s on us.</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-serif text-lg sm:text-xl text-primary leading-snug">All {promoStatus.limit} free messages are gone</p>
+                          <p className="text-sm text-secondary mt-0.5">The launch offer is fully claimed. Normal posts are still open — from ${BASE_NORMAL_PRICE}.</p>
+                        </>
+                      )}
+                    </div>
+                    {!promoStatus.deviceUsed && promoStatus.remaining > 0 && tier !== 'normal' && (
+                      <button onClick={() => setTier('normal')} className="shrink-0 px-4 py-2 rounded-full bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-emerald-500 active:scale-95 transition-all">
+                        Post free
+                      </button>
+                    )}
+                  </div>
+                  <div className="h-1.5 bg-emerald-600/15" role="progressbar" aria-valuenow={promoStatus.claimed} aria-valuemin={0} aria-valuemax={promoStatus.limit} aria-label={`${promoStatus.claimed} of ${promoStatus.limit} free messages claimed`}>
+                    <div className="h-full bg-emerald-500 transition-all" style={{ width: `${Math.min(100, Math.max(0, (promoStatus.claimed / promoStatus.limit) * 100))}%` }} />
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-6 mb-8">
                 {/* Standard Queue Option */}
                 <label className={`block p-6 rounded-lg border cursor-pointer transition-all ${tier === 'normal' ? 'border-primary bg-background-elevated ring-1 ring-primary/30' : 'border-background-elevated hover:border-secondary/50'}`}>

@@ -17,10 +17,26 @@ const nextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()',
           },
-          // NOTE: a Content-Security-Policy is deliberately not set here yet.
-          // The app loads Supabase, Dodo Payments, PostHog and inline styles;
-          // roll a policy out in Report-Only mode first, fix violations, then
-          // enforce. The headers above are safe to enforce immediately.
+          // Content-Security-Policy ships in Report-Only mode for now: it
+          // never blocks anything, it only surfaces violations (browser
+          // console) so the policy can be tightened against real traffic
+          // before enforcement. The app needs 'unsafe-inline' for the
+          // pre-paint theme script and Next.js inline bootstrapping, plus
+          // Supabase (REST + realtime websockets) and PostHog endpoints.
+          {
+            key: 'Content-Security-Policy-Report-Only',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https:",
+              "font-src 'self' data:",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://us.i.posthog.com https://app.posthog.com",
+              "frame-ancestors 'self'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join('; '),
+          },
         ],
       },
     ]

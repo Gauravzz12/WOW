@@ -9,8 +9,25 @@ import React from 'react'
  * - Openclipart: Intricate decorative vector artwork (hearts, champagne, roses, laurel, baroque).
  * - Plotcaster: Modular corner-and-edge architecture with zero distortion across any aspect ratio.
  */
-export function FrameDecorator({ frameId, accentHex }: { frameId?: string; accentHex?: string }) {
-  if (!frameId || frameId === 'none') return null
+// Frame ids retired in the Nov 2026 unification. Stored messages still
+// carry them; without a mapping they rendered frameless. Each maps to the
+// closest surviving frame so old messages keep a border.
+const LEGACY_FRAME_ALIASES: Record<string, string> = {
+  'double-rule': 'editorial-frame',
+  'ledger': 'editorial-frame',
+  'top-band': 'bold-inset',
+  'ticket-stub': 'bold-inset',
+  'postage-stamp': 'bold-inset',
+  'stepped-inset': 'bold-inset',
+  'corner-ticks': 'solid-clean',
+  'dashed-sketch': 'solid-clean',
+  'ornate-corners': 'baroque-filigree',
+  'film-strip': 'cyber-matrix',
+}
+
+export function FrameDecorator({ frameId: rawFrameId, accentHex }: { frameId?: string; accentHex?: string }) {
+  if (!rawFrameId || rawFrameId === 'none') return null
+  const frameId = LEGACY_FRAME_ALIASES[rawFrameId] ?? rawFrameId
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // SOLID & ARCHITECTURAL FRAMES
