@@ -10,10 +10,13 @@
  * 4. Hardcore adult pornography & commercial sex/escort solicitation
  * 5. Hard narcotics trafficking, illegal weapons, stolen data & scams
  * 
- * NOTE: Open creative expression, everyday swearing, raw emotions, confessions,
- * misanthropic rants ("everyone should die"), anti-drug/anti-violence opinions
- * ("cocaine should be illegal", "School shooting should be prohibited"), and digital piracy
- * discussions are completely preserved and ALLOWED by Jev.
+ * NOTE: Open creative expression, everyday swearing, insults and name-calling,
+ * edgy banter, raw emotions, confessions, misanthropic rants ("everyone should die"),
+ * anti-drug/anti-violence opinions ("cocaine should be illegal", "School shooting
+ * should be prohibited"), and digital piracy discussions are completely preserved
+ * and ALLOWED by Jev. Only harsh abuse (promoting severe hate), credible threats,
+ * and the PROMOTION of illegal activity (dealing/soliciting — never mere mention
+ * or discussion) are banned.
  */
 
 export interface ModerationResult {
@@ -102,12 +105,12 @@ async function evaluateWithJev(text: string, apiKey: string): Promise<Moderation
           violent_threats: {
             type: 'noul',
             instructions:
-              'Evaluate the WHOLE MESSAGE in context: Does this message express a real, credible, actionable threat of violence directed at specific individuals or groups (such as murder, physical assault, rape, acid attacks, swatting, doxxing with threat, hitman hiring, blackmail/extortion, or mass attacks/bombings)? IMPORTANT: Anti-violence advocacy ("School shooting should be prohibited"), non-targeted misanthropic rants ("everyone should die", "humanity sucks"), sarcasm, or emotional venting are safe.',
+              'Evaluate the WHOLE MESSAGE in context: Does this message express a real, credible, actionable threat of violence directed at specific individuals or groups (such as murder, physical assault, rape, acid attacks, swatting, doxxing with threat, hitman hiring, blackmail/extortion, or mass attacks/bombings)? IMPORTANT: Anti-violence advocacy ("School shooting should be prohibited"), non-targeted misanthropic rants ("everyone should die", "humanity sucks"), sarcasm, emotional venting, and insults or name-calling WITHOUT a credible threat are safe.',
           },
           racism_hate: {
             type: 'noul',
             instructions:
-              'Does this message promote racism, racial slurs, white supremacy, neo-nazism, caste discrimination, or dehumanizing hatred against racial, ethnic, or religious groups? IMPORTANT: Anti-racism advocacy or historical discussions of genocide/Holocaust ("Nazis murdered millions") are safe.',
+              'Does this message PROMOTE racism, white supremacy, neo-nazism, caste discrimination, or severe dehumanizing hatred against racial, ethnic, or religious groups? IMPORTANT: Casual insults, name-calling, everyday profanity, edgy banter, and slang or reclaimed slur use are NOT severe hate speech and are safe. Anti-racism advocacy or historical discussions of genocide/Holocaust ("Nazis murdered millions") are safe.',
           },
           porn_adult: {
             type: 'noul',
@@ -123,10 +126,10 @@ async function evaluateWithJev(text: string, apiKey: string): Promise<Moderation
             type: 'choice',
             instructions: 'Classify the message in semantic context.',
             criteria: {
-              safe: 'Safe content, single word or casual drug mentions ("cocaine", "weed"), everyday swearing, emotional venting, philosophical misanthropy ("everyone should die", "humanity sucks"), anti-drug opinions ("cocaine should be illegal"), anti-CSAM advocacy ("child porn should be banned", "protect children from abuse"), love confessions, flattering romantic compliments ("you look so sexy in lingerie"), anti-violence advocacy ("School shooting should be prohibited"), anti-racism advocacy, historical education, or digital piracy/torrents',
+              safe: 'Safe content, single word or casual drug mentions ("cocaine", "weed"), everyday swearing, insults, name-calling, edgy banter, emotional venting, philosophical misanthropy ("everyone should die", "humanity sucks"), anti-drug opinions ("cocaine should be illegal"), anti-CSAM advocacy ("child porn should be banned", "protect children from abuse"), love confessions, flattering romantic compliments ("you look so sexy in lingerie"), anti-violence advocacy ("School shooting should be prohibited"), anti-racism advocacy, historical education, or digital piracy/torrents',
               child_safety: 'Actual child sexual exploitation, pedophilia, grooming of minors, or minor nudes in any order or phrasing (e.g. child sex, sex child). NOT anti-CSAM advocacy or calls to ban child abuse.',
-              violence_threats: 'Actionable targeted threats against specific individuals or specific groups (murder, rape, swatting, hitman, blackmail, bombing, shooting up a venue). NOT non-targeted venting like "everyone should die", and NOT sarcasm.',
-              racism_hate: 'Racism, racial slurs, neo-nazism, or severe hate speech',
+              violence_threats: 'Actionable targeted threats against specific individuals or specific groups (murder, rape, swatting, hitman, blackmail, bombing, shooting up a venue). NOT non-targeted venting like "everyone should die", NOT sarcasm, and NOT insults without a credible threat.',
+              racism_hate: 'Promoting racism, white supremacy/neo-nazism, or severe dehumanizing hate against a protected group. NOT casual insults, profanity, banter, or slang.',
               porn_adult: 'Hardcore pornography, graphic descriptions of sexual intercourse/acts, or commercial sex/escort/prostitution solicitation',
               illegal_contraband: 'Active commercial drug dealing, selling, sourcing, or distributing hard drugs or illegal weapons, stolen credit cards, malware, or phishing scams. NOT mere mentions of drug words like "cocaine".',
             },
@@ -147,37 +150,12 @@ async function evaluateWithJev(text: string, apiKey: string): Promise<Moderation
     const contrabandScore = q.illegal_contraband?.noul ?? 0
     const category = q.category?.choice ?? q.category?.value
 
-    const isViolating =
-      csamScore >= 0.20 ||
-      violenceScore >= 0.50 ||
-      racismScore >= 0.60 ||
-      pornScore >= 0.50 ||
-      contrabandScore >= 0.50 ||
-      (category && category !== 'safe')
-
-    if (isViolating && category && category !== 'safe') {
-      const reasonMap: Record<string, string> = {
-        child_safety: 'Child sexual abuse material or underage sexualization is strictly prohibited (reported to authorities).',
-        racism_hate: 'Racism, racial slurs, or hate speech are strictly prohibited.',
-        violence_threats: 'Direct threats of violence, harm, extortion, or terrorism are strictly prohibited.',
-        porn_adult: 'Hardcore pornography, explicit sexual acts, or escort/prostitution solicitation are not allowed.',
-        illegal_contraband: 'Promotion of hard drugs, illegal weapons, stolen financial data, or scams is strictly prohibited.',
-      }
-      const categoryMap: Record<string, any> = {
-        child_safety: 'NSFW_ADULT',
-        porn_adult: 'NSFW_ADULT',
-        violence_threats: 'HARASSMENT_VIOLENCE',
-        racism_hate: 'HATE_SPEECH',
-        illegal_contraband: 'ILLEGAL_SUBSTANCES',
-      }
-      return {
-        allowed: false,
-        category: categoryMap[category] || 'HARASSMENT_VIOLENCE',
-        reason: reasonMap[category] || 'Content flagged by TypeSafe AI guardrail.',
-      }
-    }
-
-    if (csamScore >= 0.20) {
+    // Decision rule: a message is blocked ONLY when a per-question score
+    // crosses its threshold. The category classifier alone never blocks —
+    // below-threshold content (insults, banter, edgy slang, mentions and
+    // discussions) passes. Sole exception: child_safety stays zero-tolerance,
+    // so a child_safety classification blocks even under the numeric bar.
+    if (category === 'child_safety' || csamScore >= 0.20) {
       return {
         allowed: false,
         category: 'NSFW_ADULT',
@@ -193,7 +171,10 @@ async function evaluateWithJev(text: string, apiKey: string): Promise<Moderation
       }
     }
 
-    if (racismScore >= 0.60) {
+    // Severe hate only: the bar is deliberately high so casual insults,
+    // profanity and banter pass; this trips on promotion of racism /
+    // supremacy or dehumanizing hatred.
+    if (racismScore >= 0.85) {
       return {
         allowed: false,
         category: 'HATE_SPEECH',

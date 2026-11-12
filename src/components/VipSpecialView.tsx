@@ -70,6 +70,18 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
   // Fires the expiry advance exactly once per active message (not every 1s tick).
   const advanceFiredForRef = useRef<string | null>(null)
 
+  // Site theme: the layout script sets the 'dark' class on <html> pre-paint
+  // and ThemeToggle flips it. The stage follows the site theme (cream panel
+  // in light mode, night panel in dark mode), so track the class live.
+  const [siteIsDark, setSiteIsDark] = useState(false)
+  useEffect(() => {
+    const read = () => setSiteIsDark(document.documentElement.classList.contains('dark'))
+    read()
+    const obs = new MutationObserver(read)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+
   useEffect(() => {
     setIsMounted(true)
     try {
@@ -197,13 +209,14 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
     activeSpecialMsg?.template_id
   )
 
-  // ── Night Stage ──────────────────────────────────────────────
+  // ── The Spotlight Stage ──────────────────────────────────────
   // A Special slot is the site's one significant moment, so a message on the
-  // default card style is presented on a dark stage (solid ink panel, cream
-  // type, amber accent) in BOTH site themes — the spotlight contrast. A
-  // message whose author chose a real template/background keeps that design;
-  // never paint over a paid design. Template 'a' IS the default style (its
-  // canonical bg is plain bg-background), so it does not count as chosen.
+  // default card style is presented on a dedicated stage panel with amber
+  // accents. The panel FOLLOWS THE SITE THEME: warm cream in light mode,
+  // solid ink in dark mode. A message whose author chose a real
+  // template/background keeps that design; never paint over a paid design.
+  // Template 'a' IS the default style (its canonical bg is plain
+  // bg-background), so it does not count as chosen.
   const rawStyleCfg = activeSpecialMsg?.style_config
   const styleCfg: Record<string, any> = typeof rawStyleCfg === 'string'
     ? (() => { try { return JSON.parse(rawStyleCfg) } catch { return {} } })()
@@ -214,13 +227,21 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
     styleCfg.isVip ||
     (styleCfg.bg && styleCfg.bg !== 'bg-background')
   )
-  const forceNightStage = !!activeSpecialMsg && !hasChosenCardStyle
-  const stageBg = forceNightStage ? 'bg-[#141118]' : msgBg
-  const stageTextColor = forceNightStage ? 'text-[#F5EFE6]' : textColor
-  const stageInlineColor = forceNightStage ? '#F5EFE6' : inlineColor
-  const stageIsDark = forceNightStage || isDarkCard
-  // The empty stage is always the dark panel, so its rules are always inverted.
-  const stageRulesInverted = activeSpecialMsg ? stageIsDark : true
+  const spotlightStage = !!activeSpecialMsg && !hasChosenCardStyle
+  const spotlightBg = siteIsDark
+    ? 'bg-[#141118]'
+    : 'bg-[#FAF6ED] shadow-[inset_0_0_0_1px_#E9DFC9]'
+  const stageBg = spotlightStage ? spotlightBg : msgBg
+  const stageTextColor = spotlightStage
+    ? siteIsDark ? 'text-[#F5EFE6]' : 'text-[#1B1712]'
+    : textColor
+  const stageInlineColor = spotlightStage
+    ? siteIsDark ? '#F5EFE6' : '#1B1712'
+    : inlineColor
+  const stageIsDark = spotlightStage ? siteIsDark : isDarkCard
+  // The empty stage uses the same spotlight panel, so its framing rules are
+  // inverted only when the panel itself is dark (dark site theme).
+  const stageRulesInverted = activeSpecialMsg ? stageIsDark : siteIsDark
 
   const bookDisabled = selectedStatus !== 'OPEN'
   const bookLabel = !selectedSlot
@@ -422,18 +443,18 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
             </div>
           </article>
         ) : (
-          <div className="relative overflow-hidden rounded-none bg-[#141118] px-5 py-12 sm:p-14 text-center flex flex-col items-center">
-            <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-amber-400">
+          <div className={`relative overflow-hidden rounded-none px-5 py-12 sm:p-14 text-center flex flex-col items-center ${spotlightBg}`}>
+            <p className={`font-mono text-[11px] uppercase tracking-[0.3em] ${siteIsDark ? 'text-amber-400' : 'text-amber-700'}`}>
               ✦ The World Stage ✦
             </p>
-            <div className="mt-9 w-11 h-11 rounded-full border border-white/20 flex items-center justify-center text-[#F5EFE6]/50 mb-5">
+            <div className={`mt-9 w-11 h-11 rounded-full border flex items-center justify-center mb-5 ${siteIsDark ? 'border-white/20 text-[#F5EFE6]/50' : 'border-[#1B1712]/15 text-[#1B1712]/45'}`}>
               <Compass className="w-5 h-5 stroke-[1.5]" />
             </div>
-            <h2 className="text-3xl sm:text-4xl font-serif text-[#F5EFE6] mb-3 leading-tight">
-              The stage is dark.
+            <h2 className={`text-3xl sm:text-4xl font-serif mb-3 leading-tight ${siteIsDark ? 'text-[#F5EFE6]' : 'text-[#1B1712]'}`}>
+              Nothing here yet — this could be yours.
             </h2>
-            <p className="text-[#F5EFE6]/60 text-sm font-serif italic max-w-md mx-auto mb-7 leading-relaxed">
-              In a few hours this is the only voice on Earth. Make it yours.
+            <p className={`text-sm font-serif italic max-w-md mx-auto mb-7 leading-relaxed ${siteIsDark ? 'text-[#F5EFE6]/60' : 'text-[#1B1712]/60'}`}>
+              This is the top spot on the homepage: one message gets it for 3 full hours, seen by everyone who visits. After that, it stays up on its own page for good.
             </p>
             <Link
               href="/create?tier=special"

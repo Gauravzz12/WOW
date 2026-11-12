@@ -9,6 +9,10 @@ import { toLockedSponsoredCard } from '@/lib/masking'
 import { getMessageDurationSecs, isMessageExpired } from '@/lib/messageExpiry'
 import { MIN_NORMAL_BID } from '@/lib/constants/pricing'
 
+export const metadata = {
+  alternates: { canonical: '/' },
+}
+
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const fetchCache = 'force-no-store'

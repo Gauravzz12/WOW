@@ -348,6 +348,44 @@ export const CANONICAL_TEMPLATES: Record<string, {
     lightHex: '#123B4F',
     darkHex: '#CFE8EF',
     cardBorder: 'border-cyan-600/30 dark:border-cyan-500/40'
+  },
+  // ── Legacy templates (retired from the picker in the Nov 2026 unification,
+  // but stored messages still carry these ids — without canonical entries
+  // they rendered with no background/text styling at all) ──────────────────
+  'blueprint': {
+    bg: 'bg-[#E6F0FA] dark:bg-[#0A1929]',
+    textColor: 'text-[#1E3A8A] dark:text-[#93C5FD]',
+    lightHex: '#1E3A8A',
+    darkHex: '#93C5FD',
+    cardBorder: 'border-blue-300 dark:border-blue-800/50'
+  },
+  'golden-age': {
+    bg: 'bg-[#FFFAF0] dark:bg-[#1A160C]',
+    textColor: 'text-[#B45309] dark:text-[#FCD34D]',
+    lightHex: '#B45309',
+    darkHex: '#FCD34D',
+    cardBorder: 'border-yellow-200 dark:border-yellow-900/50'
+  },
+  'l': {
+    bg: 'bg-[#F0F4F8] dark:bg-[#0A0E14]',
+    textColor: 'text-[#1B2838] dark:text-[#CBD5E1]',
+    lightHex: '#1B2838',
+    darkHex: '#CBD5E1',
+    cardBorder: 'border-slate-300 dark:border-slate-600'
+  },
+  'midnight': {
+    bg: 'bg-[#EBF0F5] dark:bg-[#050B14]',
+    textColor: 'text-[#0F172A] dark:text-[#94A3B8]',
+    lightHex: '#0F172A',
+    darkHex: '#94A3B8',
+    cardBorder: 'border-slate-300 dark:border-slate-800'
+  },
+  'n': {
+    bg: 'bg-[#F5F3FF] dark:bg-[#0D0B1A]',
+    textColor: 'text-[#4C1D95] dark:text-[#E8DAFF]',
+    lightHex: '#4C1D95',
+    darkHex: '#E8DAFF',
+    cardBorder: 'border-violet-300 dark:border-violet-400/30'
   }
 }
 
@@ -487,13 +525,23 @@ export function resolveCardStyles(styleConfig?: any, templateId?: string): {
     else if (rawBg.includes('#F4F1FA') || rawBg.includes('#0E0A1A')) tid = 'confessional'
     else if (rawBg.includes('#EEF4F6') || rawBg.includes('#061419')) tid = 'summit'
     else if (rawBg.includes('#F7F3E8') || rawBg.includes('#161410')) tid = 'telegram'
+    else if (rawBg.includes('#E6F0FA') || rawBg.includes('#0A1929')) tid = 'blueprint'
+    else if (rawBg.includes('#FFFAF0') || rawBg.includes('#1A160C')) tid = 'golden-age'
+    else if (rawBg.includes('#F0F4F8') || rawBg.includes('#0A0E14')) tid = 'l'
+    else if (rawBg.includes('#EBF0F5') || rawBg.includes('#050B14')) tid = 'midnight'
+    else if (rawBg.includes('#F5F3FF') && rawBg.includes('#0D0B1A')) tid = 'n'
     else if (rawBg === 'bg-background') tid = 'a'
   }
 
   const isVip = !!(cfg.isVip || (tid && (tid.startsWith('vip-') || tid === 'night-edition')))
   const safeBg = resolveThemeSafeBg(cfg.bg, tid)
   const safeTextColor = resolveThemeSafeTextColor(cfg.textColor, safeBg, tid)
-  const isDarkCard = isVip || isBgAlwaysDark(safeBg)
+  // isDarkCard describes the card's actual background, not its tier: the
+  // vip-* canonical styles are dual-theme (light bg in light mode), so a VIP
+  // card is only "dark" when its resolved bg is an always-dark solid.
+  // Legacy stored VIP messages keep their always-dark raw bg and still
+  // resolve as dark cards here.
+  const isDarkCard = isBgAlwaysDark(safeBg)
 
   let cardBorder = cfg.cardBorder
   if (!cardBorder && tid && CANONICAL_TEMPLATES[tid]) {
@@ -501,9 +549,12 @@ export function resolveCardStyles(styleConfig?: any, templateId?: string): {
   }
 
   // inlineColor: used in style={{ color: inlineColor }} on prose containers.
+  // A single inline value cannot follow the site theme, so dual-theme
+  // canonical cards use 'inherit' and let the (dual-theme) textColor class
+  // govern; only always-dark cards pin the bright darkHex.
   let inlineColor = 'inherit'
-  if (isVip && tid && CANONICAL_TEMPLATES[tid]) {
-    inlineColor = CANONICAL_TEMPLATES[tid].lightHex
+  if (tid && CANONICAL_TEMPLATES[tid]) {
+    inlineColor = isDarkCard ? CANONICAL_TEMPLATES[tid].darkHex : 'inherit'
   } else if (isDarkCard) {
     inlineColor = '#f0f0f0'
   }

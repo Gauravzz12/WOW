@@ -20,7 +20,7 @@ export function ShareMenu({
   const [copied, setCopied] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
 
-  const isDarkCard = isVip || isDark
+  const isDarkCard = isDark // chrome follows the card's actual background; VIP cards are dual-theme now, so isVip no longer implies dark
   const btnStyle = buttonClassName || (isDarkCard
     ? 'border-white/20 hover:border-white/35 bg-white/10 hover:bg-white/20 text-white/90'
     : 'border-black/10 dark:border-white/15 hover:border-black/20 dark:hover:border-white/30 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-neutral-800 dark:text-neutral-200'
