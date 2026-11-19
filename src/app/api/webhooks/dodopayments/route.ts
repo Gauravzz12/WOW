@@ -75,9 +75,23 @@ export async function POST(req: Request) {
 
     if ((message as any).status !== 'PENDING_PAYMENT') {
        if (payment.metadata?.isBump === 'true' && (message as any).status === 'QUEUED') {
-           // PAY-1 (bump path): account from what was ACTUALLY paid
-           // (total_amount), never from caller-supplied metadata amounts.
-           const additionalAmount = Math.round((payment.total_amount || 0)) / 100;
+           // PAY-1 (bump path): account from what was ACTUALLY paid,
+           // never from caller-supplied metadata amounts. Bids are USD
+           // site-economics: a USD charge credits total_amount; a charge
+           // in another currency (Adaptive Currency, e.g. INR via UPI)
+           // credits Dodo's USD settlement figure from the same payload.
+           // No USD settlement figure -> refuse, never credit a
+           // foreign-currency number as if it were dollars.
+           const bumpCurrency = payment.currency ? String(payment.currency).toUpperCase() : 'USD'
+           const bumpCents = bumpCurrency === 'USD'
+             ? Math.round(payment.total_amount || 0)
+             : (payment.settlement_currency && String(payment.settlement_currency).toUpperCase() === 'USD' && Number(payment.settlement_amount) > 0
+                 ? Math.round(Number(payment.settlement_amount))
+                 : NaN)
+           if (!Number.isFinite(bumpCents)) {
+             return NextResponse.json({ error: 'Bump payment currency cannot be verified against USD prices.' }, { status: 400 })
+           }
+           const additionalAmount = bumpCents / 100;
            const { data: currentMsg } = await supabaseAdmin
              .from('messages')
              .select('bid_amount, reminder_email, content, style_config')
@@ -99,7 +113,7 @@ export async function POST(req: Request) {
              provider: 'dodopayments',
              provider_payment_id: payment.payment_id,
              amount: additionalAmount,
-             currency: payment.currency || 'usd',
+             currency: bumpCurrency === 'USD' ? (payment.currency || 'usd') : 'usd',
              status: 'SUCCESS',
            });
 
@@ -161,13 +175,26 @@ export async function POST(req: Request) {
     // call, paying a stale $5 session fulfilled a later $100 stored bid.
     // Normal therefore requires paid == CURRENT stored bid (and >= the
     // duration minimum); sponsor/reserved require their exact prices.
-    const paidCents = Math.round(payment.total_amount || 0)
+    // Verification amount, in USD cents. Site prices are USD. A USD
+    // charge verifies against total_amount directly. A charge in another
+    // currency (Adaptive Currency lets e.g. Indian customers pay INR via
+    // UPI even though checkout pins billing_currency='USD') has its
+    // total_amount in that currency's minor units — but Dodo settles the
+    // payment to the business in USD and reports settlement_amount /
+    // settlement_currency on the same payload, so verify against Dodo's
+    // own USD figure, exactly. A non-USD charge with NO USD settlement
+    // figure still fails closed with the original rejection.
+    // (Live proof, 2026-11-19: a $5 Normal post paid ₹485.10 via UPI was
+    // rejected here 3 times — 'Payment currency INR is not USD' — while
+    // its payload carried settlement_amount 500 / settlement_currency USD.)
+    const chargeCurrency = payment.currency ? String(payment.currency).toUpperCase() : 'USD'
+    const paidCents = chargeCurrency === 'USD'
+      ? Math.round(payment.total_amount || 0)
+      : (payment.settlement_currency && String(payment.settlement_currency).toUpperCase() === 'USD' && Number(payment.settlement_amount) > 0
+          ? Math.round(Number(payment.settlement_amount))
+          : NaN)
     let amountError: string | null = null
-    if (payment.currency && String(payment.currency).toUpperCase() !== 'USD') {
-      // Site prices are USD and checkouts pin billing_currency='USD'.
-      // A non-USD total (e.g. INR via Adaptive Currency) is denominated
-      // in another currency's minor units and cannot be exact-verified
-      // against USD prices — reject loudly rather than mis-fulfill.
+    if (!Number.isFinite(paidCents)) {
       amountError = `Payment currency ${payment.currency} is not USD; amount cannot be verified against USD prices.`
     } else if (isSponsorMode && (style as any)?.isSponsored !== true) {
       // Sponsorship is a Sponsored-tier feature only. A sponsor payment
@@ -196,6 +223,10 @@ export async function POST(req: Request) {
       console.error('[Dodo Webhook] Amount verification failed:', amountError, 'message:', messageId)
       return NextResponse.json({ error: amountError }, { status: 400 })
     }
+    // Verified USD total — the only figure bid logic may use. (amountTotal
+    // above stays the charged amount in the charged currency, for the
+    // payments ledger and audit.)
+    const usdTotal = paidCents / 100
 
     // Extract customer email provided to DodoPayments during checkout
     const dodoCustomerEmail = 
@@ -359,7 +390,7 @@ export async function POST(req: Request) {
             messageId,
             messageContent: (message as any)?.content || payment.metadata?.userMessage || '',
             sponsorToken: payment.metadata?.sponsorToken || undefined,
-            amountPaid: amountTotal,
+            amountPaid: usdTotal,
           })
         } catch (sponsorEmailErr) {
           console.error('[Dodo Webhook] Failed to send sponsor confirmation email:', sponsorEmailErr)
@@ -374,7 +405,7 @@ export async function POST(req: Request) {
             to: dodoCustomerEmail,
             messageId,
             messageContent: (message as any)?.content || payment.metadata?.userMessage || '',
-            amountPaid: amountTotal,
+            amountPaid: usdTotal,
             scheduledStart: vipSlots && vipSlots[0] ? vipSlots[0].scheduled_start : null,
             scheduledEnd: vipSlots && vipSlots.length > 0 ? vipSlots[vipSlots.length - 1].scheduled_end : null,
             slotCount: targetSlotIds.length,
@@ -403,7 +434,7 @@ export async function POST(req: Request) {
             to: dodoCustomerEmail,
             messageContent: (message as any)?.content || payment.metadata?.userMessage || '',
             bumpToken: tokenToSend,
-            currentBid: amountTotal,
+            currentBid: usdTotal,
             isUpdated: false,
             messageId,
           })
@@ -411,7 +442,7 @@ export async function POST(req: Request) {
 
         // Notify anyone who was outbid by this initial bid
         const { checkAndNotifyOutbids } = await import('@/lib/outbidService')
-        await checkAndNotifyOutbids(amountTotal)
+        await checkAndNotifyOutbids(usdTotal)
       } catch (bumpEmailErr) {
         console.error('[Dodo Webhook] Failed to process standard queue bump token/outbids:', bumpEmailErr)
       }
