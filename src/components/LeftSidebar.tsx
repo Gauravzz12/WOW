@@ -62,6 +62,10 @@ export function LeftSidebar({ isOpen, onClose }: { isOpen: boolean, onClose: () 
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             <span className="font-bold tracking-wider uppercase text-sm">Privacy</span>
           </Link>
+          <Link href="/contact" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-background-elevated transition-colors text-secondary hover:text-primary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
+            <span className="font-bold tracking-wider uppercase text-sm">Contact</span>
+          </Link>
         </nav>
         
         <div className="mt-8">

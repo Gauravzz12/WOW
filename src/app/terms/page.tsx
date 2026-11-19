@@ -223,6 +223,7 @@ export default function TermsPage() {
             <Link href="/" className="hover:text-primary transition-colors">Billboard</Link>
             <Link href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
             <Link href="/content-policy" className="hover:text-primary transition-colors">Content Policy</Link>
+            <Link href="/contact" className="hover:text-primary transition-colors">Contact</Link>
             <Link href="/create" className="hover:text-primary transition-colors">Leave Message</Link>
           </div>
         </div>

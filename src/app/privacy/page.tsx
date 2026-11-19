@@ -184,6 +184,7 @@ export default function PrivacyPage() {
             <Link href="/" className="hover:text-primary transition-colors">Billboard</Link>
             <Link href="/terms" className="hover:text-primary transition-colors">Terms of Service</Link>
             <Link href="/content-policy" className="hover:text-primary transition-colors">Content Policy</Link>
+            <Link href="/contact" className="hover:text-primary transition-colors">Contact</Link>
             <Link href="/create" className="hover:text-primary transition-colors">Leave Message</Link>
           </div>
         </div>
