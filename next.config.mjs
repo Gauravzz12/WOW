@@ -17,12 +17,16 @@ const nextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()',
           },
-          // Content-Security-Policy ships in Report-Only mode for now: it
-          // never blocks anything, it only surfaces violations (browser
-          // console) so the policy can be tightened against real traffic
-          // before enforcement. The app needs 'unsafe-inline' for the
-          // pre-paint theme script and Next.js inline bootstrapping, plus
-          // Supabase (REST + realtime websockets) and PostHog endpoints.
+          // Content-Security-Policy ships in Report-Only mode: it never
+          // blocks anything, it only reports violations. Reports now go to
+          // the /api/csp-report collector (logged as "[csp-report]" lines,
+          // searchable in Vercel function logs) via both the legacy
+          // report-uri directive and the modern Reporting-Endpoints header
+          // below. TO ENFORCE: after a clean stretch of reports, change
+          // this key to 'Content-Security-Policy' — nothing else needs to
+          // change. The app needs 'unsafe-inline' for the pre-paint theme
+          // script and Next.js inline bootstrapping, plus Supabase (REST +
+          // realtime websockets) and PostHog endpoints.
           {
             key: 'Content-Security-Policy-Report-Only',
             value: [
@@ -35,7 +39,14 @@ const nextConfig = {
               "frame-ancestors 'self'",
               "base-uri 'self'",
               "form-action 'self'",
+              "report-uri /api/csp-report",
+              "report-to csp-endpoint",
             ].join('; '),
+          },
+          // Modern Reporting API endpoint group referenced by report-to.
+          {
+            key: 'Reporting-Endpoints',
+            value: 'csp-endpoint="/api/csp-report"',
           },
         ],
       },
