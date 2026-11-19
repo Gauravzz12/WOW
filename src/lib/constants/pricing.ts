@@ -18,13 +18,15 @@ export const MIN_NORMAL_BID = BASE_NORMAL_PRICE
 
 /**
  * Launch promo: the first 500 Normal broadcasts are free — base duration
- * only (no extensions, no raised bid), one per device, and paid messages
- * always outrank free ones in the queue. Eligibility is re-validated
- * server-side in the create action; /api/promo/status only feeds the UI.
+ * only (no extensions, no raised bid), up to PROMO_PER_DEVICE_LIMIT per
+ * device, and paid messages always outrank free ones in the queue.
+ * Eligibility is re-validated server-side in the create action;
+ * /api/promo/status only feeds the UI.
  * Promo rows store bid_amount = BASE_NORMAL_PRICE plus is_promo_free=true
  * (never a $0 bid, which the tier separator above would read as Sponsored).
  */
 export const PROMO_FREE_LIMIT = 500
+export const PROMO_PER_DEVICE_LIMIT = 5
 
 export function calculateNormalMinBid(mins: number): number {
   const extraMins = Math.max(0, mins - BASE_NORMAL_MINS)
@@ -146,13 +148,24 @@ export function getFixedSlotsForUtcDate(utcYear: number, utcMonth: number, utcDa
  * the fixed 3-hour definitions for its UTC date (start aligned to the
  * grid, end exactly start+3h). Server paths that accept slot times from
  * clients MUST validate with this — never trust supplied windows.
+ *
+ * Instants are compared, never raw strings: the same moment serializes
+ * as "2026-11-21T09:00:00.000Z" from JS but "2026-11-21T09:00:00+00:00"
+ * from Postgres/PostgREST. The old string comparison rejected every
+ * database-fetched slot, which broke Special checkout entirely
+ * ("Invalid time slot selection." on every Pay click, found in the
+ * 2026-11-19 QA pass).
  */
 export function isCanonicalSlotWindow(scheduledStart: unknown, scheduledEnd: unknown): boolean {
   if (typeof scheduledStart !== 'string' || typeof scheduledEnd !== 'string') return false
   const start = new Date(scheduledStart)
-  if (isNaN(start.getTime())) return false
+  const end = new Date(scheduledEnd)
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return false
   const defs = getFixedSlotsForUtcDate(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())
-  return defs.some(d => d.scheduled_start === scheduledStart && d.scheduled_end === scheduledEnd)
+  return defs.some(d =>
+    new Date(d.scheduled_start).getTime() === start.getTime() &&
+    new Date(d.scheduled_end).getTime() === end.getTime()
+  )
 }
 
 // Backwards-compatible alias for Date objects

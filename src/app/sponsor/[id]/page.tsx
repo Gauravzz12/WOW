@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { ArrowLeft, Lock, PartyPopper, Radio } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { sponsorTokenCookieName, verifySponsorEditToken, issueSponsorEditToken } from '@/lib/sponsorToken'
+import { sponsorTokenCookieName, verifySponsorEditToken } from '@/lib/sponsorToken'
 import { getCategoryHex, getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { FrameDecorator } from '@/components/FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
@@ -103,41 +103,61 @@ export default async function SponsorShoutoutPage({
   }
 
   const isLocked = Boolean(style.shoutoutLocked)
-  let activeToken = sponsorToken
+  const activeToken = sponsorToken
 
-  if (!isLocked) {
-    // If returning from checkout and still marked PENDING_PAYMENT, activate immediately.
-    // Sponsored tier ONLY: this fallback must never activate a Normal post —
-    // Normal goes live via its owner's payment + webhook, not this page.
-    if ((message as any).status === 'PENDING_PAYMENT' && (style as any)?.isSponsored === true) {
-      try {
-        await admin
-          .from('messages')
-          .update({
-            status: 'ACTIVE',
-            actual_start: new Date().toISOString(),
-            is_reserved_slot: false,
-          })
-          .eq('id', messageId)
-        ;(message as any).status = 'ACTIVE'
-      } catch {}
-    }
-
-    // Ensure sponsor has a valid edit token for this session
-    if (!isSponsorTokenValid || !activeToken) {
-      const freshToken = await issueSponsorEditToken(messageId)
-      activeToken = freshToken
-      isSponsorTokenValid = true
-      try {
-        cookies().set(sponsorTokenCookieName(messageId), freshToken, {
-          path: '/',
-          maxAge: 30 * 24 * 60 * 60,
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-        })
-      } catch {}
-    }
+  // PAYMENT GATE: this page must NEVER activate a message or reveal its
+  // content on view. Activation happens only in the Dodo webhook after a
+  // verified payment. The previous activate-on-view fallback (plus minting
+  // a fresh edit token for any visitor) let anyone broadcast a Sponsored
+  // post for free by simply opening this URL — including after a FAILED
+  // payment, since Dodo returns here with ?status=failed. Unpaid or
+  // not-yet-live messages get the locked screen below; the sponsor edit
+  // token is only ever the one issued at checkout (cookie) or delivered
+  // in the confirmation email (URL) — never minted here.
+  const msgStatus = (message as any).status
+  if (msgStatus !== 'QUEUED' && msgStatus !== 'ACTIVE') {
+    const paymentFailed = searchParams?.status === 'failed'
+    const isSponsoredTier = (style as any)?.isSponsored === true
+    const catName = (message.category as any)?.name || 'MESSAGE'
+    return (
+      <div className="min-h-screen bg-background text-primary flex flex-col">
+        <header className="p-6">
+          <Link href="/waiting-room" className="inline-flex items-center text-secondary hover:text-primary transition-colors">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Waiting Room
+          </Link>
+        </header>
+        <main className="flex-1 max-w-2xl w-full mx-auto p-4 md:p-8">
+          <div className="bg-background-elevated border border-primary/10 rounded-lg p-8 md:p-12 text-center shadow-lg">
+            <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
+              <Lock size={20} />
+            </div>
+            <p className="text-xs uppercase tracking-widest text-secondary font-bold">{catName} • Locked</p>
+            {paymentFailed ? (
+              <>
+                <h1 className="text-2xl font-serif mt-2">Your payment didn&rsquo;t go through</h1>
+                <p className="text-sm text-secondary mt-2">No charge was completed, so this message is still waiting. You can try sponsoring it again below.</p>
+              </>
+            ) : isSponsoredTier ? (
+              <>
+                <h1 className="text-2xl font-serif mt-2">This message is waiting for sponsorship</h1>
+                <p className="text-sm text-secondary mt-2">Pay $3 to broadcast the full message worldwide. If you just paid, this page updates as soon as the payment is confirmed — give it a few seconds and refresh.</p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-2xl font-serif mt-2">This post can&rsquo;t be sponsored</h1>
+                <p className="text-sm text-secondary mt-2">Only Sponsored posts wait for a sponsor. This one goes live when its owner completes payment.</p>
+              </>
+            )}
+            {isSponsoredTier && (
+              <Link href={`/checkout/${messageId}?mode=sponsor`} className="inline-block mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-sm font-bold transition-colors">
+                Sponsor for $3 to continue
+              </Link>
+            )}
+          </div>
+        </main>
+      </div>
+    )
   }
 
   const categoryName = (message.category as any)?.name || 'MESSAGE'
@@ -241,14 +261,26 @@ export default async function SponsorShoutoutPage({
           )}
         </div>
 
-        {/* Shoutout form: available until finalized & locked */}
+        {/* Shoutout form: available until finalized & locked, and only to
+            whoever holds the sponsor edit token (checkout cookie or the
+            confirmation-email link). It is never minted on page view. */}
         {!isLocked ? (
-          <SponsorShoutoutForm
-            messageId={(message as any).id}
-            initialName={(message as any).style_config?.sponsorName || ''}
-            initialNote={(message as any).style_config?.sponsorNote || ''}
-            token={activeToken || undefined}
-          />
+          isSponsorTokenValid ? (
+            <SponsorShoutoutForm
+              messageId={(message as any).id}
+              initialName={(message as any).style_config?.sponsorName || ''}
+              initialNote={(message as any).style_config?.sponsorNote || ''}
+              token={activeToken || undefined}
+            />
+          ) : (
+            <div className="bg-background-elevated border border-primary/10 rounded-lg p-6 md:p-8 text-center shadow-lg space-y-3">
+              <h2 className="text-lg font-serif font-bold">Add your shoutout from your confirmation link</h2>
+              <p className="text-sm text-secondary">
+                For security, the shoutout editor only opens from the browser you paid with, or from the
+                link in your sponsor confirmation email.
+              </p>
+            </div>
+          )
         ) : (
           <div className="bg-background-elevated border border-primary/10 rounded-lg p-6 md:p-8 text-center shadow-lg space-y-3">
             <h2 className="text-lg font-serif font-bold">Shoutout finalized</h2>
