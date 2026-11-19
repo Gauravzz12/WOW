@@ -83,7 +83,7 @@ export function CheckoutForm({
   }, [messageId, isReservedSlot, isSponsorMode, isSponsoredTier])
 
   const highestQueuedBid = queueBids.length > 0 ? queueBids[0] : 0
-  const isOutbid = !isReservedSlot && !isSponsorMode && queueBids.length > 0 && currentBid <= highestQueuedBid
+  const isOutbid = !isReservedSlot && !isSponsorMode && queueBids.length > 0 && currentBid < highestQueuedBid
   const liveRank = queueBids.filter(b => b > currentBid).length + 1
 
   const specialPricing = calculateSpecialPrice(selectedSlots.length)

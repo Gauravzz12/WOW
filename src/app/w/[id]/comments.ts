@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { randomUUID } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
 import { validateContentModeration, validateContentModerationAsync } from '@/lib/moderation'
+import { isSponsoredMessage } from '@/lib/sponsored'
 
 /**
  * Device-gated comment writes (server-only).
@@ -72,7 +73,7 @@ export async function addComment(messageId: string, content: string) {
   // Only live/paid messages accept comments — never locked paywall rows.
   const { data: message } = await supabaseAdmin
     .from('messages')
-    .select('id, status, style_config')
+    .select('id, status, style_config, bid_amount')
     .eq('id', messageId)
     .maybeSingle()
   if (!message) return { error: 'Message not found.' }
@@ -83,7 +84,7 @@ export async function addComment(messageId: string, content: string) {
   const mStyle = typeof (message as any).style_config === 'string'
     ? (() => { try { return JSON.parse((message as any).style_config) } catch { return {} } })()
     : ((message as any).style_config || {})
-  if ((mStyle as any)?.isSponsored === true) {
+  if (isSponsoredMessage(mStyle, (message as any).bid_amount)) {
     return { error: 'Comments are turned off for Sponsored posts.' }
   }
 
