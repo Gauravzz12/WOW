@@ -13,6 +13,7 @@ import {
   verifySponsorEditToken,
 } from '@/lib/sponsorToken'
 import { ShareMenu } from '@/components/ShareMenu'
+import { ReportButton } from './ReportButton'
 import { getCategoryHex, getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { getSponsoredTeaser } from '@/lib/masking'
 import { FullscreenMessage } from '@/components/MessageFullscreen'
@@ -423,6 +424,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
             </div>
             <div className="flex items-center gap-3">
               <ShareMenu url={shareUrl} text={shareText} isVip={isVip} isDark={isDarkCard} />
+              <ReportButton messageId={message.id} isDark={isDarkCard} />
               <FullscreenMessage
                 message={{
                   content: message.content || '',

@@ -29,6 +29,19 @@ export function CheckoutForm({
   const router = useRouter()
   const [isProcessing, setIsProcessing] = useState(false)
   const [selectedSlots, setSelectedSlots] = useState<Slot[]>(initialSlots)
+
+  // Mirror slot edits into the URL (no navigation): the page resolves its
+  // slots from ?slots= on load, so without this a reload silently reverted
+  // the shopper's edit while the on-screen total kept the new selection.
+  const handleSlotsChange = (slots: Slot[]) => {
+    setSelectedSlots(slots)
+    if (!isReservedSlot) return
+    const params = new URLSearchParams(window.location.search)
+    if (slots.length > 0) params.set('slots', slots.map(s => s.id).join(','))
+    else params.delete('slots')
+    const qs = params.toString()
+    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname)
+  }
   const [isEditingSlots, setIsEditingSlots] = useState(initialSlots.length === 0)
   const [currentBid, setCurrentBid] = useState(baseAmount)
   const [queueBids, setQueueBids] = useState<number[]>([])
@@ -252,7 +265,7 @@ export function CheckoutForm({
                   )}
                 </div>
                 <SlotPicker
-                  onSelect={(slots) => setSelectedSlots(slots)}
+                  onSelect={handleSlotsChange}
                   selectedSlotIds={selectedSlots.length > 0 ? selectedSlots.map(s => s.id) : initialSlotIds}
                   initialDate={selectedSlots[0]?.scheduled_start || undefined}
                 />

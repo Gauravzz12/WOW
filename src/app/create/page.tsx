@@ -119,11 +119,55 @@ function CreateMessageContent() {
       setTier('sponsored');
     }
   }, [tierParam, slotParam]);
+
   const [stickers, setStickers] = useState<Sticker[]>([]);
   const [frameId, setFrameId] = useState<string | null>(null);
   const previewCardRef = useRef<HTMLDivElement>(null);
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [isDraggingSticker, setIsDraggingSticker] = useState(false);
+  const DRAFT_KEY = 'wow_create_draft_v1';
+  const draftRestored = useRef(false);
+  useEffect(() => {
+    if (draftRestored.current) return;
+    draftRestored.current = true;
+    if (prefillParam || tierParam || slotParam) return; // explicit links win
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (!d || (!d.messageText && (!d.step || d.step <= 1))) return;
+      if (d.category) setCategory(d.category);
+      if (d.template) setTemplate(d.template);
+      if (typeof d.messageHtml === 'string') setMessageHtml(d.messageHtml);
+      if (typeof d.messageText === 'string') setMessageText(d.messageText);
+      if (d.identityType) setIdentityType(d.identityType);
+      if (typeof d.customName === 'string') setCustomName(d.customName);
+      if (typeof d.recipient === 'string') setRecipient(d.recipient);
+      if (typeof d.brandName === 'string') setBrandName(d.brandName);
+      if (typeof d.brandUrl === 'string') setBrandUrl(d.brandUrl);
+      if (d.tier) setTier(d.tier);
+      if (d.normalDuration) setNormalDuration(d.normalDuration);
+      if (d.bidAmount) setBidAmount(d.bidAmount);
+      if (typeof d.usePromoFree === 'boolean') setUsePromoFree(d.usePromoFree);
+      if (d.frameId !== undefined) setFrameId(d.frameId);
+      if (Array.isArray(d.stickers)) setStickers(d.stickers);
+      if (d.step) setStep(Math.min(5, Math.max(1, d.step)));
+      toast.success('Your draft was restored — pick up where you left off.', { title: 'Draft Restored' });
+    } catch { /* a corrupt draft is simply ignored */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!draftRestored.current) return;
+    try {
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
+        step, category, template, messageHtml, messageText, identityType,
+        customName, recipient, brandName, brandUrl, tier, normalDuration,
+        bidAmount, usePromoFree, frameId, stickers,
+      }));
+    } catch { /* storage full/blocked — drafting just won't persist */ }
+  }, [step, category, template, messageHtml, messageText, identityType, customName, recipient, brandName, brandUrl, tier, normalDuration, bidAmount, usePromoFree, frameId, stickers]);
+
 
   const handleStickerPointerDown = (e: React.PointerEvent, sticker: Sticker) => {
     e.preventDefault();
@@ -409,6 +453,7 @@ function CreateMessageContent() {
     if (result.error) {
       toast.error(result.error, { title: 'Submission Error' });
     } else if ((result as any).promoApplied) {
+      try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
       // Launch promo: no checkout — the free broadcast is already queued.
       // Land on the message's own page (shows LIVE / in-queue state), NOT
       // the Waiting Room: promo posts skip PENDING_PAYMENT entirely, so
@@ -418,6 +463,7 @@ function CreateMessageContent() {
       });
       window.location.href = `/w/${result.messageId}`;
     } else if (isSponsored) {
+      try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
       // Sponsored messages have no pay-and-broadcast: they sit in the Waiting
       // Room (PENDING_PAYMENT) until someone else sponsors them for $3.
       toast.success('Your message is now in the Waiting Room! It will broadcast worldwide once someone sponsors it for $3.', {
@@ -425,6 +471,7 @@ function CreateMessageContent() {
       });
       window.location.href = '/waiting-room';
     } else {
+      try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
       const slotQuery = isReserved && selectedSpecialSlots.length > 0 
         ? `?slots=${selectedSpecialSlots.map(s => s.id).join(',')}` 
         : '';
@@ -592,7 +639,7 @@ function CreateMessageContent() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <span className={`text-xs uppercase tracking-widest font-bold ${catColor}`}>
-                      {categoryMeta.badgeLabel}
+                      {selectedCategory.name}
                     </span>
                     <button 
                       type="button" 
@@ -603,7 +650,7 @@ function CreateMessageContent() {
                     </button>
                   </div>
                   <p className="text-xs text-secondary mt-0.5 leading-relaxed">
-                    {categoryMeta.tagline}
+                    {categoryMeta.badgeLabel} — {categoryMeta.tagline}
                   </p>
                 </div>
               </div>

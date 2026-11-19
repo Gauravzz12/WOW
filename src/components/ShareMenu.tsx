@@ -48,11 +48,30 @@ export function ShareMenu({
   }
 
   const copyToClipboard = async () => {
-    await navigator.clipboard.writeText(url)
+    let ok = false
+    try {
+      await navigator.clipboard.writeText(url)
+      ok = true
+    } catch {
+      // Clipboard API unavailable (permissions / insecure context): fall back
+      // to the legacy textarea copy so the button still does something.
+      try {
+        const ta = document.createElement('textarea')
+        ta.value = url
+        ta.style.position = 'fixed'
+        ta.style.opacity = '0'
+        document.body.appendChild(ta)
+        ta.select()
+        ok = document.execCommand('copy')
+        document.body.removeChild(ta)
+      } catch { ok = false }
+    }
+    if (!ok) return
     setCopied(true)
     safeCapture('message_shared', { method: 'clipboard' })
-    setTimeout(() => setCopied(false), 2000)
-    setIsOpen(false)
+    // Keep the menu open long enough for the "Copied!" state to be seen —
+    // previously it closed in the same tick and looked like nothing happened.
+    setTimeout(() => { setCopied(false); setIsOpen(false) }, 1200)
   }
 
   const shareTwitter = () => {

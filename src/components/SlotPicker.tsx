@@ -171,9 +171,24 @@ export function SlotPicker({ onSelect, selectedSlotIds = [], initialDate, initia
     const isAlreadySelected = selectedSlots.some(s => s.id === clickedSlot.id)
 
     if (isAlreadySelected) {
-      const remaining = selectedSlots.filter(s => s.id !== clickedSlot.id)
-      setSelectedSlots(remaining)
-      onSelect(remaining)
+      // Removing a MIDDLE slot would leave a gap, and non-continuous
+      // selections can never be paid for (the checkout rejects them).
+      // Trim to the earliest continuous run instead of leaving a broken
+      // selection behind.
+      const remaining = selectedSlots
+        .filter(s => s.id !== clickedSlot.id)
+        .sort((a, b) => new Date(a.scheduled_start).getTime() - new Date(b.scheduled_start).getTime())
+      const run: Slot[] = []
+      for (const s of remaining) {
+        if (run.length === 0 || new Date(s.scheduled_start).getTime() === new Date(run[run.length - 1].scheduled_end).getTime()) {
+          run.push(s)
+        } else break
+      }
+      if (run.length < remaining.length) {
+        setHintMessage('Slots must stay continuous — the selection was trimmed to the earliest continuous run.')
+      }
+      setSelectedSlots(run)
+      onSelect(run)
       return
     }
 
@@ -282,9 +297,10 @@ export function SlotPicker({ onSelect, selectedSlotIds = [], initialDate, initia
           {slots.map(slot => {
             const isBooked = slot.status === 'BOOKED'
             const isSelected = selectedSlots.some(s => s.id === slot.id)
-            // A slot is past only once fully elapsed — in-progress slots with
-            // remaining airtime stay bookable.
-            const isPast = new Date(slot.scheduled_end).getTime() <= Date.now()
+            // A slot whose start has passed cannot be booked: the create and
+            // checkout flows reject past-start slots, so an in-progress slot
+            // offered here could never actually be paid for.
+            const isPast = new Date(slot.scheduled_start).getTime() <= Date.now()
             const disabled = isBooked || isPast
             const orderIndex = sortedSelected.findIndex(s => s.id === slot.id)
 
@@ -335,7 +351,7 @@ export function SlotPicker({ onSelect, selectedSlotIds = [], initialDate, initia
                   )}
                   {isPast && !isBooked && (
                     <span className="text-[10px] text-secondary font-medium bg-background/40 px-2 py-0.5 rounded">
-                      Past
+                      {new Date(slot.scheduled_end).getTime() <= Date.now() ? 'Past' : 'Started'}
                     </span>
                   )}
                   {isSelected && (

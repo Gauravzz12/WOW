@@ -31,6 +31,7 @@ export function ReportModal({
   const [details, setDetails] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false)
+  const [alreadyReported, setAlreadyReported] = useState<boolean>(false)
   const [mounted, setMounted] = useState<boolean>(false)
 
   useEffect(() => {
@@ -66,9 +67,16 @@ export function ReportModal({
 
     if (result.success) {
       setIsSubmitted(true)
-      toast.success('Your report has been submitted to the moderation team.', {
-        title: 'Report Received',
-      })
+      if ((result as any).alreadyReported) {
+        setAlreadyReported(true)
+        toast.success('You already reported this message — the moderation team has it.', {
+          title: 'Already Reported',
+        })
+      } else {
+        toast.success('Your report has been submitted to the moderation team.', {
+          title: 'Report Received',
+        })
+      }
     } else {
       toast.error(result.error || 'Failed to submit report. Please try again.', {
         title: 'Submission Error',
@@ -78,6 +86,7 @@ export function ReportModal({
 
   const handleResetAndClose = () => {
     setIsSubmitted(false)
+    setAlreadyReported(false)
     setDetails('')
     setSelectedReason('hate')
     onClose()
@@ -218,9 +227,11 @@ export function ReportModal({
                 <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20">
                   <CheckCircle2 size={32} />
                 </div>
-                <h3 className="text-xl font-serif font-bold text-primary">Report Submitted</h3>
+                <h3 className="text-xl font-serif font-bold text-primary">{alreadyReported ? 'Already Reported' : 'Report Submitted'}</h3>
                 <p className="text-xs text-secondary max-w-sm mx-auto leading-relaxed">
-                  Thank you for keeping Words of the World safe. An expedited alert has been dispatched to our 24/7 moderation team for immediate review and takedown if deemed in violation.
+                  {alreadyReported
+                    ? 'You already reported this message from this device, and the moderation team already has it — no need to send it again.'
+                    : 'Thank you for keeping Words of the World safe. An expedited alert has been dispatched to our 24/7 moderation team for immediate review and takedown if deemed in violation.'}
                 </p>
                 <div className="pt-2">
                   <button

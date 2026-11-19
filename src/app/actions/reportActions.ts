@@ -1,5 +1,6 @@
 'use server'
 
+import { cookies } from 'next/headers'
 import { sendEmail } from '@/lib/email'
 import { SITE_URL } from '@/lib/site'
 
@@ -39,6 +40,20 @@ export async function submitContentReport(payload: ReportPayload) {
 
   if (!messageId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(messageId)) {
     return { error: 'A valid message ID and reason are required.' }
+  }
+
+  // One report per device per message: repeats used to send the admin
+  // another email every time. The cookie keeps a bounded list of reported
+  // message ids; a repeat returns alreadyReported so the UI can say so
+  // instead of dispatching a duplicate alert.
+  const store = cookies()
+  let reportedIds: string[] = []
+  try {
+    reportedIds = JSON.parse(store.get('wow_reported')?.value || '[]')
+    if (!Array.isArray(reportedIds)) reportedIds = []
+  } catch { reportedIds = [] }
+  if (reportedIds.includes(messageId)) {
+    return { success: true, alreadyReported: true }
   }
 
   const safeMessageId = escapeHtml(messageId)
@@ -136,6 +151,17 @@ View Live Card: ${messageUrl}
     if (!sent) {
       console.warn('Could not dispatch report alert email via primary or fallback relay.')
     }
+
+    // Remember this report on the device (bounded to the last 50) so a
+    // repeat submission short-circuits above instead of re-emailing.
+    try {
+      const next = [...reportedIds.filter(id => id !== messageId), messageId].slice(-50)
+      store.set('wow_reported', JSON.stringify(next), {
+        path: '/',
+        maxAge: 30 * 24 * 60 * 60,
+        sameSite: 'lax',
+      })
+    } catch { /* cookie write is best-effort */ }
 
     return { success: true }
   } catch (err: any) {

@@ -3,7 +3,7 @@
 import { cookies } from 'next/headers'
 import { randomUUID } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
-import { validateContentModeration } from '@/lib/moderation'
+import { validateContentModeration, validateContentModerationAsync } from '@/lib/moderation'
 
 /**
  * Device-gated comment writes (server-only).
@@ -56,8 +56,12 @@ export async function addComment(messageId: string, content: string) {
     return { error: `Comments must be 1–${MAX_LEN} characters.` }
   }
 
-  // Content moderation check
-  const modCheck = validateContentModeration(trimmed)
+  // Content moderation check — comments get the same screening as posts:
+  // the sync script check PLUS the async semantic (Jev) check. Previously
+  // comments only ran the script check, so a comment containing a direct
+  // threat posted freely while the identical text was blocked as a post.
+  // The async check fails open on a Jev outage, exactly as post creation does.
+  const modCheck = await validateContentModerationAsync(trimmed)
   if (!modCheck.allowed) {
     return { error: modCheck.reason || 'Comment violates our Community Guidelines.' }
   }

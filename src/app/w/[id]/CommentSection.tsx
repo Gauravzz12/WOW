@@ -164,6 +164,11 @@ export function CommentSection({ messageId }: { messageId: string }) {
             className="w-full bg-background-elevated border border-primary/20 rounded-full pl-4 pr-12 py-3 text-sm focus:outline-none focus:border-primary/50 transition-colors"
             disabled={isSubmitting}
           />
+          {content.length >= 240 && (
+            <span className="absolute right-12 top-1/2 -translate-y-1/2 text-[10px] font-mono text-secondary pointer-events-none">
+              {content.length}/{MAX_LEN}
+            </span>
+          )}
           <button
             type="submit"
             disabled={!content.trim() || isSubmitting}
