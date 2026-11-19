@@ -71,6 +71,27 @@ export const metadata: Metadata = {
   },
 };
 
+// Structured data for search engines: who we are and what the site is.
+// Static strings only — never interpolate user content into this block.
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      name: 'Words of the World',
+      url: SITE_URL,
+      email: 'wordsoftheworld.lol@gmail.com',
+    },
+    {
+      '@type': 'WebSite',
+      name: 'Words of the World',
+      url: SITE_URL,
+      description: 'One message. One moment. The world\'s attention.',
+      publisher: { '@type': 'Organization', name: 'Words of the World' },
+    },
+  ],
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -79,6 +100,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
