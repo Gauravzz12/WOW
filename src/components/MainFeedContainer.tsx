@@ -6,6 +6,7 @@ import { LiveFeed } from './LiveFeed'
 import { SponsoredGrid } from './SponsoredGrid'
 import { VipSpecialView } from './VipSpecialView'
 import { QueueTabs } from './QueueTabs'
+import FreePromoBanner from './FreePromoBanner'
 import { LeftSidebar } from './LeftSidebar'
 import { createClient } from '@/lib/supabase/client'
 import { Menu, List } from 'lucide-react'
@@ -35,11 +36,12 @@ export function MainFeedContainer({
 }) {
   const searchParams = useSearchParams()
   
-  // Read ?tab= param on first mount (set by post-payment redirect) then strip it from URL
+  // Read ?tab= param on first mount (set by post-payment redirect) then strip it from URL.
+  // No param: the Special stage is the default view (owner's call, 2026-11-19).
   const getInitialTab = (): TabType => {
     const tab = searchParams?.get('tab')
-    if (tab === 'SPECIAL' || tab === 'SPONSORED') return tab
-    return 'NORMAL'
+    if (tab === 'NORMAL' || tab === 'SPECIAL' || tab === 'SPONSORED') return tab
+    return 'SPECIAL'
   }
 
   const [activeTab, setActiveTab] = useState<TabType>(getInitialTab)
@@ -389,7 +391,7 @@ export function MainFeedContainer({
         </div>
 
         {/* Tab Selection */}
-        <div className="z-30 bg-background-elevated/90 rounded-full p-1.5 flex items-center gap-1 border border-primary/10 shadow-sm scale-90 md:scale-100 shrink-0 mb-8 md:mb-12 mt-2 md:mt-4">
+        <div className="z-30 bg-background-elevated/90 rounded-full p-1.5 flex items-center gap-1 border border-primary/10 shadow-sm scale-90 md:scale-100 shrink-0 mb-4 md:mb-6 mt-2 md:mt-4">
           <button 
             onClick={() => setActiveTab('NORMAL')}
             className={`px-5 py-2 rounded-full text-xs font-mono font-medium tracking-wider uppercase transition-all ${
@@ -417,6 +419,9 @@ export function MainFeedContainer({
             Sponsored
           </button>
         </div>
+
+        {/* Free Normal message banner — every tab (owner's call, 2026-11-19) */}
+        <FreePromoBanner />
 
         {/* Current Active Feed */}
         <div className="w-full max-w-7xl flex-1 relative z-10 flex flex-col items-center overflow-y-auto custom-scrollbar pt-2 md:pt-4 pb-16">
