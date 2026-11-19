@@ -3,16 +3,19 @@
 import { cookies } from 'next/headers'
 import { randomUUID } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
+import { isAllowedReactionEmoji } from '@/lib/reactionEmojis'
 
 /**
  * Device-gated reaction writes (server-only).
  * Reads the anonymous device id from the `wow_device_id` cookie (shared with
  * the client-side getDeviceId helper) and performs all writes with the
  * service role, so the open anon INSERT/DELETE RLS policies could be revoked.
+ *
+ * Model (WhatsApp/Instagram style): ONE reaction per device per message.
+ * The stored reaction_type is the emoji character itself; rows written by
+ * the old 5-type system hold legacy ids (LOVE, CELEBRATE, ...) and are
+ * replaced wholesale the next time that device reacts.
  */
-
-const REACTION_TYPES = ['LOVE', 'CELEBRATE', 'SUPPORT', 'FEEL_THIS', 'RESPECT'] as const
-export type ReactionType = (typeof REACTION_TYPES)[number]
 
 const DEVICE_COOKIE = 'wow_device_id'
 // Flood guard: max writes per device per rolling minute.
@@ -82,12 +85,14 @@ async function checkRateLimit(
   return (count ?? 0) < RATE_LIMIT_MAX
 }
 
-function isValidType(type: string): type is ReactionType {
-  return (REACTION_TYPES as readonly string[]).includes(type)
-}
-
-export async function addReaction(messageId: string, type: string) {
-  if (!messageId || !isValidType(type)) {
+/**
+ * Set the caller's single reaction on a message to `emoji`, replacing any
+ * previous one (including legacy-type rows). Picking a different emoji is
+ * a change, not an addition — the message's total only grows when a new
+ * device reacts.
+ */
+export async function setReaction(messageId: string, emoji: string) {
+  if (!messageId || !isAllowedReactionEmoji(emoji)) {
     return { error: 'Invalid reaction.' }
   }
   const deviceId = getOrCreateDeviceId()
@@ -97,35 +102,28 @@ export async function addReaction(messageId: string, type: string) {
     return { error: 'Too many reactions. Please slow down.' }
   }
 
+  // Replace semantics: clear every row this device has on the message,
+  // then insert the single new one.
+  const { error: deleteError } = await supabaseAdmin
+    .from('reactions')
+    .delete()
+    .eq('message_id', messageId)
+    .eq('device_id', deviceId)
+  if (deleteError) return { error: 'Failed to set reaction.' }
+
   const { data, error } = await supabaseAdmin
     .from('reactions')
-    .insert({ message_id: messageId, reaction_type: type, device_id: deviceId })
+    .insert({ message_id: messageId, reaction_type: emoji, device_id: deviceId })
     .select('id')
     .single()
 
-  if (error) {
-    // Already reacted (unique index) — return the existing row so the
-    // client can reconcile instead of sticking a ghost 'temp' state.
-    if ((error as any).code === '23505') {
-      const { data: existing } = await supabaseAdmin
-        .from('reactions')
-        .select('id')
-        .eq('message_id', messageId)
-        .eq('device_id', deviceId)
-        .eq('reaction_type', type)
-        .maybeSingle()
-      if (existing) return { id: (existing as any).id, deduped: true }
-    }
-    return { error: 'Failed to add reaction.' }
-  }
-
+  if (error) return { error: 'Failed to set reaction.' }
   return { id: (data as any).id }
 }
 
-export async function removeReaction(messageId: string, type: string) {
-  if (!messageId || !isValidType(type)) {
-    return { error: 'Invalid reaction.' }
-  }
+/** Remove the caller's reaction (whatever type/emoji it is) from a message. */
+export async function removeMyReaction(messageId: string) {
+  if (!messageId) return { error: 'Invalid reaction.' }
   const deviceId = getOrCreateDeviceId()
   const supabaseAdmin = getAdmin()
 
@@ -134,7 +132,6 @@ export async function removeReaction(messageId: string, type: string) {
     .delete()
     .eq('message_id', messageId)
     .eq('device_id', deviceId)
-    .eq('reaction_type', type)
     .select('id')
 
   if (error) return { error: 'Failed to remove reaction.' }
