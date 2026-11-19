@@ -260,6 +260,8 @@ export default function ContentPolicyPage() {
           <div className="flex items-center gap-4 text-xs font-semibold">
             <Link href="/" className="hover:text-primary transition-colors">Billboard</Link>
             <Link href="/about" className="hover:text-primary transition-colors">About</Link>
+            <Link href="/terms" className="hover:text-primary transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-primary transition-colors">Privacy</Link>
             <Link href="/create" className="hover:text-primary transition-colors">Leave Message</Link>
           </div>
         </div>

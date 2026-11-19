@@ -219,6 +219,8 @@ export default function GuidelinesPage() {
           </span>
           <div className="flex items-center gap-4 text-xs font-semibold">
             <Link href="/" className="hover:text-primary transition-colors">Billboard</Link>
+            <Link href="/terms" className="hover:text-primary transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-primary transition-colors">Privacy</Link>
             <Link href="/content-policy" className="hover:text-primary transition-colors">Content Policy</Link>
             <Link href="/create" className="hover:text-primary transition-colors">Leave Message</Link>
           </div>

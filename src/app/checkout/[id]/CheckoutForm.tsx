@@ -86,6 +86,17 @@ export function CheckoutForm({
   const isOutbid = !isReservedSlot && !isSponsorMode && queueBids.length > 0 && currentBid < highestQueuedBid
   const liveRank = queueBids.filter(b => b > currentBid).length + 1
 
+  // Slots must form one continuous run — a gap can never be paid for.
+  const slotsAreContinuous = (() => {
+    if (!isReservedSlot || selectedSlots.length <= 1) return true
+    const sorted = [...selectedSlots].sort(
+      (a, b) => new Date(a.scheduled_start).getTime() - new Date(b.scheduled_start).getTime()
+    )
+    return sorted.every((slot, i) =>
+      i === 0 || new Date(slot.scheduled_start).getTime() === new Date(sorted[i - 1].scheduled_end).getTime()
+    )
+  })()
+
   const specialPricing = calculateSpecialPrice(selectedSlots.length)
   const total = isSponsorMode
     ? SPONSORED_PRICE 
@@ -282,10 +293,16 @@ export function CheckoutForm({
 
       
       <div className="space-y-3 mt-4">
+        {isReservedSlot && selectedSlots.length > 1 && !slotsAreContinuous && (
+          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs leading-relaxed">
+            <strong>These slots have a gap between them.</strong> Special broadcasts must be
+            one continuous run — use Change Slots above to pick slots that sit back-to-back.
+          </div>
+        )}
         {/* Real Payment Button */}
         <button 
           onClick={handlePay}
-          disabled={isProcessing || (isReservedSlot && selectedSlots.length === 0)}
+          disabled={isProcessing || (isReservedSlot && selectedSlots.length === 0) || !slotsAreContinuous}
           className={`w-full py-4 rounded-full font-bold disabled:opacity-50 transition-colors flex items-center justify-center gap-2 ${
             isReservedSlot
               ? 'bg-violet-700 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 text-white shadow-sm'
