@@ -13,6 +13,8 @@ import {
   verifySponsorEditToken,
 } from '@/lib/sponsorToken'
 import { ShareMenu } from '@/components/ShareMenu'
+import { isSponsoredMessage } from '@/lib/sponsored'
+import { ReportButton } from './ReportButton'
 import { getCategoryHex, getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { getSponsoredTeaser } from '@/lib/masking'
 import { FullscreenMessage } from '@/components/MessageFullscreen'
@@ -348,6 +350,12 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
               Live Now
             </div>
           )}
+
+          {message.status === 'COMPLETED' && (
+            <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1 bg-primary/5 text-secondary text-[11px] font-bold uppercase tracking-wider rounded-full">
+              Broadcast Ended
+            </div>
+          )}
           
           <div className="flex flex-col items-center gap-2 mb-6">
             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border shadow-sm ${isVip ? 'bg-amber-400/20 border-amber-400/40 text-amber-300' : badgeClass}`}>
@@ -423,6 +431,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
             </div>
             <div className="flex items-center gap-3">
               <ShareMenu url={shareUrl} text={shareText} isVip={isVip} isDark={isDarkCard} />
+              <ReportButton messageId={message.id} isDark={isDarkCard} />
               <FullscreenMessage
                 message={{
                   content: message.content || '',
@@ -465,7 +474,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
             </div>
 
             {/* Comments — Sponsored posts have no comments feature */}
-            {(message.style_config as any)?.isSponsored !== true && (
+            {!isSponsoredMessage(message.style_config, (message as any).bid_amount) && (
               <div className="md:col-span-7 space-y-4">
                 <h2 className="text-lg font-serif">Comments</h2>
                 <CommentSection messageId={message.id} />

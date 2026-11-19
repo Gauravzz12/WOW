@@ -9,6 +9,9 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const fetchCache = 'force-no-store'
 
+// The checkout tab used to show the generic homepage title.
+export const metadata = { title: 'Checkout | Words of the World' }
+
 export default async function CheckoutPage({ 
   params,
   searchParams 
