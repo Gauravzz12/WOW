@@ -9,7 +9,8 @@ import { ShareMenu } from './ShareMenu'
 import { ReportModal } from './ReportModal'
 import { toast } from '@/components/Toast'
 import { getStoredReactions, setStoredReaction, removeStoredReaction, syncStoredReactions } from '@/lib/deviceId'
-import { addReaction as serverAddReaction, removeReaction as serverRemoveReaction, getMyReactions } from '@/app/w/[id]/reactions'
+import { setReaction as serverSetReaction, removeMyReaction as serverRemoveMyReaction, getMyReactions } from '@/app/w/[id]/reactions'
+import { REACTION_EMOJIS, emojiForStoredType, formatReactionCount } from '@/lib/reactionEmojis'
 import { addComment as serverAddComment } from '@/app/w/[id]/comments'
 import { SITE_URL } from '@/lib/site'
 
@@ -27,14 +28,6 @@ function formatRelativeTime(dateString?: string) {
   if (diffHours < 24) return `${diffHours}h ago`
   return `${SHORT_MONTHS[date.getMonth()]} ${date.getDate()}`
 }
-
-const REACTIONS = [
-  { id: 'LOVE', emoji: '❤️' },
-  { id: 'CELEBRATE', emoji: '🎉' },
-  { id: 'SUPPORT', emoji: '🫂' },
-  { id: 'FEEL_THIS', emoji: '😢' },
-  { id: 'RESPECT', emoji: '🙏' },
-]
 
 export function InlineInteractions({
   messageId,
@@ -78,9 +71,9 @@ export function InlineInteractions({
   const totalComments = comments.length
   const totalReactions = Object.values(reactionCounts).reduce((acc, count) => acc + count, 0)
   const myReactionType = Object.keys(myReactions)[0] || null
-  const myReaction = REACTIONS.find(r => r.id === myReactionType)
-  const hasReacted = !!myReaction
-  const isLoved = myReactionType === 'LOVE'
+  const myEmoji = emojiForStoredType(myReactionType)
+  const hasReacted = !!myEmoji
+  const isLoved = myEmoji === '❤️'
   const reactPopoverRef = useRef<HTMLDivElement>(null)
 
   // Sync state if messageId changes (client-only: localStorage is unavailable on server)
@@ -205,79 +198,68 @@ export function InlineInteractions({
     return () => clearInterval(interval)
   }, [isPopUpActive, currentCycle.length])
 
-  const handleReact = async (type: string) => {
+  const handleReact = async (emoji: string) => {
     setShowReact(false)
     if (!messageId) return
     if (isReacting.current) return
     isReacting.current = true
 
-    const currentReactionType = Object.keys(myReactions)[0] || null
-    const currentReactionId = currentReactionType ? myReactions[currentReactionType] : null
+    const currentType = Object.keys(myReactions)[0] || null
+    const currentId = currentType ? myReactions[currentType] : null
+    const currentEmoji = emojiForStoredType(currentType)
 
     try {
-      // 1. If clicking the SAME reaction type already active -> TOGGLE OFF (unreact)
-      if (currentReactionType === type) {
+      // 1. Picking the SAME emoji I already have -> toggle OFF (unreact)
+      if (currentEmoji === emoji) {
         setMyReactions({})
         syncStoredReactions(messageId, {})
         setReactionCounts(prev => ({
           ...prev,
-          [type]: Math.max(0, (prev[type] || 0) - 1)
+          [currentType as string]: Math.max(0, (prev[currentType as string] || 0) - 1)
         }))
 
-        // Device-gated server delete (direct anon DELETE is revoked by RLS hardening).
-        if (currentReactionId && currentReactionId !== 'temp') {
-          const res = await serverRemoveReaction(messageId, type)
+        if (currentId && currentId !== 'temp') {
+          const res = await serverRemoveMyReaction(messageId)
           if ((res as any).error) {
             // Revert on error
-            setMyReactions(currentReactionType ? { [currentReactionType]: currentReactionId } : {})
-            syncStoredReactions(messageId, currentReactionType ? { [currentReactionType]: currentReactionId } : {})
+            setMyReactions({ [currentType as string]: currentId })
+            syncStoredReactions(messageId, { [currentType as string]: currentId })
             setReactionCounts(prev => ({
               ...prev,
-              [type]: (prev[type] || 0) + 1
+              [currentType as string]: (prev[currentType as string] || 0) + 1
             }))
           }
         }
       }
-      // 2. User selects a reaction -> Strictly 1 reaction per person, replaces previous reaction
+      // 2. Pick any other emoji -> it becomes my single reaction (the
+      // server replaces whatever I had; the total only grows if I had none)
       else {
-        const oldType = currentReactionType
-        const oldId = currentReactionId
-
-        // Optimistically set the single new reaction
-        setMyReactions({ [type]: 'temp' })
-        syncStoredReactions(messageId, { [type]: 'temp' })
-
+        const hadReaction = !!currentType
+        setMyReactions({ [emoji]: 'temp' })
+        syncStoredReactions(messageId, { [emoji]: 'temp' })
         setReactionCounts(prev => {
           const next = { ...prev }
-          if (oldType) {
-            next[oldType] = Math.max(0, (next[oldType] || 0) - 1)
-          }
-          next[type] = (next[type] || 0) + 1
+          if (currentType) next[currentType] = Math.max(0, (next[currentType] || 0) - 1)
+          next[emoji] = (next[emoji] || 0) + 1
           return next
         })
 
-        // Delete old reaction from DB if there was one (device-gated server delete)
-        if (oldId && oldId !== 'temp') {
-          await serverRemoveReaction(messageId, oldType as string)
-        }
-
-        // Insert new single reaction (device-gated server insert, deduped per device+type)
-        const res = await serverAddReaction(messageId, type)
-
+        const res = await serverSetReaction(messageId, emoji)
         if (!(res as any).error && (res as any).id) {
-          setMyReactions({ [type]: (res as any).id })
-          syncStoredReactions(messageId, { [type]: (res as any).id })
+          setMyReactions({ [emoji]: (res as any).id })
+          syncStoredReactions(messageId, { [emoji]: (res as any).id })
         } else {
           // Revert on error
-          setMyReactions(oldType && oldId ? { [oldType]: oldId } : {})
-          syncStoredReactions(messageId, oldType && oldId ? { [oldType]: oldId } : {})
+          setMyReactions(currentType && currentId ? { [currentType]: currentId } : {})
+          syncStoredReactions(messageId, currentType && currentId ? { [currentType]: currentId } : {})
           setReactionCounts(prev => {
             const next = { ...prev }
-            next[type] = Math.max(0, (next[type] || 0) - 1)
-            if (oldType) next[oldType] = (next[oldType] || 0) + 1
+            next[emoji] = Math.max(0, (next[emoji] || 0) - 1)
+            if (currentType) next[currentType] = (next[currentType] || 0) + 1
             return next
           })
         }
+        void hadReaction
       }
     } finally {
       isReacting.current = false
@@ -342,34 +324,33 @@ export function InlineInteractions({
         </div>
       )}
 
-      {/* Reaction Popover */}
+      {/* Reaction Popover — WhatsApp-style emoji picker: quick row is the
+          start of the grid; picking my current emoji again removes it. */}
       <AnimatePresence>
         {showReact && (
           <motion.div
             ref={reactPopoverRef}
-            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.9 }}
-            className="absolute bottom-full mb-4 left-0 bg-neutral-900/95 dark:bg-neutral-900/95 border border-white/20 rounded-full shadow-none p-2 flex gap-2 z-50"
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            className="absolute bottom-full mb-4 left-0 w-[324px] max-w-[88vw] bg-neutral-900/95 border border-white/20 rounded-3xl shadow-xl p-3 z-50"
           >
-            {REACTIONS.map(r => (
-              <button
-                key={r.id}
-                onClick={() => handleReact(r.id)}
-                className={`w-11 h-11 flex flex-col items-center justify-center rounded-full transition-all relative group ${
-                  myReactions[r.id] 
-                    ? 'bg-amber-400/35 ring-2 ring-amber-400 scale-110 shadow-lg' 
-                    : 'bg-white/10 hover:bg-white/20 hover:scale-110'
-                }`}
-              >
-                <span className="text-xl select-none">{r.emoji}</span>
-                {reactionCounts[r.id] > 0 && (
-                  <span className="absolute -top-1 -right-1 text-[10px] font-bold bg-amber-400 text-neutral-950 px-1.5 py-0.2 rounded-full shadow-md font-mono">
-                    {reactionCounts[r.id] > 99 ? '99+' : reactionCounts[r.id]}
-                  </span>
-                )}
-              </button>
-            ))}
+            <div className="grid grid-cols-6 gap-1 max-h-64 overflow-y-auto custom-scrollbar">
+              {REACTION_EMOJIS.map(emoji => (
+                <button
+                  key={emoji}
+                  onClick={() => handleReact(emoji)}
+                  aria-label={`React ${emoji}`}
+                  className={`h-11 flex items-center justify-center rounded-full text-[22px] transition-all select-none ${
+                    myEmoji === emoji
+                      ? 'bg-amber-400/35 ring-2 ring-amber-400 scale-110'
+                      : 'hover:bg-white/15 hover:scale-110'
+                  }`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -500,9 +481,9 @@ export function InlineInteractions({
                       )
                     : btnStyle
                 }`}
-                title={hasReacted && myReaction ? `Reacted ${myReaction.emoji} • Click to change` : 'Add reaction'}
+                title={hasReacted && myEmoji ? `Reacted ${myEmoji} • Click to change` : 'Add reaction'}
               >
-                {hasReacted && myReaction ? (
+                {hasReacted && myEmoji ? (
                   <div className="flex items-center gap-1.5">
                     {/* Dedicated background badge behind reaction emoji */}
                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-sm shrink-0 select-none shadow-xs border ${
@@ -510,11 +491,11 @@ export function InlineInteractions({
                         ? (isLoved ? 'bg-red-500/40 border-red-400/40 text-white' : 'bg-amber-400/35 border-amber-300/40 text-white') 
                         : (isLoved ? 'bg-red-200 border-red-300 text-red-700' : 'bg-amber-200 border-amber-300 text-amber-900')
                     }`}>
-                      {myReaction.emoji}
+                      {myEmoji}
                     </span>
                     {totalReactions > 0 && (
                       <span className={`text-xs font-bold font-mono px-0.5 ${isDarkCard ? 'text-white' : 'text-neutral-900'}`}>
-                        {totalReactions}
+                        {formatReactionCount(totalReactions)}
                       </span>
                     )}
                   </div>
@@ -531,7 +512,7 @@ export function InlineInteractions({
                     {!compact && <span className="font-medium tracking-wide text-sm">React</span>}
                     {totalReactions > 0 && (
                       <span className={`text-xs font-bold font-mono ml-0.5 ${isDarkCard ? 'text-white/90' : 'text-neutral-800 dark:text-neutral-200'}`}>
-                        {totalReactions}
+                        {formatReactionCount(totalReactions)}
                       </span>
                     )}
                   </div>
