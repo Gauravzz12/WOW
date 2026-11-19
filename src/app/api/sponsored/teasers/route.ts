@@ -12,9 +12,15 @@ export async function GET() {
 
     const { data, error } = await supabaseAdmin
       .from('messages')
-      .select('id, content, bid_amount, created_at, category:categories(name, slug)')
+      .select('id, content, bid_amount, created_at, style_config, category:categories(name, slug)')
       .eq('status', 'PENDING_PAYMENT')
       .eq('is_reserved_slot', false)
+      // Sponsorship is Sponsored-tier only: unpaid Normal posts are
+      // owner-paid and must never surface as sponsorable teasers. (This
+      // filter was missing here — the homepage SSR query and the Waiting
+      // Room page had it, this API did not, so the live-refreshed grid
+      // re-added Normal posts as "awaiting a sponsor".)
+      .eq('style_config->>isSponsored', 'true')
       .order('created_at', { ascending: true })
       .limit(100)
 
@@ -23,15 +29,23 @@ export async function GET() {
     }
 
     // Strip full content — only teaser + length leave the server.
-    const teasers = (data || []).map((msg: any) =>
-      toLockedSponsoredCard({
-        id: msg.id,
-        content: msg.content || '',
-        bid_amount: msg.bid_amount,
-        created_at: msg.created_at,
-        category: msg.category,
+    // Defense-in-depth: re-check the tier in JS, as the SSR query does.
+    const teasers = (data || [])
+      .filter((msg: any) => {
+        const sc = typeof msg.style_config === 'string'
+          ? (() => { try { return JSON.parse(msg.style_config) } catch { return {} } })()
+          : (msg.style_config || {})
+        return sc.isSponsored === true
       })
-    )
+      .map((msg: any) =>
+        toLockedSponsoredCard({
+          id: msg.id,
+          content: msg.content || '',
+          bid_amount: msg.bid_amount,
+          created_at: msg.created_at,
+          category: msg.category,
+        })
+      )
 
     return NextResponse.json({ teasers }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (e: any) {

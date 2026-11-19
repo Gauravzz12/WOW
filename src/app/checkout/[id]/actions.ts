@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import { calculateSpecialPrice, calculateNormalMinBid, BASE_NORMAL_MINS, MAX_NORMAL_MINS, SPONSORED_PRICE, SPONSORED_DURATION_SECS, isCanonicalSlotWindow } from '@/lib/constants/pricing'
 import { issueSponsorEditToken, sponsorTokenCookieName } from '@/lib/sponsorToken'
-import { validateContentModeration } from '@/lib/moderation'
+import { validateContentModeration, validateContentModerationAsync } from '@/lib/moderation'
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { SITE_URL } from '@/lib/site'
@@ -37,8 +37,12 @@ export async function processPayment(
     return { error: 'This order has already been processed or has expired.' }
   }
 
-  // Pre-payment Moderation Gate: Fast safety verification (Jev already screened content before style selection)
-  const modCheck = validateContentModeration(currentMsg.content || '')
+  // Pre-payment Moderation Gate: run the FULL check here, not just the
+  // fast script check. Jev fails open when unreachable, so a create that
+  // slipped through during a Jev outage was never semantically screened;
+  // this is the last gate before money moves, so screen again. (If Jev
+  // is still unreachable it fails open as before — no new false blocks.)
+  const modCheck = await validateContentModerationAsync(currentMsg.content || '')
   if (!modCheck.allowed) {
     return { error: modCheck.reason || 'Message content violates our Community Guidelines and cannot be processed for payment.' }
   }
@@ -73,7 +77,7 @@ export async function processPayment(
     if (isRealUuids) {
       const { data: dbSlots } = await supabaseAdmin
         .from('reserved_slots')
-        .select('id, status, scheduled_start, scheduled_end')
+        .select('id, status, scheduled_start, scheduled_end, message_id')
         .in('id', targetSlotIds)
         .order('scheduled_start', { ascending: true })
 
@@ -106,7 +110,7 @@ export async function processPayment(
 
       const { data: slotsByRange } = await supabaseAdmin
         .from('reserved_slots')
-        .select('id, status, scheduled_start, scheduled_end')
+        .select('id, status, scheduled_start, scheduled_end, message_id')
         .gte('scheduled_start', minStart)
         .lte('scheduled_start', maxEnd)
         .order('scheduled_start', { ascending: true })
@@ -131,8 +135,12 @@ export async function processPayment(
       return { error: 'Invalid time slot selection.' }
     }
 
-    const anyBooked = slots.some(s => s.status === 'BOOKED')
-    if (anyBooked) {
+    // Slots already BOOKED by THIS message are resumable, not taken: the
+    // first checkout attempt books them before payment, so a failed or
+    // abandoned payment must not lock the buyer out with a "just booked"
+    // error for their own booking. Only another buyer's booking blocks.
+    const takenByOther = slots.some(s => s.status !== 'AVAILABLE' && s.message_id !== messageId)
+    if (takenByOther) {
       return { error: 'Sorry, one or more selected slots were just booked. Please choose other slots.' }
     }
 
@@ -145,19 +153,28 @@ export async function processPayment(
 
     const resolvedSlotIds = slots.map(s => s.id)
 
-    // 3. Book all slots atomically — link to message, mark as BOOKED only if AVAILABLE
-    const { data: updatedSlots, error: slotError } = await supabaseAdmin
-      .from('reserved_slots')
-      .update({
-        status: 'BOOKED',
-        message_id: messageId,
-        bid_amount: officialVipPrice / resolvedSlotIds.length,
-      })
-      .in('id', resolvedSlotIds)
-      .eq('status', 'AVAILABLE') // Atomic condition: updates 0 rows if taken
-      .select('id')
+    // 3. Book all slots atomically — link to message, mark as BOOKED only
+    // if AVAILABLE. Slots this message already booked (a resumed checkout)
+    // are already claimed and need no update.
+    const availableIds = slots.filter(s => s.status === 'AVAILABLE').map(s => s.id)
+    const ownBookedCount = slots.length - availableIds.length
+    if (availableIds.length > 0) {
+      const { data: updatedSlots, error: slotError } = await supabaseAdmin
+        .from('reserved_slots')
+        .update({
+          status: 'BOOKED',
+          message_id: messageId,
+          bid_amount: officialVipPrice / resolvedSlotIds.length,
+        })
+        .in('id', availableIds)
+        .eq('status', 'AVAILABLE') // Atomic condition: updates 0 rows if taken
+        .select('id')
 
-    if (slotError || !updatedSlots || updatedSlots.length !== resolvedSlotIds.length) {
+      if (slotError || !updatedSlots || updatedSlots.length !== availableIds.length) {
+        return { error: 'Sorry, one or more time slots were just claimed by another user. Your payment was not processed.' }
+      }
+    }
+    if (ownBookedCount + availableIds.length !== resolvedSlotIds.length) {
       return { error: 'Sorry, one or more time slots were just claimed by another user. Your payment was not processed.' }
     }
 

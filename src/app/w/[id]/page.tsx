@@ -40,8 +40,8 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   // Even if visible, never put full unpaid content in metadata/crawlers.
   if ((message as any).status === 'PENDING_PAYMENT') {
     return {
-      title: 'Locked message — sponsor to reveal | Words.World',
-      description: 'This community message is waiting for sponsorship. Pay $3 to broadcast it.',
+      title: 'Locked message | Words.World',
+      description: 'This message is not live yet — it is waiting for payment to be completed.',
     }
   }
 
@@ -123,7 +123,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
       const admin = getSupabaseAdmin()
       const { data: locked } = await admin
         .from('messages')
-        .select('id, status, is_reserved_slot, created_at, category:categories(name, slug)')
+        .select('id, status, is_reserved_slot, created_at, style_config, category:categories(name, slug)')
         .eq('id', params.id)
         .single()
       if (locked && (locked as any).status === 'PENDING_PAYMENT') {
@@ -147,6 +147,41 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
                   <h1 className="text-2xl font-serif mt-2">This special message is reserved</h1>
                   <p className="text-sm text-secondary mt-2">Special (VIP) messages cannot be sponsored — the owner completes payment to broadcast.</p>
                   <Link href={`/checkout/${locked.id}`} className="inline-block mt-6 px-6 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-full text-sm font-bold transition-colors">
+                    Complete payment to broadcast
+                  </Link>
+                </div>
+              </main>
+            </div>
+          )
+        }
+        // Normal (owner-paid) posts can never be sponsored either — only
+        // the Sponsored tier waits for a sponsor. Sending a Normal post's
+        // visitors to a $3 sponsor checkout dead-ends at the checkout
+        // refusal, so show the owner-payment state instead.
+        const lockedStyle = (() => {
+          const sc: any = (locked as any).style_config
+          if (!sc) return {}
+          if (typeof sc === 'string') { try { return JSON.parse(sc) } catch { return {} } }
+          return sc
+        })()
+        if (lockedStyle.isSponsored !== true) {
+          return (
+            <div className="min-h-screen bg-background text-primary flex flex-col">
+              <header className="p-6">
+                <Link href="/" className="inline-flex items-center text-secondary hover:text-primary transition-colors">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to World
+                </Link>
+              </header>
+              <main className="flex-1 max-w-2xl w-full mx-auto p-4 md:p-8">
+                <div className="bg-background-elevated border border-primary/10 rounded-lg p-8 md:p-12 text-center shadow-lg">
+                  <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
+                    <Lock size={20} />
+                  </div>
+                  <p className="text-xs uppercase tracking-widest text-secondary font-bold">{catName} • Locked</p>
+                  <h1 className="text-2xl font-serif mt-2">This message is waiting for its owner&rsquo;s payment</h1>
+                  <p className="text-sm text-secondary mt-2">It goes live as soon as the owner completes payment. Normal posts can&rsquo;t be sponsored.</p>
+                  <Link href={`/checkout/${locked.id}`} className="inline-block mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-sm font-bold transition-colors">
                     Complete payment to broadcast
                   </Link>
                 </div>

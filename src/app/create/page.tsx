@@ -90,7 +90,7 @@ function CreateMessageContent() {
   const [bidAmount, setBidAmount] = useState(calculateNormalMinBid(BASE_NORMAL_MINS));
   // Launch promo (first 500 Normal broadcasts free): status from
   // /api/promo/status; the toggle is on by default when this device is eligible.
-  const [promoStatus, setPromoStatus] = useState<{ claimed: number; remaining: number; limit: number; deviceUsed: boolean } | null>(null);
+  const [promoStatus, setPromoStatus] = useState<{ claimed: number; remaining: number; limit: number; deviceUsed: boolean; deviceClaimed?: number; perDeviceLimit?: number } | null>(null);
   const [usePromoFree, setUsePromoFree] = useState(true);
   // Delivery tier: Normal (bid queue) · Special (reserved slots) · Sponsored ($3 grid)
   const [tier, setTier] = useState<'normal' | 'special' | 'sponsored'>('normal');
@@ -279,7 +279,14 @@ function CreateMessageContent() {
     isVip: false,
   }, selectedTemplate.id);
   const categoryMeta = CATEGORY_METADATA[category] || CATEGORY_METADATA.general;
-  const dummyMessage = CATEGORY_DUMMY_MESSAGES[category] || CATEGORY_DUMMY_MESSAGES.general;
+  // Template cards preview the user's OWN words once they've written
+  // them (previously every card showed a fixed category sample, so the
+  // first real preview of their text was Step 5). The category sample
+  // only fills the cards before there's any text.
+  const trimmedOwnMessage = messageText.trim();
+  const dummyMessage = trimmedOwnMessage
+    ? (trimmedOwnMessage.length > 140 ? trimmedOwnMessage.slice(0, 140).trimEnd() + '…' : trimmedOwnMessage)
+    : (CATEGORY_DUMMY_MESSAGES[category] || CATEGORY_DUMMY_MESSAGES.general);
   const { bgClass: catBg, borderClass: catBorder, accentClass: catColor, badgeClass } = getCategoryStyles(category);
 
   const handleSelectTemplate = (t: Template) => {
@@ -403,10 +410,13 @@ function CreateMessageContent() {
       toast.error(result.error, { title: 'Submission Error' });
     } else if ((result as any).promoApplied) {
       // Launch promo: no checkout — the free broadcast is already queued.
+      // Land on the message's own page (shows LIVE / in-queue state), NOT
+      // the Waiting Room: promo posts skip PENDING_PAYMENT entirely, so
+      // the Waiting Room showed an empty list and looked like a failure.
       toast.success('Your free launch broadcast is in the queue! Paid bids are promoted first, then free broadcasts in order.', {
         title: 'Free Broadcast Queued'
       });
-      window.location.href = '/waiting-room';
+      window.location.href = `/w/${result.messageId}`;
     } else if (isSponsored) {
       // Sponsored messages have no pay-and-broadcast: they sit in the Waiting
       // Room (PENDING_PAYMENT) until someone else sponsors them for $3.
@@ -948,8 +958,8 @@ function CreateMessageContent() {
                     <div className="flex-1 min-w-0">
                       {promoStatus.deviceUsed ? (
                         <>
-                          <p className="font-serif text-lg sm:text-xl text-primary leading-snug">You already grabbed your free one</p>
-                          <p className="text-sm text-secondary mt-0.5">One free message per person — {promoStatus.remaining} of {promoStatus.limit} are still up for grabs for everyone else.</p>
+                          <p className="font-serif text-lg sm:text-xl text-primary leading-snug">You&rsquo;ve used your {promoStatus.perDeviceLimit ?? 5} free broadcasts</p>
+                          <p className="text-sm text-secondary mt-0.5">That&rsquo;s the per-device limit — {promoStatus.remaining} of {promoStatus.limit} are still up for grabs for everyone else.</p>
                         </>
                       ) : promoStatus.remaining > 0 ? (
                         <>
@@ -997,6 +1007,9 @@ function CreateMessageContent() {
                                   <p className="text-xs text-secondary mt-1">
                                     The first {promoStatus.limit} Normal broadcasts are free. {promoStatus.claimed} of {promoStatus.limit} claimed — {promoStatus.remaining} left.
                                     Free broadcasts run the base {BASE_NORMAL_MINS / 60} hours, and paid bids are promoted ahead of them.
+                                    {(promoStatus.deviceClaimed ?? 0) > 0 && (
+                                      <> You&rsquo;ve used {promoStatus.deviceClaimed} of your {promoStatus.perDeviceLimit ?? 5} free broadcasts on this device.</>
+                                    )}
                                   </p>
                                 </div>
                                 <button

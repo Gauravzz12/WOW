@@ -8,6 +8,7 @@ import {
   BASE_NORMAL_PRICE,
   MAX_NORMAL_MINS,
   PROMO_FREE_LIMIT,
+  PROMO_PER_DEVICE_LIMIT,
   calculateNormalMinBid,
   calculateSpecialPrice,
   isCanonicalSlotWindow,
@@ -254,12 +255,16 @@ export async function createMessage(data: {
 
     // Launch promo — first 500 Normal broadcasts free. Eligibility is
     // re-validated here, never trusted from the client: Normal tier, base
-    // duration only (no extensions), no raised bid, no earlier promo from
-    // the same device, and (CRE-5 mitigation) none from the same reminder
-    // email when one is supplied. The counts below are only a fast path:
-    // enforcement is the atomic claim_promo_slot() counter plus the
-    // unique partial indexes on device_id / reminder_email (migration
-    // 20261107000001), because count-then-insert races (CRE-4).
+    // duration only (no extensions), no raised bid, fewer than
+    // PROMO_PER_DEVICE_LIMIT earlier promos from the same device, and
+    // (CRE-5 mitigation) none from the same reminder email when one is
+    // supplied. The counts below are only a fast path: enforcement is the
+    // atomic claim_promo_slot() counter plus the unique partial index on
+    // reminder_email (migration 20261107000001), because count-then-insert
+    // races (CRE-4). The per-device cap is a count check only — the old
+    // unique device index was dropped when the cap rose above one
+    // (migration 20261119000001), so parallel claims from one device can
+    // overshoot the cap by a race window; the 500 global cap stays atomic.
     // Ineligible requests silently fall through to the paid path.
     if (
       data.usePromoFree === true &&
@@ -271,6 +276,8 @@ export async function createMessage(data: {
       const deviceId = data.deviceId.trim().slice(0, 100)
       const isZeroCount = (count: number | null) =>
         typeof count === 'number' && Number.isFinite(count) && count === 0
+      const deviceHasRoom = (count: number | null) =>
+        typeof count === 'number' && Number.isFinite(count) && count < PROMO_PER_DEVICE_LIMIT
       const { count: deviceCount } = await supabaseAdmin
         .from('messages')
         .select('id', { count: 'exact', head: true })
@@ -288,7 +295,7 @@ export async function createMessage(data: {
         emailClear = isZeroCount(emailCount)
       }
       // Fail closed on unreadable counts: no promo without proof of room.
-      if (isZeroCount(deviceCount) && emailClear) {
+      if (deviceHasRoom(deviceCount) && emailClear) {
         promoApplied = true
         promoDeviceId = deviceId
       }

@@ -205,11 +205,16 @@ export async function POST(req: Request) {
       payment.metadata?.userEmail || 
       (message as any)?.reminder_email;
 
-    if (dodoCustomerEmail) {
+    // Fill the reminder email from the payer ONLY when the author never
+    // supplied one. This used to overwrite unconditionally — in sponsor
+    // mode a stranger's payment silently replaced the author's email, so
+    // later bump/live notifications went to the sponsor, not the author.
+    if (dodoCustomerEmail && !(message as any).reminder_email) {
       await supabaseAdmin
         .from('messages')
         .update({ reminder_email: dodoCustomerEmail })
-        .eq('id', messageId);
+        .eq('id', messageId)
+        .is('reminder_email', null);
     }
 
     let vipSlots: any[] = []

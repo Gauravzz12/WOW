@@ -43,6 +43,11 @@ export function MainFeedContainer({
   }
 
   const [activeTab, setActiveTab] = useState<TabType>(getInitialTab)
+
+  // Dodo returns failed payments to the homepage with ?status=failed —
+  // surface that as a visible banner (previously the failure existed only
+  // in the URL and the user saw nothing at all).
+  const [paymentFailed, setPaymentFailed] = useState(() => searchParams?.get('status') === 'failed')
   
   const [isLeftOpen, setIsLeftOpen] = useState(false)
   const [isRightOpen, setIsRightOpen] = useState(false)
@@ -72,12 +77,18 @@ export function MainFeedContainer({
       .catch(() => null)
   }
 
-  // Clean up ?tab= from URL so a page refresh doesn't re-apply the tab
+  // Clean up ?tab= from URL so a page refresh doesn't re-apply the tab.
+  // Also strip the payment-return params once the banner state above has
+  // captured them, so a refresh doesn't re-show the failure banner.
   useEffect(() => {
     const tab = searchParams?.get('tab')
-    if (tab) {
+    const status = searchParams?.get('status')
+    if (tab || status) {
       const url = new URL(window.location.href)
       url.searchParams.delete('tab')
+      url.searchParams.delete('status')
+      url.searchParams.delete('payment_id')
+      url.searchParams.delete('email')
       window.history.replaceState({}, '', url.toString())
     }
   }, [])
@@ -332,7 +343,19 @@ export function MainFeedContainer({
       <LeftSidebar isOpen={isLeftOpen} onClose={() => setIsLeftOpen(false)} />
 
       <div className="flex-1 h-[100dvh] flex flex-col items-center pt-6 md:pt-12 px-4 relative w-full overflow-hidden bg-background">
-        
+
+        {paymentFailed && (
+          <div className="w-full max-w-2xl mb-4 shrink-0 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 flex items-start gap-3 z-30" role="alert">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-red-700 dark:text-red-300">Your payment didn&rsquo;t go through</p>
+              <p className="text-xs text-secondary mt-0.5">No charge was made. Your message is saved — you can finish paying from its checkout page, or post a new one.</p>
+            </div>
+            <button onClick={() => setPaymentFailed(false)} className="shrink-0 text-xs font-bold uppercase tracking-wider text-secondary hover:text-primary" aria-label="Dismiss payment failure notice">
+              Dismiss
+            </button>
+          </div>
+        )}
+
 
         {/* Mobile Header */}
         <div className="w-full flex items-center justify-between mb-6 md:hidden shrink-0 z-30">
