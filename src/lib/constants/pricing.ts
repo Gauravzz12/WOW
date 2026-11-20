@@ -9,7 +9,7 @@ export const BASE_NORMAL_PRICE = 5
 /**
  * Tier separator: a non-reserved message is classified as Normal vs
  * Sponsored purely by its bid_amount (Normal >= this, Sponsored below).
- * Sponsored is a flat $3 (below), so the separator must stay above $3 and
+ * Sponsored is a flat $0.50 (below), so the separator must stay above $0.50 and
  * at or below the Normal floor ($5). Never compare bid_amount against a
  * raw numeric literal — always use this constant, so the classification
  * can't silently break when launch pricing changes.
@@ -213,5 +213,8 @@ export function getUserLocalTimeZone(): string {
 // Sponsored Messages (Always 30 min long)
 export const SPONSORED_DURATION_MINS = 30
 export const SPONSORED_DURATION_SECS = 1800 // Exactly 30 minutes
-export const SPONSORED_PRICE = 3.00
+// Flat sponsorship price: Dodo Payments' minimum for a one-time USD
+// payment ($0.50 — Dodo checks the total including tax, and Sponsored
+// checkouts are tax-inclusive, so the price itself must be >= $0.50).
+export const SPONSORED_PRICE = 0.50
 

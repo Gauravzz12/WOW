@@ -8,6 +8,7 @@ import { sponsorTokenCookieName, verifySponsorEditToken } from '@/lib/sponsorTok
 import { getCategoryHex, getCategoryStyles, resolveCardStyles } from '@/lib/utils/colors'
 import { FrameDecorator } from '@/components/FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
+import { SPONSORED_PRICE } from '@/lib/constants/pricing'
 import { SponsorShoutoutForm } from './SponsorShoutoutForm'
 
 export const dynamic = 'force-dynamic'
@@ -79,9 +80,9 @@ export default async function SponsorShoutoutPage({
                 </div>
                 <p className="text-xs uppercase tracking-widest text-secondary font-bold">{catName} • Locked</p>
                 <h1 className="text-2xl font-serif mt-2">This message is waiting for sponsorship</h1>
-                <p className="text-sm text-secondary mt-2">Pay $3 to unlock the shoutout screen and broadcast the full message worldwide.</p>
+                <p className="text-sm text-secondary mt-2">Pay ${SPONSORED_PRICE.toFixed(2)} to unlock the shoutout screen and broadcast the full message worldwide.</p>
                 <Link href={`/checkout/${(locked as any).id}?mode=sponsor`} className="inline-block mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-sm font-bold transition-colors">
-                  Sponsor for $3 to continue
+                  Sponsor for ${SPONSORED_PRICE.toFixed(2)} to continue
                 </Link>
               </div>
             </main>
@@ -141,7 +142,7 @@ export default async function SponsorShoutoutPage({
             ) : isSponsoredTier ? (
               <>
                 <h1 className="text-2xl font-serif mt-2">This message is waiting for sponsorship</h1>
-                <p className="text-sm text-secondary mt-2">Pay $3 to broadcast the full message worldwide. If you just paid, this page updates as soon as the payment is confirmed — give it a few seconds and refresh.</p>
+                <p className="text-sm text-secondary mt-2">Pay ${SPONSORED_PRICE.toFixed(2)} to broadcast the full message worldwide. If you just paid, this page updates as soon as the payment is confirmed — give it a few seconds and refresh.</p>
               </>
             ) : (
               <>
@@ -151,7 +152,7 @@ export default async function SponsorShoutoutPage({
             )}
             {isSponsoredTier && (
               <Link href={`/checkout/${messageId}?mode=sponsor`} className="inline-block mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-sm font-bold transition-colors">
-                Sponsor for $3 to continue
+                Sponsor for ${SPONSORED_PRICE.toFixed(2)} to continue
               </Link>
             )}
           </div>

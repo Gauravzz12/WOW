@@ -143,7 +143,7 @@ export function CheckoutForm({
       {isSponsoredTier ? (
         <div className="space-y-4">
           <div className="p-4 bg-blue-500/10 border border-blue-500/25 rounded-lg text-blue-700 dark:text-blue-300 text-xs font-medium text-center leading-relaxed">
-            Sponsored messages have no pay-and-broadcast. This message is waiting in the Waiting Room and will go live for 30 minutes once someone sponsors it for $3.
+            Sponsored messages have no pay-and-broadcast. This message is waiting in the Waiting Room and will go live for 30 minutes once someone sponsors it for ${SPONSORED_PRICE.toFixed(2)}.
           </div>
           <button
             type="button"
