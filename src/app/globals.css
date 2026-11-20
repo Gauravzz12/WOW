@@ -129,6 +129,32 @@ textarea:disabled,
   background: rgba(128,128,128,0.5);
 }
 
+/* Emoji picker grid: slim but always-visible scrollbar (the old
+   .custom-scrollbar thumb was 4px at 25% opacity — effectively invisible,
+   especially on the dark picker panel and on mobile). */
+.emoji-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 140, 140, 0.55) transparent;
+}
+.emoji-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.emoji-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.emoji-scroll::-webkit-scrollbar-thumb {
+  @apply rounded-full;
+  background: rgba(140, 140, 140, 0.55);
+}
+
+/* Horizontal strips (picker category tabs) scroll without a visible bar. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── Special spotlight motion (flat colors only) ── */
 @keyframes special-float {
   0%, 100% { transform: translateY(0); }
