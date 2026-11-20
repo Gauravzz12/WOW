@@ -9,6 +9,7 @@ import { InlineInteractions } from './InlineInteractions'
 import { FullscreenMessage } from './MessageFullscreen'
 import { FrameDecorator } from './FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
+import { SPONSORED_PRICE } from '@/lib/constants/pricing'
 import { sanitizeHtmlText } from '@/lib/sanitize'
 
 function SponsoredCard({ message }: { message: any }) {
@@ -276,7 +277,7 @@ export function SponsoredGrid({
           </div>
           <h3 className="text-lg font-serif tracking-wider text-primary mb-1.5">The Sponsored Stage is Quiet</h3>
           <p className="text-xs text-secondary max-w-sm leading-relaxed mb-6">
-            No sponsored messages are currently broadcasting. Post your own message for free — it goes live once someone sponsors it for $3.
+            No sponsored messages are currently broadcasting. Post your own message for free — it goes live once someone sponsors it for ${SPONSORED_PRICE.toFixed(2)}.
           </p>
           <Link href="/create?tier=sponsored">
             <button className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1.5">

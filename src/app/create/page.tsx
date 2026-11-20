@@ -92,7 +92,7 @@ function CreateMessageContent() {
   // /api/promo/status; the toggle is on by default when this device is eligible.
   const [promoStatus, setPromoStatus] = useState<{ claimed: number; remaining: number; limit: number; deviceUsed: boolean; deviceClaimed?: number; perDeviceLimit?: number } | null>(null);
   const [usePromoFree, setUsePromoFree] = useState(true);
-  // Delivery tier: Normal (bid queue) · Special (reserved slots) · Sponsored ($3 grid)
+  // Delivery tier: Normal (bid queue) · Special (reserved slots) · Sponsored ($0.50 grid)
   const [tier, setTier] = useState<'normal' | 'special' | 'sponsored'>('normal');
   const isReserved = tier === 'special';
   const isSponsored = tier === 'sponsored';
@@ -465,8 +465,8 @@ function CreateMessageContent() {
     } else if (isSponsored) {
       try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
       // Sponsored messages have no pay-and-broadcast: they sit in the Waiting
-      // Room (PENDING_PAYMENT) until someone else sponsors them for $3.
-      toast.success('Your message is now in the Waiting Room! It will broadcast worldwide once someone sponsors it for $3.', {
+      // Room (PENDING_PAYMENT) until someone else sponsors them for $0.50.
+      toast.success(`Your message is now in the Waiting Room! It will broadcast worldwide once someone sponsors it for $${SPONSORED_PRICE.toFixed(2)}.`, {
         title: 'Message Queued'
       });
       window.location.href = '/waiting-room';
@@ -1296,7 +1296,7 @@ function CreateMessageContent() {
                   </div>
                 </label>
 
-                {/* ♥ Sponsored option — free post, waits for a $3 community sponsor */}
+                {/* ♥ Sponsored option — free post, waits for a $0.50 community sponsor */}
                 <label className={`block p-6 rounded-lg border cursor-pointer transition-all ${tier === 'sponsored' ? 'border-blue-500/60 bg-blue-500/[0.06] ring-2 ring-blue-500/25 shadow-sm' : 'border-background-elevated hover:border-blue-500/40'}`}>
                   <div className="flex items-start gap-4">
                     <input type="radio" checked={tier === 'sponsored'} onChange={() => setTier('sponsored')} className="mt-1 accent-blue-600 w-4 h-4" />
@@ -1311,7 +1311,7 @@ function CreateMessageContent() {
                       </div>
 
                       <p className="text-sm text-secondary mt-1">
-                        Post for free into the Waiting Room. Your message broadcasts for 30 minutes once someone sponsors it for $3.
+                        Post for free into the Waiting Room. Your message broadcasts for 30 minutes once someone sponsors it for ${SPONSORED_PRICE.toFixed(2)}.
                       </p>
 
                       <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-blue-500/20 text-xs text-blue-700 dark:text-blue-300">
@@ -1350,7 +1350,7 @@ function CreateMessageContent() {
                 <h2 className="text-2xl sm:text-3xl font-serif mt-1 mb-1">{isSponsored ? 'Preview' : 'Preview & Decorate'}</h2>
                 <p className="text-secondary text-xs sm:text-sm">
                   {isSponsored
-                    ? 'Your message will wait in the Waiting Room until someone sponsors it for $3.'
+                    ? `Your message will wait in the Waiting Room until someone sponsors it for $${SPONSORED_PRICE.toFixed(2)}.`
                     : 'Drag stickers freely across the card to customize your stage layout.'}
                 </p>
               </div>
