@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { createClient } from '@supabase/supabase-js'
+import { SPONSORED_PRICE } from '@/lib/constants/pricing'
 
 export const runtime = 'edge'
 export const alt = 'Message on Words.World'
@@ -39,7 +40,7 @@ export default async function Image({ params }: { params: { id: string } }) {
           fontFamily: 'serif',
         }}>
           <div style={{ fontSize: 28, opacity: 0.6, letterSpacing: '0.2em', fontFamily: 'sans-serif' }}>LOCKED • WORDS.WORLD</div>
-          <div style={{ fontSize: 48, fontStyle: 'italic', marginTop: 20 }}>Sponsor $3 to reveal this message</div>
+          <div style={{ fontSize: 48, fontStyle: 'italic', marginTop: 20 }}>Sponsor ${SPONSORED_PRICE.toFixed(2)} to reveal this message</div>
         </div>
       ),
       { ...size }
