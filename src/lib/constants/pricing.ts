@@ -1,7 +1,10 @@
-// Normal Message Pricing & Durations
-// Launch pricing: base time 2hrs included. Extendable up to 3 hours at +$2 per 10 minutes.
-export const BASE_NORMAL_MINS = 120
-export const MAX_NORMAL_MINS = 180
+// Normal Message Pricing & Duration
+// Fixed 1-hour broadcasts (daily-lock lineup, 2026-11-20): every Normal
+// message airs exactly 60 minutes, so there are no time extensions — the
+// price is purely the bid, floored at BASE_NORMAL_PRICE. The top 24 bids
+// lock in daily at 12 PM US Eastern (see lib/lineup.ts).
+export const BASE_NORMAL_MINS = 60
+export const MAX_NORMAL_MINS = 60
 export const EXTENSION_STEP_MINS = 10
 export const EXTENSION_COST_PER_STEP = 2
 export const BASE_NORMAL_PRICE = 5

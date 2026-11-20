@@ -29,14 +29,10 @@ const SlotPicker = dynamic(() => import('@/components/SlotPicker').then(mod => m
 import type { Sticker } from '@/components/StickerPicker'
 import type { Slot } from '@/components/SlotPicker'
 
-import { 
-  NORMAL_DURATION_OPTIONS, 
-  calculateNormalMinBid, 
+import {
+  calculateNormalMinBid,
   BASE_NORMAL_MINS,
   BASE_NORMAL_PRICE,
-  MAX_NORMAL_MINS,
-  EXTENSION_STEP_MINS,
-  EXTENSION_COST_PER_STEP,
   MIN_NORMAL_BID,
   SPECIAL_SLOT_PRICE,
   calculateSpecialPrice,
@@ -71,7 +67,8 @@ function CreateMessageContent() {
   const [templatePage, setTemplatePage] = useState(0);
   const [hoveredTemplate, setHoveredTemplate] = useState<string | null>(null);
   const [queueBids, setQueueBids] = useState<number[]>([]);
-  const [normalDuration, setNormalDuration] = useState(BASE_NORMAL_MINS);
+  // Normal airtime is a fixed 60 minutes (daily-lock lineup) — no duration choice.
+  const normalDuration = BASE_NORMAL_MINS;
   const [messageHtml, setMessageHtml] = useState("");
   const [messageText, setMessageText] = useState("");
   const [identityType, setIdentityType] = useState("anonymous");
@@ -91,7 +88,7 @@ function CreateMessageContent() {
   // Launch promo (first 500 Normal broadcasts free): status from
   // /api/promo/status; the toggle is on by default when this device is eligible.
   const [promoStatus, setPromoStatus] = useState<{ claimed: number; remaining: number; limit: number; deviceUsed: boolean; deviceClaimed?: number; perDeviceLimit?: number } | null>(null);
-  const [queueStatus, setQueueStatus] = useState<{ waitingRoom: { count: number; capacity: number; full: boolean }; normalQueue: { minutesAhead: number; capMinutes: number; full: boolean } } | null>(null);
+  const [queueStatus, setQueueStatus] = useState<{ waitingRoom: { count: number; capacity: number; full: boolean }; normalPool: { windowId: string; slotsPerDay: number; lockedToday: number; poolCount: number; cutoffBid: number | null; nextLockMs: number } } | null>(null);
   const [usePromoFree, setUsePromoFree] = useState(true);
   // Delivery tier: Normal (bid queue) · Special (reserved slots) · Sponsored ($0.50 grid)
   const [tier, setTier] = useState<'normal' | 'special' | 'sponsored'>('normal');
@@ -147,7 +144,6 @@ function CreateMessageContent() {
       if (typeof d.brandName === 'string') setBrandName(d.brandName);
       if (typeof d.brandUrl === 'string') setBrandUrl(d.brandUrl);
       if (d.tier) setTier(d.tier);
-      if (d.normalDuration) setNormalDuration(d.normalDuration);
       if (d.bidAmount) setBidAmount(d.bidAmount);
       if (typeof d.usePromoFree === 'boolean') setUsePromoFree(d.usePromoFree);
       if (d.frameId !== undefined) setFrameId(d.frameId);
@@ -163,11 +159,11 @@ function CreateMessageContent() {
     try {
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
         step, category, template, messageHtml, messageText, identityType,
-        customName, recipient, brandName, brandUrl, tier, normalDuration,
+        customName, recipient, brandName, brandUrl, tier,
         bidAmount, usePromoFree, frameId, stickers,
       }));
     } catch { /* storage full/blocked — drafting just won't persist */ }
-  }, [step, category, template, messageHtml, messageText, identityType, customName, recipient, brandName, brandUrl, tier, normalDuration, bidAmount, usePromoFree, frameId, stickers]);
+  }, [step, category, template, messageHtml, messageText, identityType, customName, recipient, brandName, brandUrl, tier, bidAmount, usePromoFree, frameId, stickers]);
 
 
   const handleStickerPointerDown = (e: React.PointerEvent, sticker: Sticker) => {
@@ -302,7 +298,7 @@ function CreateMessageContent() {
       fetch('/api/queue/status')
         .then(r => r.json())
         .then(data => {
-          if (data && data.waitingRoom && data.normalQueue) setQueueStatus(data);
+          if (data && data.waitingRoom && data.normalPool) setQueueStatus(data);
         })
         .catch(() => {});
     }
@@ -310,18 +306,17 @@ function CreateMessageContent() {
 
   const promoAvailable = !!promoStatus && promoStatus.remaining > 0 && !promoStatus.deviceUsed;
   const waitingRoomFull = !!queueStatus?.waitingRoom.full;
-  const normalQueueFull = !!queueStatus?.normalQueue.full;
+  const pool = queueStatus?.normalPool ?? null;
   const promoOn = tier === 'normal' && promoAvailable && usePromoFree;
 
-  // While the free broadcast is on, duration and bid are locked to the base.
+  // While the free broadcast is on, the bid is locked to the base.
   useEffect(() => {
     if (promoOn) {
-      setNormalDuration(BASE_NORMAL_MINS);
       setBidAmount(calculateNormalMinBid(BASE_NORMAL_MINS));
     }
   }, [promoOn]);
 
-  // Minimum bid is derived from 2 hour base + 10-minute extensions (+$2/10m)
+  // Minimum bid is the flat Normal floor — airtime is a fixed 1 hour.
   const minBid = calculateNormalMinBid(normalDuration);
 
   const selectedTemplate = ALL_TEMPLATES.find(t => t.id === template) || ALL_TEMPLATES[0];
@@ -1003,7 +998,7 @@ function CreateMessageContent() {
               <div className="mb-6">
                 <span className="text-xs uppercase tracking-widest font-bold text-secondary">Step 4 of 5</span>
                 <h2 className="text-2xl sm:text-3xl font-serif mt-1 mb-2">Queue Priority &amp; Delivery</h2>
-                <p className="text-secondary text-sm">Choose how soon and for how long your message commands the world stage.</p>
+                <p className="text-secondary text-sm">Choose how your message reaches the world stage.</p>
               </div>
 
               {/* Launch promo banner — how many free Normal messages are left */}
@@ -1045,15 +1040,12 @@ function CreateMessageContent() {
 
               <div className="space-y-6 mb-8">
                 {/* Standard Queue Option */}
-                <label className={`block p-6 rounded-lg border transition-all ${normalQueueFull ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${tier === 'normal' ? 'border-primary bg-background-elevated ring-1 ring-primary/30' : 'border-background-elevated hover:border-secondary/50'}`}>
+                <label className={`block p-6 rounded-lg border transition-all cursor-pointer ${tier === 'normal' ? 'border-primary bg-background-elevated ring-1 ring-primary/30' : 'border-background-elevated hover:border-secondary/50'}`}>
                   <div className="flex items-start gap-4">
-                    <input type="radio" checked={tier === 'normal'} disabled={normalQueueFull} onChange={() => setTier('normal')} className="mt-1 accent-primary w-4 h-4" />
+                    <input type="radio" checked={tier === 'normal'} onChange={() => setTier('normal')} className="mt-1 accent-primary w-4 h-4" />
                     <div className="flex-1">
                       <h3 className="text-lg font-medium">Standard Queue</h3>
-                      <p className="text-sm text-secondary mt-1 mb-4">Enter the main queue. Bump up your priority by outbidding others.</p>
-                      {normalQueueFull && (
-                        <p className="text-sm font-medium text-amber-700 dark:text-amber-300 mb-4">Queue full — about {Math.max(1, Math.round((queueStatus?.normalQueue.minutesAhead ?? 0) / 60))} hours of broadcasts are already waiting for the stage. New posts reopen as it clears.</p>
-                      )}
+                      <p className="text-sm text-secondary mt-1 mb-4">Enter the daily bid pool. The top 24 bids lock in at 12 PM US Eastern and air in order.</p>
                       
                       {tier === 'normal' && (
                         <div className="flex flex-col gap-4 bg-background p-4 rounded-xl border border-background-elevated">
@@ -1065,7 +1057,7 @@ function CreateMessageContent() {
                                   <p className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Launch Offer — Free Broadcast</p>
                                   <p className="text-xs text-secondary mt-1">
                                     The first {promoStatus.limit} Normal broadcasts are free. {promoStatus.claimed} of {promoStatus.limit} claimed — {promoStatus.remaining} left.
-                                    Free broadcasts run the base {BASE_NORMAL_MINS / 60} hours, and paid bids are promoted ahead of them.
+                                    Free broadcasts run the standard 1 hour, and paid bids are ranked ahead of them at the daily lock.
                                     {(promoStatus.deviceClaimed ?? 0) > 0 && (
                                       <> You&rsquo;ve used {promoStatus.deviceClaimed} of your {promoStatus.perDeviceLimit ?? 5} free broadcasts on this device.</>
                                     )}
@@ -1090,77 +1082,21 @@ function CreateMessageContent() {
                           <div className="flex flex-col gap-3">
                             <div className="flex justify-between items-center text-xs">
                               <div>
-                                <span className="font-bold uppercase tracking-wider text-primary">Airtime Duration</span>
-                                <p className="text-[11px] text-secondary">Base {BASE_NORMAL_MINS / 60} hours • Extend up to {MAX_NORMAL_MINS / 60} hours (+${EXTENSION_COST_PER_STEP} per 10 mins)</p>
+                                <span className="font-bold uppercase tracking-wider text-primary">Airtime — Fixed 1 Hour</span>
+                                <p className="text-[11px] text-secondary">Every Normal broadcast runs exactly 1 hour. No extensions — your bid decides your slot.</p>
                               </div>
                               <span className="text-xs font-mono font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded">
                                 {promoOn ? 'FREE — Launch Offer' : `Min Bid: $${minBid}`}
                               </span>
                             </div>
 
-                            {/* 10-Minute Increment Pills */}
-                            <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
-                              {NORMAL_DURATION_OPTIONS.map(opt => {
-                                const isSelected = normalDuration === opt.mins;
-                                return (
-                                  <button
-                                    key={opt.mins}
-                                    type="button"
-                                    onClick={() => {
-                                      // Changing duration while the free broadcast
-                                      // is on switches this message to paid.
-                                      if (promoOn && opt.mins !== BASE_NORMAL_MINS) setUsePromoFree(false);
-                                      setNormalDuration(opt.mins);
-                                      setBidAmount(prev => Math.max(prev, opt.minBid));
-                                    }}
-                                    className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all ${
-                                      isSelected 
-                                        ? 'border-emerald-500 bg-emerald-500/15 text-emerald-900 dark:text-emerald-200 shadow-sm ring-1 ring-emerald-500/40 font-bold' 
-                                        : 'border-primary/10 hover:border-primary/25 bg-background-elevated/40 text-primary'
-                                    }`}
-                                  >
-                                    <span className="text-xs font-bold">{opt.label}</span>
-                                    <span className="text-[10px] font-mono text-secondary mt-0.5">${opt.minBid}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-
-                            {/* Granular Stepper & Duration Summary */}
-                            <div className="flex items-center justify-between p-2.5 rounded-xl bg-background-elevated/60 border border-primary/10 text-xs">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  disabled={promoOn || normalDuration <= BASE_NORMAL_MINS}
-                                  onClick={() => {
-                                    const next = Math.max(BASE_NORMAL_MINS, normalDuration - EXTENSION_STEP_MINS);
-                                    setNormalDuration(next);
-                                    setBidAmount(prev => Math.max(prev, calculateNormalMinBid(next)));
-                                  }}
-                                  className="w-7 h-7 rounded-lg border border-primary/15 bg-background flex items-center justify-center font-bold text-sm hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                                >
-                                  -
-                                </button>
-                                <span className="font-semibold text-primary">
-                                  {Math.floor(normalDuration / 60)}h {normalDuration % 60 > 0 ? `${normalDuration % 60}m` : ''} ({normalDuration} mins)
+                            <div className="p-3 rounded-xl bg-background-elevated/60 border border-primary/10 text-[11px] text-secondary leading-relaxed">
+                              <span className="font-semibold text-primary">How the daily lock works:</span> every day at 12:00 PM US Eastern, the top 24 bids lock into that day&rsquo;s lineup and air one after another in bid order — a locked slot can&rsquo;t be taken. Miss the cut and your bid rolls to the next day&rsquo;s lock; it never expires.
+                              {pool && (
+                                <span className="block mt-1.5 font-mono text-[11px] text-primary">
+                                  Today: {pool.lockedToday}/{pool.slotsPerDay} slots locked · {pool.poolCount} bid{pool.poolCount === 1 ? '' : 's'} in the pool{pool.cutoffBid != null ? ` · current cutoff $${Number(pool.cutoffBid).toFixed(2)}` : ''}
                                 </span>
-                                <button
-                                  type="button"
-                                  disabled={promoOn || normalDuration >= MAX_NORMAL_MINS}
-                                  onClick={() => {
-                                    const next = Math.min(MAX_NORMAL_MINS, normalDuration + EXTENSION_STEP_MINS);
-                                    setNormalDuration(next);
-                                    setBidAmount(prev => Math.max(prev, calculateNormalMinBid(next)));
-                                  }}
-                                  className="w-7 h-7 rounded-lg border border-primary/15 bg-background flex items-center justify-center font-bold text-sm hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                                >
-                                  +
-                                </button>
-                              </div>
-
-                              <span className="text-[11px] text-secondary">
-                                {normalDuration === BASE_NORMAL_MINS ? `Base ${BASE_NORMAL_MINS / 60}-hour broadcast` : `+${normalDuration - BASE_NORMAL_MINS}m extension (+$${((normalDuration - BASE_NORMAL_MINS) / EXTENSION_STEP_MINS) * EXTENSION_COST_PER_STEP})`}
-                              </span>
+                              )}
                             </div>
                           </div>
 
@@ -1194,7 +1130,7 @@ function CreateMessageContent() {
                                     className="w-full py-2 px-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm transition-colors"
                                   >
                                     <Zap size={14} />
-                                    <span>Take #1 Position in Queue (Bid ${highestBid + 1})</span>
+                                    <span>Take Slot #1 in the Next Lock (Bid ${highestBid + 1})</span>
                                   </button>
                                 );
                               }
@@ -1202,7 +1138,7 @@ function CreateMessageContent() {
                                 <div className="p-2 bg-emerald-500/10 border border-emerald-500/25 rounded-xl flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300">
                                   <span className="flex items-center gap-1.5 font-semibold">
                                     <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-400" />
-                                    <span>Highest Bid (Rank #1)</span>
+                                    <span>Top Bid — Slot #1 Pace</span>
                                   </span>
                                   <span className="font-mono font-bold">${bidAmount}</span>
                                 </div>
@@ -1232,11 +1168,11 @@ function CreateMessageContent() {
                             {queueBids.length > 5 && <span className="ml-1 opacity-60 text-[11px]">+{queueBids.length - 5} more</span>}
                           </div>
                           <div className="text-xs font-medium text-primary bg-primary/5 p-3 rounded-lg border border-primary/10 flex items-center justify-between">
-                            <span>Selected Duration: {Math.floor(normalDuration / 60)}h {normalDuration % 60 > 0 ? `${normalDuration % 60}m` : ''}</span>
+                            <span>Duration: 1 hour (fixed)</span>
                             {promoOn ? (
-                              <span className="font-bold">Free — after paid bids in queue</span>
+                              <span className="font-bold">Free — ranked after paid bids</span>
                             ) : (
-                              <span className="font-bold">Estimated Rank: #{queueBids.filter(b => b >= bidAmount).length + 1}</span>
+                              <span className="font-bold">Pool Rank: #{queueBids.filter(b => b >= bidAmount).length + 1}</span>
                             )}
                           </div>
                         </div>
@@ -1349,11 +1285,11 @@ function CreateMessageContent() {
               )}
 
               <button 
-                disabled={(tier === 'special' && selectedSpecialSlots.length === 0) || (tier === 'normal' && normalQueueFull) || (tier === 'sponsored' && waitingRoomFull)}
+                disabled={(tier === 'special' && selectedSpecialSlots.length === 0) || (tier === 'sponsored' && waitingRoomFull)}
                 onClick={handleNext}
                 className="w-full py-4 mt-auto bg-primary text-background rounded-full font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
               >
-                {tier === 'special' && selectedSpecialSlots.length === 0 ? 'Select a Time Slot to Continue' : tier === 'normal' && normalQueueFull ? 'Queue Full — Try Again Later' : tier === 'sponsored' && waitingRoomFull ? 'Waiting Room Full — Try Again Later' : tier === 'sponsored' ? 'Preview Sponsored Message' : 'Preview Final Message'}
+                {tier === 'special' && selectedSpecialSlots.length === 0 ? 'Select a Time Slot to Continue' : tier === 'sponsored' && waitingRoomFull ? 'Waiting Room Full — Try Again Later' : tier === 'sponsored' ? 'Preview Sponsored Message' : 'Preview Final Message'}
               </button>
             </motion.div>
           )}

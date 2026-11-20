@@ -21,6 +21,7 @@ import { FullscreenMessage } from '@/components/MessageFullscreen'
 import { FrameDecorator } from '@/components/FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
 import { BumpBidButton } from './BumpBidButton'
+import { EditMessageButton } from './EditMessageButton'
 import { SITE_URL } from '@/lib/site'
 import { MIN_NORMAL_BID, SPONSORED_PRICE } from '@/lib/constants/pricing'
 
@@ -418,6 +419,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
           {currentRank !== null && (
             <div className="mb-6 max-w-xl mx-auto text-left">
               <BumpBidButton messageId={message.id} currentBid={(message as any).bid_amount} />
+              <EditMessageButton />
             </div>
           )}
           
