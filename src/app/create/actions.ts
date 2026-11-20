@@ -15,7 +15,7 @@ import {
   SPONSORED_PRICE,
   SPONSORED_DURATION_SECS,
 } from '@/lib/constants/pricing'
-import { WAITING_ROOM_CAPACITY, NORMAL_QUEUE_CAP_MINUTES, countWaitingRoom, getNormalQueueMinutes } from '@/lib/queueCapacity'
+import { WAITING_ROOM_CAPACITY, countWaitingRoom } from '@/lib/queueCapacity'
 import { ALL_TEMPLATES } from '@/lib/constants/templates'
 import { FRAMES } from '@/lib/constants/frames'
 
@@ -254,17 +254,11 @@ export async function createMessage(data: {
     // style_config.durationSecs raw, so pricing from a clamped copy
     // while storing the client's value sold unbounded airtime for $17.
     parsedStyle.durationSecs = durationMins * 60
-    // Normal queue cap: refuse new broadcasts (paid or promo) once the
-    // stage already has NORMAL_QUEUE_CAP_MINUTES of airtime committed.
-    // Only one Normal message airs at a time and promotion is
-    // bid-ordered, so an unbounded queue can starve a base-bid payer
-    // forever — money taken for a turn that never comes. Gating here,
-    // before any payment, keeps new money out of a queue that cannot
-    // reach it in bounded time.
-    const queueMinutes = await getNormalQueueMinutes()
-    if (queueMinutes !== null && queueMinutes + durationMins > NORMAL_QUEUE_CAP_MINUTES) {
-      return { error: 'The broadcast queue is full right now — too many messages are already waiting for their turn on stage. Please try again once it clears.' }
-    }
+    // No airtime cap on Normal creates: since the daily-lock lineup,
+    // Normal posts join a bid pool and the top 24 lock in each day at
+    // midnight IST (lib/lineup.ts). A post that misses the cut rolls to
+    // the next day's lock — it is never starved out of existence, so
+    // new money is never taken for a turn that can't come.
     const minBid = calculateNormalMinBid(durationMins)
     const candidate = Number(data.bidAmount)
     bidAmount = !isNaN(candidate) && candidate > minBid ? candidate : minBid

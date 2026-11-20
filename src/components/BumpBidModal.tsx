@@ -126,7 +126,7 @@ export function BumpBidModal({
               <div>
                 <h2 className="text-xl font-serif font-bold text-primary">Bump Your Priority Bid</h2>
                 <p className="text-xs text-secondary mt-0.5">
-                  Boost your message up the queue anytime before it broadcasts.
+                  Raise your bid anytime before the daily lock. Once you&rsquo;re locked into a lineup, your slot is fixed.
                 </p>
               </div>
             </div>

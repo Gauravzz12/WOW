@@ -702,6 +702,86 @@ export async function sendLiveNotificationEmail(to: string, messageContent: stri
 }
 
 /**
+ * Lineup Locked Email (daily lock: the message made today's top 24)
+ */
+export async function sendLineupLockedEmail(
+  to: string,
+  messageContent: string,
+  slot: number,
+  slotsPerDay: number,
+  approxStartText: string,
+  messageId: string,
+) {
+  const siteUrl = SITE_URL
+  const viewUrl = `${siteUrl}/w/${messageId}`
+  const subject = `🔒 You're locked in! Slot #${slot} in today's lineup`
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${subject}</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #09090b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #fafafa;">
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #09090b; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 600px; background-color: #18181b; border-radius: 16px; border: 1px solid #27272a; overflow: hidden;">
+
+              <tr>
+                <td style="background: #059669; padding: 24px 32px; text-align: center;">
+                  <span style="font-size: 32px;">🔒</span>
+                  <h1 style="margin: 8px 0 0; color: #ffffff; font-size: 24px; font-weight: 800;">
+                    You're In — Slot #${slot} of ${slotsPerDay}
+                  </h1>
+                  <p style="margin: 4px 0 0; color: #d1fae5; font-size: 14px;">
+                    Your bid made today's locked lineup. Nobody can take your slot now.
+                  </p>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding: 28px 32px;">
+                  <div style="background-color: #09090b; border: 2px solid #059669; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 24px;">
+                    <h2 style="margin: 0; font-size: 20px; color: #fafafa; font-style: italic; line-height: 1.4;">
+                      "${messageContent}"
+                    </h2>
+                  </div>
+
+                  <p style="margin: 0 0 24px; text-align: center; font-size: 14px; color: #a1a1aa;">
+                    Your 1-hour broadcast is scheduled to start at approximately
+                    <strong style="color: #fafafa;">${approxStartText} IST</strong>.
+                    We'll email you again the moment you're live.
+                  </p>
+
+                  <div style="text-align: center;">
+                    <a href="${viewUrl}" target="_blank" style="display: inline-block; background: #059669; color: #ffffff; padding: 14px 32px; border-radius: 9999px; text-decoration: none; font-weight: 700; font-size: 14px;">
+                      🌍 View Your Message →
+                    </a>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding: 16px 32px; background-color: #09090b; border-top: 1px solid #27272a; text-align: center; font-size: 12px; color: #71717a;">
+                  Words of the World · Live Global Billboard · <a href="${siteUrl}" style="color: #a1a1aa;">${siteUrl}</a>
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `
+
+  return sendEmail({ to, subject, html })
+}
+
+/**
  * Outbid Notification Email (When queue position drops)
  */
 export async function sendOutbidEmail(to: string, messageContent: string, newRank: number, messageId: string) {

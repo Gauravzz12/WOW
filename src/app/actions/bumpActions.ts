@@ -3,6 +3,8 @@
 import { verifyBumpToken, generateBumpToken, hashBumpToken, type VerifiedBumpMessage } from '@/lib/bumpToken'
 import { SITE_URL } from '@/lib/site'
 import { DODO_ENVIRONMENT } from '@/lib/dodo'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { getLineupMark, lineupWindowFor } from '@/lib/lineup'
 
 export async function verifyTokenAction(token: string): Promise<{
   error?: string
@@ -29,6 +31,22 @@ export async function createBumpCheckoutAction(token: string, newTotalBid: numbe
     }
 
     const msg = verification.message
+
+    // Daily-lock guard: once a message is locked into today's lineup,
+    // its slot is fixed — a bump would charge for a position change
+    // that can no longer happen. Refuse before any checkout exists.
+    const { data: lockRow } = await getSupabaseAdmin()
+      .from('messages')
+      .select('style_config')
+      .eq('id', msg.id)
+      .single()
+    const mark = lockRow ? getLineupMark(lockRow.style_config) : null
+    if (mark && mark.windowId === lineupWindowFor(new Date()).windowId) {
+      return {
+        error: `Good news — your message is already locked into today's lineup at slot #${mark.slot}. Locked slots can't be bumped or moved.`,
+      }
+    }
+
     const candidateBid = Math.round(Number(newTotalBid) * 100) / 100
 
     if (isNaN(candidateBid) || candidateBid <= msg.bid_amount) {

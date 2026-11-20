@@ -67,8 +67,8 @@ export default function TermsPage() {
             <p>There are three ways a message reaches the billboard:</p>
             <div className="space-y-3">
               <div className="p-4 rounded-xl bg-background-elevated/40 border border-primary/10 space-y-1">
-                <span className="font-bold text-primary block text-sm">Normal (Priority Queue)</span>
-                <span className="text-xs leading-relaxed block">You pay a bid for a broadcast duration. Messages air in bid order — higher bids air first — for the duration purchased. You may raise your bid later using the secret bump token in your receipt email.</span>
+                <span className="font-bold text-primary block text-sm">Normal (Daily Lock)</span>
+                <span className="text-xs leading-relaxed block">Every Normal broadcast runs exactly 1 hour. You place a bid to enter the daily pool: at midnight IST each day, the top 24 bids lock into that day&rsquo;s lineup and air one after another in bid order — a locked slot cannot be taken by a later bid. Bids that miss the cut stay in the pool for the next day&rsquo;s lock. You may raise your bid, or edit your message, any time before it goes live, using the secret token in your receipt email.</span>
               </div>
               <div className="p-4 rounded-xl bg-background-elevated/40 border border-primary/10 space-y-1">
                 <span className="font-bold text-primary block text-sm">Sponsored (Waiting Room)</span>
@@ -81,7 +81,7 @@ export default function TermsPage() {
             </div>
             <p>
               From time to time we run promotions, such as a limited number of free Normal broadcasts.
-              Promotional broadcasts are limited per person, per email, and per device, join the queue
+              Promotional broadcasts are limited per person, per email, and per device, join the pool
               at the base bid behind paid broadcasts, and may be changed or ended at any time.
             </p>
           </div>
@@ -160,9 +160,10 @@ export default function TermsPage() {
           </div>
           <div className="text-sm text-secondary leading-relaxed space-y-3">
             <p>
-              Normal broadcasts air in bid order, so an exact start time is never guaranteed — the
-              queue position shown is an estimate based on the bids ahead of you. Special slots are
-              the exception: they air at their reserved UTC times.
+              Normal broadcasts air as part of a daily locked lineup — the top 24 bids, locked at
+              midnight IST and aired in bid order. Lineup start times are approximate: an earlier
+              broadcast that runs long, or a service interruption, can shift later slots. Special
+              slots are the exception: they air at their reserved UTC times.
             </p>
             <p>
               We work to keep the billboard running around the clock, but the service is provided

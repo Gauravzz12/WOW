@@ -1,10 +1,18 @@
 import { getSupabaseAdmin } from './supabase/admin'
 import { getMessageEndTimeMs } from './messageExpiry'
 import { MIN_NORMAL_BID } from './constants/pricing'
+import {
+  ensureLineupLocked,
+  fetchNormalQueue,
+  nextInLineup,
+  slotStartMs,
+  formatIstTime,
+  LINEUP_SLOTS_PER_DAY,
+} from './lineup'
 
 const supabaseAdmin = getSupabaseAdmin()
 
-import { sendLiveNotificationEmail } from './email'
+import { sendLiveNotificationEmail, sendLineupLockedEmail } from './email'
 
 async function sendReminderEmail(to: string, messageContent: string, messageId?: string) {
   try {
@@ -106,10 +114,40 @@ export async function runQueueAdvance() {
     }
   }
 
+  // 1b. Daily lock: fill today's Normal lineup (top 24 pool bids, locked
+  // at midnight IST — see lib/lineup.ts). Runs before promotion so a
+  // freshly locked post can take the stage in the same sweep. Newly
+  // locked owners get the locked-in email.
+  try {
+    const lock = await ensureLineupLocked(now, supabaseAdmin)
+    for (const { row, slot } of lock.newlyLocked) {
+      const to = (row as any).reminder_email
+      if (to) {
+        try {
+          await sendLineupLockedEmail(
+            to,
+            row.content || '',
+            slot,
+            LINEUP_SLOTS_PER_DAY,
+            formatIstTime(slotStartMs(lock.windowStartMs, slot)),
+            row.id,
+          )
+        } catch (e) {
+          console.error('[advance] Failed to send lineup email:', e)
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[advance] Daily lock failed:', e)
+  }
+
   // 2. Promote next queued messages if slots are empty
   const promoted: string[] = []
 
-  // Normal Queue Promotion — paid before free (launch promo), then highest bid wins, then FIFO for ties
+  // Normal promotion — the stage follows the LOCKED lineup only (oldest
+  // window, then slot order). Pool posts that haven't been locked in yet
+  // are never promoted directly: a locked slot is a promise, and letting
+  // a fresh high bid jump it would break that promise.
   if (currentActives.normal === 0) {
     // Re-verify that no active normal message exists before promoting (concurrency guard)
     const { data: latestActiveNormal } = await supabaseAdmin
@@ -121,37 +159,28 @@ export async function runQueueAdvance() {
       .limit(1)
 
     if (!latestActiveNormal || latestActiveNormal.length === 0) {
-      const { data: topNormal } = await supabaseAdmin
-        .from('messages')
-        .select('id, style_config, content, reminder_email')
-        .eq('status', 'QUEUED')
-        .eq('is_reserved_slot', false)
-        .gte('bid_amount', MIN_NORMAL_BID)
-        .order('is_promo_free', { ascending: true })
-        .order('bid_amount', { ascending: false })
-        .order('created_at', { ascending: true })
-        .limit(1)
+      const nextUp = nextInLineup(await fetchNormalQueue(supabaseAdmin))
 
-      if (topNormal && topNormal.length > 0) {
+      if (nextUp) {
         // Atomic promotion: only succeeds if message is still strictly QUEUED
         const { data: updated } = await supabaseAdmin
           .from('messages')
           .update({ status: 'ACTIVE', actual_start: nowIso })
-          .eq('id', topNormal[0].id)
+          .eq('id', nextUp.id)
           .eq('status', 'QUEUED')
           .select('id')
 
         if (updated && updated.length > 0) {
-          promoted.push(topNormal[0].id)
+          promoted.push(nextUp.id)
           currentActives.normal = 1
 
           // Send reminder email if the user opted in (private column; legacy style_config fallback)
-          const cfg = typeof topNormal[0].style_config === 'string' 
-            ? JSON.parse(topNormal[0].style_config || '{}') 
-            : (topNormal[0].style_config || {})
-          const reminderTo = (topNormal[0] as any).reminder_email || cfg.reminderEmail
+          const cfg = typeof nextUp.style_config === 'string'
+            ? JSON.parse(nextUp.style_config || '{}')
+            : (nextUp.style_config || {})
+          const reminderTo = (nextUp as any).reminder_email || cfg.reminderEmail
           if (reminderTo) {
-            await sendReminderEmail(reminderTo, topNormal[0].content || '', topNormal[0].id)
+            await sendReminderEmail(reminderTo, nextUp.content || '', nextUp.id)
           }
         }
       }
