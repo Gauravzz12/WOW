@@ -6,7 +6,7 @@ import {
   fetchNormalQueue,
   nextInLineup,
   slotStartMs,
-  formatIstTime,
+  formatLockTime,
   LINEUP_SLOTS_PER_DAY,
 } from './lineup'
 
@@ -115,7 +115,7 @@ export async function runQueueAdvance() {
   }
 
   // 1b. Daily lock: fill today's Normal lineup (top 24 pool bids, locked
-  // at midnight IST — see lib/lineup.ts). Runs before promotion so a
+  // at 12 PM US Eastern — see lib/lineup.ts). Runs before promotion so a
   // freshly locked post can take the stage in the same sweep. Newly
   // locked owners get the locked-in email.
   try {
@@ -129,7 +129,7 @@ export async function runQueueAdvance() {
             row.content || '',
             slot,
             LINEUP_SLOTS_PER_DAY,
-            formatIstTime(slotStartMs(lock.windowStartMs, slot)),
+            formatLockTime(slotStartMs(lock.windowStartMs, slot)),
             row.id,
           )
         } catch (e) {

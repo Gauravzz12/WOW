@@ -1045,7 +1045,7 @@ function CreateMessageContent() {
                     <input type="radio" checked={tier === 'normal'} onChange={() => setTier('normal')} className="mt-1 accent-primary w-4 h-4" />
                     <div className="flex-1">
                       <h3 className="text-lg font-medium">Standard Queue</h3>
-                      <p className="text-sm text-secondary mt-1 mb-4">Enter the daily bid pool. The top 24 bids lock in at midnight IST and air in order.</p>
+                      <p className="text-sm text-secondary mt-1 mb-4">Enter the daily bid pool. The top 24 bids lock in at 12 PM US Eastern and air in order.</p>
                       
                       {tier === 'normal' && (
                         <div className="flex flex-col gap-4 bg-background p-4 rounded-xl border border-background-elevated">
@@ -1091,7 +1091,7 @@ function CreateMessageContent() {
                             </div>
 
                             <div className="p-3 rounded-xl bg-background-elevated/60 border border-primary/10 text-[11px] text-secondary leading-relaxed">
-                              <span className="font-semibold text-primary">How the daily lock works:</span> every day at 12:00 AM IST, the top 24 bids lock into that day&rsquo;s lineup and air one after another in bid order — a locked slot can&rsquo;t be taken. Miss the cut and your bid rolls to the next day&rsquo;s lock; it never expires.
+                              <span className="font-semibold text-primary">How the daily lock works:</span> every day at 12:00 PM US Eastern, the top 24 bids lock into that day&rsquo;s lineup and air one after another in bid order — a locked slot can&rsquo;t be taken. Miss the cut and your bid rolls to the next day&rsquo;s lock; it never expires.
                               {pool && (
                                 <span className="block mt-1.5 font-mono text-[11px] text-primary">
                                   Today: {pool.lockedToday}/{pool.slotsPerDay} slots locked · {pool.poolCount} bid{pool.poolCount === 1 ? '' : 's'} in the pool{pool.cutoffBid != null ? ` · current cutoff $${Number(pool.cutoffBid).toFixed(2)}` : ''}

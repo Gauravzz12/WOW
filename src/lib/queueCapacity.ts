@@ -11,7 +11,7 @@ import { getNormalPoolStats } from './lineup'
  *
  * The Normal queue is no longer airtime-capped: since the daily-lock
  * lineup (lib/lineup.ts), Normal posts join a bid pool and the top 24
- * lock in each day at midnight IST. The wizard shows pool stats (slots
+ * lock in each day at 12 PM US Eastern. The wizard shows pool stats (slots
  * locked today, pool size, current cutoff bid) instead of a full/open
  * gate — a post that misses today's cut simply rolls to the next lock.
  */

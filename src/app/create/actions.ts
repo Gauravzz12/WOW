@@ -256,7 +256,7 @@ export async function createMessage(data: {
     parsedStyle.durationSecs = durationMins * 60
     // No airtime cap on Normal creates: since the daily-lock lineup,
     // Normal posts join a bid pool and the top 24 lock in each day at
-    // midnight IST (lib/lineup.ts). A post that misses the cut rolls to
+    // 12 PM US Eastern (lib/lineup.ts). A post that misses the cut rolls to
     // the next day's lock — it is never starved out of existence, so
     // new money is never taken for a turn that can't come.
     const minBid = calculateNormalMinBid(durationMins)

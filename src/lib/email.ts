@@ -752,7 +752,7 @@ export async function sendLineupLockedEmail(
 
                   <p style="margin: 0 0 24px; text-align: center; font-size: 14px; color: #a1a1aa;">
                     Your 1-hour broadcast is scheduled to start at approximately
-                    <strong style="color: #fafafa;">${approxStartText} IST</strong>.
+                    <strong style="color: #fafafa;">${approxStartText}</strong>.
                     We'll email you again the moment you're live.
                   </p>
 

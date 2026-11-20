@@ -3,23 +3,24 @@ import { MIN_NORMAL_BID } from './constants/pricing'
 
 /**
  * The Normal stage runs on a DAILY LOCK (product decision, 2026-11-20):
- * every Normal broadcast is exactly 1 hour. Once a day, at midnight IST,
- * the top 24 bids in the pool are locked into that day's lineup and air
- * sequentially in bid order (slot 1 first). Bids that don't make the cut
- * stay in the pool and compete again at the next lock — nothing expires
- * and no paid post can be jumped once it's locked in.
+ * every Normal broadcast is exactly 1 hour. Once a day, at 12:00 PM noon
+ * US Eastern, the top 24 bids in the pool are locked into that day's
+ * lineup and air sequentially in bid order (slot 1 first). Bids that
+ * don't make the cut stay in the pool and compete again at the next
+ * lock — nothing expires and no paid post can be jumped once it's
+ * locked in.
  *
  * A "lineup mark" lives in style_config.lineup: { windowId, slot,
- * lockedAt }. windowId is the IST calendar date of the lock instant.
- * The lock is applied lazily by the queue-advance sweep (and topped up
- * whenever a later sweep finds the day's lineup short of 24 with pool
- * posts waiting — top-ups only ever APPEND slots in rank order, so a
- * locked post's slot can never be taken or moved).
+ * lockedAt }. windowId is the US-Eastern calendar date of the lock
+ * instant. The lock is applied lazily by the queue-advance sweep (and
+ * topped up whenever a later sweep finds the day's lineup short of 24
+ * with pool posts waiting — top-ups only ever APPEND slots in rank
+ * order, so a locked post's slot can never be taken or moved).
  */
 export const LINEUP_SLOTS_PER_DAY = 24
-export const LINEUP_TIMEZONE = 'Asia/Kolkata'
-/** IST is a fixed UTC+5:30 (India observes no DST), so window math is exact. */
-const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+export const LINEUP_TIMEZONE = 'America/New_York'
+/** The daily lock instant: 12:00 PM (noon) in the lock timezone. */
+export const LINEUP_LOCK_HOUR = 12
 const HOUR_MS = 60 * 60 * 1000
 
 export interface LineupMark {
@@ -48,22 +49,101 @@ export function getLineupMark(styleConfig: any): LineupMark | null {
   return null
 }
 
+interface ZonedParts {
+  year: number
+  month: number
+  day: number
+  hour: number
+  minute: number
+  second: number
+}
+
+function zonedParts(ms: number, timeZone: string): ZonedParts {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date(ms))
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value || 0)
+  return {
+    year: get('year'),
+    month: get('month'),
+    day: get('day'),
+    hour: get('hour') % 24,
+    minute: get('minute'),
+    second: get('second'),
+  }
+}
+
 /**
- * The current lineup window: starts at the most recent IST midnight
- * (the daily lock instant) and runs for 24 hours. Pure — unit-tested.
+ * The UTC instant (ms) of a wall-clock time in the given IANA zone.
+ * Iterates the offset correction; exact across DST transitions for
+ * unambiguous wall times (noon always is). Pure — unit-tested.
+ */
+export function utcMsForZonedTime(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  timeZone: string,
+): number {
+  const target = Date.UTC(year, month - 1, day, hour, minute, 0)
+  let guess = target
+  for (let i = 0; i < 3; i++) {
+    const p = zonedParts(guess, timeZone)
+    const actual = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second)
+    const diff = target - actual
+    if (diff === 0) break
+    guess += diff
+  }
+  return guess
+}
+
+function dateId(y: number, m: number, d: number): string {
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+
+/**
+ * The current lineup window: starts at the most recent lock instant
+ * (12:00 PM US Eastern) and runs until the next one. Because of DST a
+ * window can be 23 or 25 hours long — slot start times are nominal
+ * (the stage airs the lineup back-to-back regardless). Pure —
+ * unit-tested, including both DST transitions.
  */
 export function lineupWindowFor(now: Date): {
   windowId: string
   startMs: number
   nextLockMs: number
 } {
-  const ist = new Date(now.getTime() + IST_OFFSET_MS)
-  const y = ist.getUTCFullYear()
-  const m = ist.getUTCMonth()
-  const d = ist.getUTCDate()
-  const windowId = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-  const startMs = Date.UTC(y, m, d) - IST_OFFSET_MS
-  return { windowId, startMs, nextLockMs: startMs + 24 * HOUR_MS }
+  const p = zonedParts(now.getTime(), LINEUP_TIMEZONE)
+  let wy = p.year
+  let wm = p.month
+  let wd = p.day
+  let startMs = utcMsForZonedTime(wy, wm, wd, LINEUP_LOCK_HOUR, 0, LINEUP_TIMEZONE)
+  if (now.getTime() < startMs) {
+    // Before today's lock — the current window began at yesterday's noon.
+    const prev = new Date(Date.UTC(wy, wm - 1, wd - 1))
+    wy = prev.getUTCFullYear()
+    wm = prev.getUTCMonth() + 1
+    wd = prev.getUTCDate()
+    startMs = utcMsForZonedTime(wy, wm, wd, LINEUP_LOCK_HOUR, 0, LINEUP_TIMEZONE)
+  }
+  const next = new Date(Date.UTC(wy, wm - 1, wd + 1))
+  const nextLockMs = utcMsForZonedTime(
+    next.getUTCFullYear(),
+    next.getUTCMonth() + 1,
+    next.getUTCDate(),
+    LINEUP_LOCK_HOUR,
+    0,
+    LINEUP_TIMEZONE,
+  )
+  return { windowId: dateId(wy, wm, wd), startMs, nextLockMs }
 }
 
 /** Nominal start of a 1-based slot within its window (display/estimate). */
@@ -71,13 +151,15 @@ export function slotStartMs(windowStartMs: number, slot: number): number {
   return windowStartMs + (slot - 1) * HOUR_MS
 }
 
-export function formatIstTime(ms: number): string {
+/** e.g. "1:00 PM EST" — a slot's nominal start in the lock timezone. */
+export function formatLockTime(ms: number): string {
   try {
-    return new Date(ms).toLocaleTimeString('en-IN', {
+    return new Date(ms).toLocaleTimeString('en-US', {
       timeZone: LINEUP_TIMEZONE,
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
+      timeZoneName: 'short',
     })
   } catch {
     return ''

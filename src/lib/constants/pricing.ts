@@ -2,7 +2,7 @@
 // Fixed 1-hour broadcasts (daily-lock lineup, 2026-11-20): every Normal
 // message airs exactly 60 minutes, so there are no time extensions — the
 // price is purely the bid, floored at BASE_NORMAL_PRICE. The top 24 bids
-// lock in daily at midnight IST (see lib/lineup.ts).
+// lock in daily at 12 PM US Eastern (see lib/lineup.ts).
 export const BASE_NORMAL_MINS = 60
 export const MAX_NORMAL_MINS = 60
 export const EXTENSION_STEP_MINS = 10
