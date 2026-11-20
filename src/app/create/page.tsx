@@ -91,6 +91,7 @@ function CreateMessageContent() {
   // Launch promo (first 500 Normal broadcasts free): status from
   // /api/promo/status; the toggle is on by default when this device is eligible.
   const [promoStatus, setPromoStatus] = useState<{ claimed: number; remaining: number; limit: number; deviceUsed: boolean; deviceClaimed?: number; perDeviceLimit?: number } | null>(null);
+  const [queueStatus, setQueueStatus] = useState<{ waitingRoom: { count: number; capacity: number; full: boolean }; normalQueue: { minutesAhead: number; capMinutes: number; full: boolean } } | null>(null);
   const [usePromoFree, setUsePromoFree] = useState(true);
   // Delivery tier: Normal (bid queue) · Special (reserved slots) · Sponsored ($0.50 grid)
   const [tier, setTier] = useState<'normal' | 'special' | 'sponsored'>('normal');
@@ -298,10 +299,18 @@ function CreateMessageContent() {
           if (data && typeof data.remaining === 'number') setPromoStatus(data);
         })
         .catch(() => {});
+      fetch('/api/queue/status')
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.waitingRoom && data.normalQueue) setQueueStatus(data);
+        })
+        .catch(() => {});
     }
   }, [step, tier]);
 
   const promoAvailable = !!promoStatus && promoStatus.remaining > 0 && !promoStatus.deviceUsed;
+  const waitingRoomFull = !!queueStatus?.waitingRoom.full;
+  const normalQueueFull = !!queueStatus?.normalQueue.full;
   const promoOn = tier === 'normal' && promoAvailable && usePromoFree;
 
   // While the free broadcast is on, duration and bid are locked to the base.
@@ -1036,12 +1045,15 @@ function CreateMessageContent() {
 
               <div className="space-y-6 mb-8">
                 {/* Standard Queue Option */}
-                <label className={`block p-6 rounded-lg border cursor-pointer transition-all ${tier === 'normal' ? 'border-primary bg-background-elevated ring-1 ring-primary/30' : 'border-background-elevated hover:border-secondary/50'}`}>
+                <label className={`block p-6 rounded-lg border transition-all ${normalQueueFull ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${tier === 'normal' ? 'border-primary bg-background-elevated ring-1 ring-primary/30' : 'border-background-elevated hover:border-secondary/50'}`}>
                   <div className="flex items-start gap-4">
-                    <input type="radio" checked={tier === 'normal'} onChange={() => setTier('normal')} className="mt-1 accent-primary w-4 h-4" />
+                    <input type="radio" checked={tier === 'normal'} disabled={normalQueueFull} onChange={() => setTier('normal')} className="mt-1 accent-primary w-4 h-4" />
                     <div className="flex-1">
                       <h3 className="text-lg font-medium">Standard Queue</h3>
                       <p className="text-sm text-secondary mt-1 mb-4">Enter the main queue. Bump up your priority by outbidding others.</p>
+                      {normalQueueFull && (
+                        <p className="text-sm font-medium text-amber-700 dark:text-amber-300 mb-4">Queue full — about {Math.max(1, Math.round((queueStatus?.normalQueue.minutesAhead ?? 0) / 60))} hours of broadcasts are already waiting for the stage. New posts reopen as it clears.</p>
+                      )}
                       
                       {tier === 'normal' && (
                         <div className="flex flex-col gap-4 bg-background p-4 rounded-xl border border-background-elevated">
@@ -1297,9 +1309,9 @@ function CreateMessageContent() {
                 </label>
 
                 {/* ♥ Sponsored option — free post, waits for a $0.50 community sponsor */}
-                <label className={`block p-6 rounded-lg border cursor-pointer transition-all ${tier === 'sponsored' ? 'border-blue-500/60 bg-blue-500/[0.06] ring-2 ring-blue-500/25 shadow-sm' : 'border-background-elevated hover:border-blue-500/40'}`}>
+                <label className={`block p-6 rounded-lg border transition-all ${waitingRoomFull ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${tier === 'sponsored' ? 'border-blue-500/60 bg-blue-500/[0.06] ring-2 ring-blue-500/25 shadow-sm' : 'border-background-elevated hover:border-blue-500/40'}`}>
                   <div className="flex items-start gap-4">
-                    <input type="radio" checked={tier === 'sponsored'} onChange={() => setTier('sponsored')} className="mt-1 accent-blue-600 w-4 h-4" />
+                    <input type="radio" checked={tier === 'sponsored'} disabled={waitingRoomFull} onChange={() => setTier('sponsored')} className="mt-1 accent-blue-600 w-4 h-4" />
                     <div className="w-full">
                       <div className="flex justify-between items-center w-full">
                         <h3 className="text-lg font-medium text-blue-700 dark:text-blue-300">
@@ -1313,6 +1325,10 @@ function CreateMessageContent() {
                       <p className="text-sm text-secondary mt-1">
                         Post for free into the Waiting Room. Your message broadcasts for 30 minutes once someone sponsors it for ${SPONSORED_PRICE.toFixed(2)}.
                       </p>
+
+                      {waitingRoomFull && (
+                        <p className="text-sm font-medium text-amber-700 dark:text-amber-300 mt-3">Waiting Room full — {queueStatus?.waitingRoom.capacity} messages are already waiting for a sponsor. It reopens as soon as one is sponsored or expires.</p>
+                      )}
 
                       <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-blue-500/20 text-xs text-blue-700 dark:text-blue-300">
                         <span className="font-semibold">No pay-and-broadcast</span>
@@ -1333,11 +1349,11 @@ function CreateMessageContent() {
               )}
 
               <button 
-                disabled={tier === 'special' && selectedSpecialSlots.length === 0}
+                disabled={(tier === 'special' && selectedSpecialSlots.length === 0) || (tier === 'normal' && normalQueueFull) || (tier === 'sponsored' && waitingRoomFull)}
                 onClick={handleNext}
                 className="w-full py-4 mt-auto bg-primary text-background rounded-full font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
               >
-                {tier === 'special' && selectedSpecialSlots.length === 0 ? 'Select a Time Slot to Continue' : tier === 'sponsored' ? 'Preview Sponsored Message' : 'Preview Final Message'}
+                {tier === 'special' && selectedSpecialSlots.length === 0 ? 'Select a Time Slot to Continue' : tier === 'normal' && normalQueueFull ? 'Queue Full — Try Again Later' : tier === 'sponsored' && waitingRoomFull ? 'Waiting Room Full — Try Again Later' : tier === 'sponsored' ? 'Preview Sponsored Message' : 'Preview Final Message'}
               </button>
             </motion.div>
           )}
