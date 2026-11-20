@@ -3,6 +3,11 @@
  * message. The stored `reaction_type` for new reactions is the emoji
  * character itself; rows written before this module existed store one of
  * the five legacy type ids, mapped to their emoji for display.
+ *
+ * The picker itself is the emoji-picker-react library (see
+ * components/EmojiPicker.tsx) — this module only owns the reaction
+ * bookkeeping: the legacy mapping, server-side validation, and the
+ * compact count format.
  */
 
 export const LEGACY_REACTION_EMOJI: Record<string, string> = {
@@ -13,30 +18,33 @@ export const LEGACY_REACTION_EMOJI: Record<string, string> = {
   RESPECT: '🙏',
 }
 
-/** WhatsApp's quick-reaction row — shown first in the picker. */
+/** WhatsApp's quick-reaction row — the classic defaults. */
 export const QUICK_REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
 
-/** The full picker grid (quick row included again in place). */
-export const REACTION_EMOJIS = [
-  '👍', '❤️', '😂', '😮', '😢', '🙏',
-  '😀', '😁', '😄', '😆', '🤣', '😊',
-  '😍', '🤩', '😘', '😜', '🤪', '😎',
-  '🥳', '🤯', '😳', '🥺', '😭', '😤',
-  '😡', '🤔', '🤨', '😐', '🙄', '😴',
-  '🤤', '😋', '🤗', '😇', '🫡', '👎',
-  '👏', '🙌', '💪', '🤝', '🫂', '🎉',
-  '🔥', '💯', '✨', '🎊', '❤️‍🔥', '💔',
-  '🧡', '💛', '💚', '💙', '💜', '🖤',
-  '🤍', '👑', '💎', '🚀', '🌍', '🕊️',
-  '⚡', '🌟', '💡', '🎵', '🍀', '✍️',
-  '👀',
-]
+const EMOJI_PATTERN = /\p{Extended_Pictographic}/u
+const FLAG_PATTERN = /^\p{Regional_Indicator}{2}$/u
+const KEYCAP_PATTERN = /^[0-9#*]\uFE0F\u20E3$/
 
-const ALLOWED = new Set<string>([...REACTION_EMOJIS, ...QUICK_REACTION_EMOJIS])
-
-/** Server-side validation: only picker emojis may be stored as new reactions. */
+/**
+ * Server-side validation for new reactions. The library picker offers
+ * ~1,900 emojis; a hardcoded allow-list would reject legitimate picks, so
+ * instead accept exactly ONE emoji grapheme — including ZWJ sequences
+ * (❤️‍🔥), flags, and skin-tone variants — and nothing else.
+ */
 export function isAllowedReactionEmoji(value: string): boolean {
-  return ALLOWED.has(value)
+  if (!value || value.length > 16) return false
+  if (
+    !EMOJI_PATTERN.test(value) &&
+    !FLAG_PATTERN.test(value) &&
+    !KEYCAP_PATTERN.test(value)
+  )
+    return false
+  const segments = [
+    ...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(
+      value,
+    ),
+  ]
+  return segments.length === 1
 }
 
 /** The emoji to display for a stored reaction_type (emoji char or legacy id). */

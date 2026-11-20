@@ -10,7 +10,8 @@ import { ReportModal } from './ReportModal'
 import { toast } from '@/components/Toast'
 import { getStoredReactions, setStoredReaction, removeStoredReaction, syncStoredReactions } from '@/lib/deviceId'
 import { setReaction as serverSetReaction, removeMyReaction as serverRemoveMyReaction, getMyReactions } from '@/app/w/[id]/reactions'
-import { REACTION_EMOJIS, emojiForStoredType, formatReactionCount } from '@/lib/reactionEmojis'
+import { emojiForStoredType, formatReactionCount } from '@/lib/reactionEmojis'
+import { EmojiPicker } from './EmojiPicker'
 import { addComment as serverAddComment } from '@/app/w/[id]/comments'
 import { SITE_URL } from '@/lib/site'
 
@@ -324,34 +325,17 @@ export function InlineInteractions({
         </div>
       )}
 
-      {/* Reaction Popover — WhatsApp-style emoji picker: quick row is the
-          start of the grid; picking my current emoji again removes it. */}
+      {/* Reaction Popover — shared emoji picker (search, category tabs,
+          scrollable grid; bottom sheet on mobile). Picking my current
+          emoji again removes it. */}
       <AnimatePresence>
         {showReact && (
-          <motion.div
+          <EmojiPicker
             ref={reactPopoverRef}
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute bottom-full mb-4 left-0 w-[324px] max-w-[88vw] bg-neutral-900/95 border border-white/20 rounded-3xl shadow-xl p-3 z-50"
-          >
-            <div className="grid grid-cols-6 gap-1 max-h-64 overflow-y-auto custom-scrollbar">
-              {REACTION_EMOJIS.map(emoji => (
-                <button
-                  key={emoji}
-                  onClick={() => handleReact(emoji)}
-                  aria-label={`React ${emoji}`}
-                  className={`h-11 flex items-center justify-center rounded-full text-[22px] transition-all select-none ${
-                    myEmoji === emoji
-                      ? 'bg-amber-400/35 ring-2 ring-amber-400 scale-110'
-                      : 'hover:bg-white/15 hover:scale-110'
-                  }`}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </motion.div>
+            myEmoji={myEmoji}
+            onPick={handleReact}
+            variant="dark"
+          />
         )}
       </AnimatePresence>
 

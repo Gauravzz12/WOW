@@ -7,7 +7,8 @@ import posthog from 'posthog-js'
 import { Heart } from 'lucide-react'
 import { getStoredReactions, syncStoredReactions } from '@/lib/deviceId'
 import { setReaction as serverSetReaction, removeMyReaction as serverRemoveMyReaction, getMyReactions } from './reactions'
-import { REACTION_EMOJIS, emojiForStoredType, formatReactionCount } from '@/lib/reactionEmojis'
+import { emojiForStoredType, formatReactionCount } from '@/lib/reactionEmojis'
+import { EmojiPicker } from '@/components/EmojiPicker'
 
 /**
  * Single reaction button (WhatsApp/Instagram model): shows MY emoji and
@@ -152,29 +153,11 @@ export function ReactionBar({ messageId }: { messageId: string }) {
 
       <AnimatePresence>
         {showPicker && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute bottom-full mb-3 left-0 w-[324px] max-w-[88vw] bg-background-elevated border border-primary/15 rounded-3xl shadow-xl p-3 z-50"
-          >
-            <div className="grid grid-cols-6 gap-1 max-h-64 overflow-y-auto custom-scrollbar">
-              {REACTION_EMOJIS.map(emoji => (
-                <button
-                  key={emoji}
-                  onClick={() => handleReact(emoji)}
-                  aria-label={`React ${emoji}`}
-                  className={`h-11 flex items-center justify-center rounded-full text-[22px] transition-all select-none ${
-                    myEmoji === emoji
-                      ? 'bg-primary/15 ring-2 ring-primary scale-110'
-                      : 'hover:bg-primary/10 hover:scale-110'
-                  }`}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </motion.div>
+          <EmojiPicker
+            myEmoji={myEmoji}
+            onPick={handleReact}
+            variant="light"
+          />
         )}
       </AnimatePresence>
     </div>
