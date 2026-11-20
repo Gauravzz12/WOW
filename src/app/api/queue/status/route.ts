@@ -21,7 +21,7 @@ export async function GET() {
     console.error('/api/queue/status failed:', e)
     return NextResponse.json({
       waitingRoom: { count: 0, capacity: 100, full: false },
-      normalPool: { windowId: '', slotsPerDay: 24, lockedToday: 0, poolCount: 0, cutoffBid: null, nextLockMs: 0 },
+      normalPool: { windowId: '', slotsPerDay: 24, lockedToday: 0, poolCount: 0, cutoffBid: null, nextLockMs: 0, lineup: [] },
     })
   }
 }

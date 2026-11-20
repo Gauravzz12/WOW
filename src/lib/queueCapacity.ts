@@ -62,6 +62,7 @@ export async function getQueueCapacity() {
       poolCount: 0,
       cutoffBid: null,
       nextLockMs: 0,
+      lineup: [],
     },
   }
 }
