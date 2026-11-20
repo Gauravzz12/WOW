@@ -15,6 +15,7 @@ import {
   SPONSORED_PRICE,
   SPONSORED_DURATION_SECS,
 } from '@/lib/constants/pricing'
+import { WAITING_ROOM_CAPACITY, NORMAL_QUEUE_CAP_MINUTES, countWaitingRoom, getNormalQueueMinutes } from '@/lib/queueCapacity'
 import { ALL_TEMPLATES } from '@/lib/constants/templates'
 import { FRAMES } from '@/lib/constants/frames'
 
@@ -108,15 +109,11 @@ export async function createMessage(data: {
       .eq('status', 'BOOKED')
   }
 
-  // Enforce max waiting list count of 100
-  const { count: waitingCount } = await supabaseAdmin
-    .from('messages')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'PENDING_PAYMENT')
-
-  if (waitingCount !== null && waitingCount >= 100) {
-    return { error: 'The Waiting Room has reached its maximum capacity of 100 messages. Please wait until space opens or an existing message is sponsored.' }
-  }
+  // Capacity is enforced per tier further below, where the tier is
+  // known: Sponsored creates are gated on the Waiting Room count and
+  // Normal creates on committed stage airtime. (The old check here
+  // counted EVERY unpaid row — including Normal and Special posts
+  // mid-checkout — and blocked creation for all tiers at 100.)
 
   // Identity and recipient validation
   const signature = data.identityType === 'custom' 
@@ -234,6 +231,14 @@ export async function createMessage(data: {
     }))
     bidAmount = calculateSpecialPrice(Math.min(selectedSlots.length, 3)).finalPrice
   } else if (isSponsored) {
+    // Waiting Room capacity, counted exactly as the Waiting Room page
+    // defines its rows (Sponsored-tier PENDING_PAYMENT), after the 12h
+    // cleanup above. Only Sponsored creates are gated. The DB trigger
+    // (migration 20261120000001) backstops the count-then-insert race.
+    const waitingCount = await countWaitingRoom()
+    if (waitingCount !== null && waitingCount >= WAITING_ROOM_CAPACITY) {
+      return { error: `The Waiting Room is full — ${WAITING_ROOM_CAPACITY} messages are already waiting for a sponsor. It reopens as soon as one is sponsored or expires, so please try again later.` }
+    }
     bidAmount = SPONSORED_PRICE
     parsedStyle.isSponsored = true
     parsedStyle.durationSecs = SPONSORED_DURATION_SECS
@@ -249,6 +254,17 @@ export async function createMessage(data: {
     // style_config.durationSecs raw, so pricing from a clamped copy
     // while storing the client's value sold unbounded airtime for $17.
     parsedStyle.durationSecs = durationMins * 60
+    // Normal queue cap: refuse new broadcasts (paid or promo) once the
+    // stage already has NORMAL_QUEUE_CAP_MINUTES of airtime committed.
+    // Only one Normal message airs at a time and promotion is
+    // bid-ordered, so an unbounded queue can starve a base-bid payer
+    // forever — money taken for a turn that never comes. Gating here,
+    // before any payment, keeps new money out of a queue that cannot
+    // reach it in bounded time.
+    const queueMinutes = await getNormalQueueMinutes()
+    if (queueMinutes !== null && queueMinutes + durationMins > NORMAL_QUEUE_CAP_MINUTES) {
+      return { error: 'The broadcast queue is full right now — too many messages are already waiting for their turn on stage. Please try again once it clears.' }
+    }
     const minBid = calculateNormalMinBid(durationMins)
     const candidate = Number(data.bidAmount)
     bidAmount = !isNaN(candidate) && candidate > minBid ? candidate : minBid
@@ -350,6 +366,13 @@ export async function createMessage(data: {
       .single()
 
   let { data: message, error: msgError } = await insertRow(promoApplied)
+
+  // DB backstop (migration 20261120000001): a sponsored insert that
+  // lost the capacity race fails with 'waiting_room_full' — surface
+  // the same friendly capacity error as the count check above.
+  if (msgError && isSponsored && String((msgError as any).message || '').includes('waiting_room_full')) {
+    return { error: `The Waiting Room is full — ${WAITING_ROOM_CAPACITY} messages are already waiting for a sponsor. It reopens as soon as one is sponsored or expires, so please try again later.` }
+  }
 
   if (msgError && promoClaimed) {
     // Release the claim either way; a unique violation (23505) means a
