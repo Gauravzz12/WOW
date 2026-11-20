@@ -14,6 +14,7 @@ import { Lock } from 'lucide-react'
  */
 
 interface LineupEntry {
+  id: string
   slot: number
   bidAmount: number
   isPromo: boolean
@@ -76,9 +77,19 @@ function formatBid(n: number): string {
   return `$${Number.isInteger(n) ? n : n.toFixed(2)}`
 }
 
-export function DailyLockPanel({ variant }: { variant: 'strip' | 'panel' }) {
-  const data = usePoolStatus()
+export function DailyLockPanel({
+  variant,
+  data: dataProp,
+}: {
+  variant: 'strip' | 'panel'
+  /** Optional pre-fetched pool status (QueueTabs shares one fetch
+   *  between this panel and its locked-row badging). When undefined,
+   *  the panel fetches /api/queue/status itself. */
+  data?: PoolData | null
+}) {
+  const fetched = usePoolStatus()
   const now = useNow()
+  const data = dataProp !== undefined ? dataProp : fetched
   if (!data || !data.nextLockMs) return null
 
   const countdown = formatCountdown(data.nextLockMs - now)
@@ -114,9 +125,10 @@ export function DailyLockPanel({ variant }: { variant: 'strip' | 'panel' }) {
       </div>
 
       <p className="text-[11px] text-secondary mt-1.5 leading-relaxed">
-        The top {data.slotsPerDay} bids lock in at 12:00 PM ET and air in
-        order, 1 hour each. Miss the cut and your bid rolls to the next lock
-        — it never expires.
+        The top {data.slotsPerDay} bids form today&apos;s lineup and air in
+        order, 1 hour each. Open slots fill from the pool as the day goes;
+        the lineup resets daily at 12:00 PM ET. Miss the cut and your bid
+        rolls over — it never expires.
       </p>
 
       <div className="flex items-center gap-2 mt-2 text-[10px] font-semibold uppercase tracking-wider text-secondary">
@@ -137,7 +149,7 @@ export function DailyLockPanel({ variant }: { variant: 'strip' | 'panel' }) {
         <div className="mt-2.5 space-y-1 max-h-56 overflow-y-auto custom-scrollbar pr-0.5">
           {data.lineup.map((entry) => (
             <div
-              key={`${entry.status}-${entry.slot}-${entry.carriedOver ? 'old' : 'today'}`}
+              key={entry.id}
               className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-[11px] ${
                 entry.status === 'LIVE'
                   ? 'border-emerald-500/40 bg-emerald-500/10'

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Zap, Sparkles, X, ChevronRight, Info, HeartHandshake, Clock, Globe, Copy, Check } from 'lucide-react'
+import { Zap, Sparkles, X, ChevronRight, Info, HeartHandshake, Clock, Globe, Copy, Check, Lock } from 'lucide-react'
 import { getSlotLabel, getUserLocalTimeZone, formatLocalSlotTime, SPONSORED_PRICE } from '@/lib/constants/pricing'
 import { useSearchParams } from 'next/navigation'
 import { BumpBidModal } from './BumpBidModal'
@@ -62,6 +62,41 @@ export function QueueTabs({
   const [isBumpModalOpen, setIsBumpModalOpen] = useState(false)
   const [initialBumpToken, setInitialBumpToken] = useState('')
   const [bumpSuccessNotice, setBumpSuccessNotice] = useState(false)
+  // Daily-lock snapshot (shared with the DailyLockPanel below): which
+  // queued rows are already locked into today's lineup, so the pool
+  // list can badge them as slots instead of counting them as pool rows.
+  const [poolStatus, setPoolStatus] = useState<any>(undefined)
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch('/api/queue/status')
+        if (!res.ok) return
+        const json = await res.json()
+        if (!cancelled) setPoolStatus(json?.normalPool ?? null)
+      } catch {
+        // Display-only — keep the fallback rendering.
+      }
+    }
+    load()
+    const t = setInterval(load, 30000)
+    return () => {
+      cancelled = true
+      clearInterval(t)
+    }
+  }, [])
+  const lockedById = new Map<string, any>(
+    ((poolStatus?.lineup as any[] | undefined) ?? [])
+      .filter((e) => e.status === 'QUEUED')
+      .map((e) => [e.id, e]),
+  )
+  let poolCounter = 0
+  const annotatedQueue = globalQueue.map((msg) => {
+    const lockEntry = lockedById.get(msg.id)
+    const isLockedRow = !!lockEntry
+    if (!isLockedRow) poolCounter++
+    return { msg, lockEntry, isLockedRow, poolPos: poolCounter }
+  })
   const awaitingSponsorCount = sponsoredQueue.filter(isLockedQueueItem).length
   const sponsoredInQueueCount = sponsoredQueue.length - awaitingSponsorCount
 
@@ -143,7 +178,7 @@ export function QueueTabs({
                 </h2>
               </div>
               <p className="text-[11px] text-secondary/70 mt-1">
-                {activeTab === 'NORMAL' ? `${globalQueue.length} message${globalQueue.length !== 1 ? 's' : ''} in the bid pool` :
+                {activeTab === 'NORMAL' ? (poolStatus ? `${poolStatus.poolCount} in the pool · ${poolStatus.lockedToday} locked today` : `${globalQueue.length} message${globalQueue.length !== 1 ? 's' : ''} in the bid pool`) :
                  activeTab === 'SPECIAL' ? `${specialQueue.length} booked slot${specialQueue.length !== 1 ? 's' : ''} coming up` :
                  `${awaitingSponsorCount} Awaiting a sponsor · ${sponsoredInQueueCount} Sponsored · in queue`}
               </p>
@@ -194,7 +229,7 @@ export function QueueTabs({
                 <span>Bump Your Bid</span>
               </button>
 
-              <DailyLockPanel variant="panel" />
+              <DailyLockPanel variant="panel" data={poolStatus} />
             </div>
           )}
 
@@ -225,9 +260,9 @@ export function QueueTabs({
           {activeTab === 'NORMAL' && (
             <div className="space-y-2.5">
               {globalQueue.length > 0 ? (
-                globalQueue.map((msg, i) => {
+                annotatedQueue.map(({ msg, lockEntry, isLockedRow, poolPos }) => {
                   const catName = getCategoryName(msg)
-                  const isFirst = i === 0
+                  const isFirst = !isLockedRow && poolPos === 1
 
                   return (
                     <div 
@@ -245,14 +280,19 @@ export function QueueTabs({
                         </span>
                         
                         <div className="flex items-center gap-1">
-                          {isFirst ? (
+                          {isLockedRow ? (
+                            <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <Lock size={10} />
+                              Slot #{lockEntry.slot} · Locked
+                            </span>
+                          ) : isFirst ? (
                             <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                               #1 in pool
                             </span>
                           ) : (
                             <span className="text-[10px] text-secondary font-mono bg-background-elevated/80 px-2 py-0.5 rounded-full">
-                              #{i + 1} in pool
+                              #{poolPos} in pool
                             </span>
                           )}
                         </div>
