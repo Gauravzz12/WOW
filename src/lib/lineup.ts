@@ -121,6 +121,16 @@ export function lineupWindowFor(now: Date): {
   startMs: number
   nextLockMs: number
 } {
+  // Testing hook: LINEUP_WINDOW_MINUTES (server env) collapses the lock
+  // period to N-minute buckets aligned to the UTC epoch, so the daily
+  // lock/rollover cycle can be exercised end-to-end in minutes during a
+  // test-mode session. Unset (production) = the daily noon-ET schedule.
+  const overrideMins = Number(process.env.LINEUP_WINDOW_MINUTES)
+  if (Number.isFinite(overrideMins) && overrideMins > 0) {
+    const period = overrideMins * 60_000
+    const startMs = Math.floor(now.getTime() / period) * period
+    return { windowId: new Date(startMs).toISOString(), startMs, nextLockMs: startMs + period }
+  }
   const p = zonedParts(now.getTime(), LINEUP_TIMEZONE)
   let wy = p.year
   let wm = p.month
