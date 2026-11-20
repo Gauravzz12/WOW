@@ -319,6 +319,7 @@ export async function getNormalPoolStats(now: Date = new Date()) {
   // Today's lineup for display surfaces (homepage lock panel): slot,
   // bid and state only — message content stays hidden until a post airs.
   const lineup: {
+    id: string
     slot: number
     bidAmount: number
     isPromo: boolean
@@ -329,6 +330,7 @@ export async function getNormalPoolStats(now: Date = new Date()) {
     const mark = getLineupMark(row.style_config)
     if (mark && mark.windowId === win.windowId) {
       lineup.push({
+        id: row.id,
         slot: mark.slot,
         bidAmount: row.bid_amount,
         isPromo: !!row.is_promo_free,
@@ -341,7 +343,7 @@ export async function getNormalPoolStats(now: Date = new Date()) {
   const admin = getSupabaseAdmin()
   const { data: actives } = await admin
     .from('messages')
-    .select('bid_amount, is_promo_free, style_config')
+    .select('id, bid_amount, is_promo_free, style_config')
     .eq('status', 'ACTIVE')
     .eq('is_reserved_slot', false)
     .gte('bid_amount', MIN_NORMAL_BID)
@@ -351,6 +353,7 @@ export async function getNormalPoolStats(now: Date = new Date()) {
     const mark = getLineupMark(active.style_config)
     if (mark) {
       lineup.push({
+        id: active.id,
         slot: mark.slot,
         bidAmount: active.bid_amount,
         isPromo: !!active.is_promo_free,
