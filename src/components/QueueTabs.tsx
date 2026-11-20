@@ -6,6 +6,7 @@ import { Zap, Sparkles, X, ChevronRight, Info, HeartHandshake, Clock, Globe, Cop
 import { getSlotLabel, getUserLocalTimeZone, formatLocalSlotTime, SPONSORED_PRICE } from '@/lib/constants/pricing'
 import { useSearchParams } from 'next/navigation'
 import { BumpBidModal } from './BumpBidModal'
+import { DailyLockPanel } from './DailyLockPanel'
 
 export interface QueueItem {
   id: string
@@ -142,7 +143,7 @@ export function QueueTabs({
                 </h2>
               </div>
               <p className="text-[11px] text-secondary/70 mt-1">
-                {activeTab === 'NORMAL' ? `${globalQueue.length} message${globalQueue.length !== 1 ? 's' : ''} in live bid queue` :
+                {activeTab === 'NORMAL' ? `${globalQueue.length} message${globalQueue.length !== 1 ? 's' : ''} in the bid pool` :
                  activeTab === 'SPECIAL' ? `${specialQueue.length} booked slot${specialQueue.length !== 1 ? 's' : ''} coming up` :
                  `${awaitingSponsorCount} Awaiting a sponsor · ${sponsoredInQueueCount} Sponsored · in queue`}
               </p>
@@ -174,12 +175,14 @@ export function QueueTabs({
             </div>
           )}
 
-          {/* Dynamic Auction Tip for Normal Queue */}
+          {/* Daily Lock explainer for the Normal pool (replaced the old
+              live-auction tip: since the daily lock, the highest bid no
+              longer plays next — the locked lineup airs in slot order) */}
           {activeTab === 'NORMAL' && (
             <div className="mt-3 space-y-2">
               <div className="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-1.5 text-[10px] text-emerald-800 dark:text-emerald-300 font-medium">
                 <Zap size={11} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>Highest bid plays next • Outbid anytime to jump ahead</span>
+                <span>Top 24 bids lock in daily at 12:00 PM ET • Locked posts air in slot order</span>
               </div>
 
               <button
@@ -190,6 +193,8 @@ export function QueueTabs({
                 <Zap size={13} className="fill-black" />
                 <span>Bump Your Bid</span>
               </button>
+
+              <DailyLockPanel variant="panel" />
             </div>
           )}
 
@@ -243,11 +248,11 @@ export function QueueTabs({
                           {isFirst ? (
                             <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                              #1 Next in Line
+                              #1 in pool
                             </span>
                           ) : (
                             <span className="text-[10px] text-secondary font-mono bg-background-elevated/80 px-2 py-0.5 rounded-full">
-                              #{i + 1} in line
+                              #{i + 1} in pool
                             </span>
                           )}
                         </div>
@@ -277,7 +282,7 @@ export function QueueTabs({
                     <Zap size={20} />
                   </div>
                   <h3 className="text-xs font-bold uppercase tracking-wider text-primary">Normal Queue is Empty</h3>
-                  <p className="text-[11px] text-secondary mt-1">Be the first to place a bid and your message will broadcast instantly!</p>
+                  <p className="text-[11px] text-secondary mt-1">Be the first to place a bid — you will lock into today's lineup and go on air in slot order.</p>
                   <Link 
                     href="/create"
                     className="inline-flex items-center gap-1 mt-4 px-3 py-1.5 rounded-full bg-primary text-background font-semibold text-xs hover:opacity-90 transition-opacity"

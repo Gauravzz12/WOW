@@ -7,6 +7,7 @@ import { SponsoredGrid } from './SponsoredGrid'
 import { VipSpecialView } from './VipSpecialView'
 import { QueueTabs } from './QueueTabs'
 import FreePromoBanner from './FreePromoBanner'
+import { DailyLockPanel } from './DailyLockPanel'
 import { LeftSidebar } from './LeftSidebar'
 import { createClient } from '@/lib/supabase/client'
 import { Menu, List } from 'lucide-react'
@@ -422,6 +423,13 @@ export function MainFeedContainer({
 
         {/* Free Normal message banner — every tab (owner's call, 2026-11-19) */}
         <FreePromoBanner />
+
+        {/* Daily Lock countdown strip — Normal tab only */}
+        {activeTab === 'NORMAL' && (
+          <div className="shrink-0 flex justify-center">
+            <DailyLockPanel variant="strip" />
+          </div>
+        )}
 
         {/* Current Active Feed */}
         <div className="w-full max-w-7xl flex-1 relative z-10 flex flex-col items-center overflow-y-auto custom-scrollbar pt-2 md:pt-4 pb-16">

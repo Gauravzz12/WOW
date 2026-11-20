@@ -24,6 +24,14 @@ import { BumpBidButton } from './BumpBidButton'
 import { EditMessageButton } from './EditMessageButton'
 import { SITE_URL } from '@/lib/site'
 import { MIN_NORMAL_BID, SPONSORED_PRICE } from '@/lib/constants/pricing'
+import {
+  fetchNormalQueue,
+  getLineupMark,
+  lineupWindowFor,
+  slotStartMs,
+  formatLockTime,
+  LINEUP_SLOTS_PER_DAY,
+} from '@/lib/lineup'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -299,6 +307,63 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
       .gte('bid_amount', (message as any).bid_amount);
     if (count !== null) currentRank = count;
   }
+
+  // Daily-lock state for Normal pool posts, shown as a banner above the
+  // Bump/Edit actions: locked into today's lineup (slot + approximate
+  // air time) or waiting in the pool (exact position, slots left, the
+  // current cutoff bid). Null for non-Normal tiers and non-queued posts.
+  let lockInfo:
+    | { state: 'locked'; slot: number; approxStart: string }
+    | {
+        state: 'pool'
+        position: number
+        openSlots: number
+        cutoffBid: number | null
+        lineupFull: boolean
+      }
+    | null = null;
+  if (
+    message.status === 'QUEUED' &&
+    !(message as any).is_reserved_slot &&
+    ((message as any).bid_amount ?? 0) >= MIN_NORMAL_BID
+  ) {
+    try {
+      const queue = await fetchNormalQueue();
+      const win = lineupWindowFor(new Date());
+      const myMark = getLineupMark((message as any).style_config);
+      if (myMark && myMark.windowId === win.windowId) {
+        lockInfo = {
+          state: 'locked',
+          slot: myMark.slot,
+          approxStart: formatLockTime(slotStartMs(win.startMs, myMark.slot)),
+        };
+      } else {
+        let lockedToday = 0;
+        const poolRows: typeof queue = [];
+        for (const row of queue) {
+          const mark = getLineupMark(row.style_config);
+          if (mark && mark.windowId === win.windowId) lockedToday++;
+          else poolRows.push(row);
+        }
+        const openSlots = Math.max(0, LINEUP_SLOTS_PER_DAY - lockedToday);
+        const idx = poolRows.findIndex((r) => r.id === message.id);
+        if (idx >= 0) {
+          lockInfo = {
+            state: 'pool',
+            position: idx + 1,
+            openSlots,
+            cutoffBid:
+              openSlots > 0 && poolRows.length >= openSlots
+                ? poolRows[openSlots - 1].bid_amount
+                : null,
+            lineupFull: openSlots === 0,
+          };
+        }
+      }
+    } catch (e) {
+      console.error('lockInfo failed:', e);
+    }
+  }
   const { borderClass: borderColor, accentClass: catTextColor, badgeClass } = getCategoryStyles(categorySlug)
   const { 
     bg, 
@@ -418,7 +483,54 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
 
           {currentRank !== null && (
             <div className="mb-6 max-w-xl mx-auto text-left">
-              <BumpBidButton messageId={message.id} currentBid={(message as any).bid_amount} />
+              {lockInfo?.state === 'locked' && (
+                <div className="mb-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 shadow-sm">
+                  <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                    <Lock size={14} className="shrink-0" />
+                    You&apos;re locked in! Slot #{lockInfo.slot} in today&apos;s lineup
+                  </p>
+                  <p className="text-xs text-emerald-700/80 dark:text-emerald-300/70 mt-1 leading-relaxed">
+                    Your message airs in slot order — approximately{' '}
+                    {lockInfo.approxStart}. Locked slots can&apos;t be bumped
+                    or moved, but you can still edit your message below with
+                    your owner token.
+                  </p>
+                </div>
+              )}
+              {lockInfo?.state === 'pool' && (
+                <div className="mb-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 shadow-sm">
+                  <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
+                    In the bid pool — not locked in yet
+                  </p>
+                  <p className="text-xs text-amber-700/80 dark:text-amber-300/70 mt-1 leading-relaxed">
+                    {lockInfo.lineupFull ? (
+                      <>
+                        Today&apos;s {LINEUP_SLOTS_PER_DAY} slots are full.
+                        You&apos;re #{lockInfo.position} in line for the next
+                        lock — daily at 12:00 PM ET. Bump your bid to climb.
+                      </>
+                    ) : (
+                      <>
+                        You&apos;re #{lockInfo.position} in line for the next
+                        lock (daily at 12:00 PM ET), with {lockInfo.openSlots}{' '}
+                        slot{lockInfo.openSlots !== 1 ? 's' : ''} still open
+                        today
+                        {lockInfo.cutoffBid !== null && (
+                          <>
+                            {' '}
+                            — the current cutoff bid is $
+                            {lockInfo.cutoffBid}
+                          </>
+                        )}
+                        . Bump your bid to climb before the lock.
+                      </>
+                    )}
+                  </p>
+                </div>
+              )}
+              {lockInfo?.state !== 'locked' && (
+                <BumpBidButton messageId={message.id} currentBid={(message as any).bid_amount} />
+              )}
               <EditMessageButton />
             </div>
           )}

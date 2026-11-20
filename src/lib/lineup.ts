@@ -315,6 +315,54 @@ export async function getNormalPoolStats(now: Date = new Date()) {
   const needed = openSlots > 0 ? openSlots : LINEUP_SLOTS_PER_DAY
   const cutoffBid =
     pool.length >= needed && needed > 0 ? pool[needed - 1].bid_amount : null
+
+  // Today's lineup for display surfaces (homepage lock panel): slot,
+  // bid and state only — message content stays hidden until a post airs.
+  const lineup: {
+    slot: number
+    bidAmount: number
+    isPromo: boolean
+    status: 'LIVE' | 'QUEUED'
+    carriedOver?: boolean
+  }[] = []
+  for (const row of queue) {
+    const mark = getLineupMark(row.style_config)
+    if (mark && mark.windowId === win.windowId) {
+      lineup.push({
+        slot: mark.slot,
+        bidAmount: row.bid_amount,
+        isPromo: !!row.is_promo_free,
+        status: 'QUEUED',
+      })
+    }
+  }
+  // The post on air right now is ACTIVE, so it is not in the QUEUED
+  // fetch — add it from its lineup mark so its slot doesn't gap.
+  const admin = getSupabaseAdmin()
+  const { data: actives } = await admin
+    .from('messages')
+    .select('bid_amount, is_promo_free, style_config')
+    .eq('status', 'ACTIVE')
+    .eq('is_reserved_slot', false)
+    .gte('bid_amount', MIN_NORMAL_BID)
+    .limit(1)
+  const active = (actives as any[] | null)?.[0]
+  if (active) {
+    const mark = getLineupMark(active.style_config)
+    if (mark) {
+      lineup.push({
+        slot: mark.slot,
+        bidAmount: active.bid_amount,
+        isPromo: !!active.is_promo_free,
+        status: 'LIVE',
+        ...(mark.windowId === win.windowId ? {} : { carriedOver: true }),
+      })
+    }
+  }
+  lineup.sort((a, b) =>
+    a.status === b.status ? a.slot - b.slot : a.status === 'LIVE' ? -1 : 1,
+  )
+
   return {
     windowId: win.windowId,
     slotsPerDay: LINEUP_SLOTS_PER_DAY,
@@ -322,5 +370,6 @@ export async function getNormalPoolStats(now: Date = new Date()) {
     poolCount: pool.length,
     cutoffBid,
     nextLockMs: win.nextLockMs,
+    lineup,
   }
 }
