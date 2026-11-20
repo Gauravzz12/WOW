@@ -19,6 +19,7 @@ import { getCategoryHex, getCategoryStyles, resolveCardStyles } from '@/lib/util
 import { getSponsoredTeaser } from '@/lib/masking'
 import { FullscreenMessage } from '@/components/MessageFullscreen'
 import { FrameDecorator } from '@/components/FrameDecorator'
+import { StickerLayer, StickerToggleButton } from '@/components/StickerToggle'
 import { getFrameClass } from '@/lib/constants/frames'
 import { BumpBidButton } from './BumpBidButton'
 import { EditMessageButton } from './EditMessageButton'
@@ -378,6 +379,9 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
     sponsorNoteStyle 
   } = resolveCardStyles(message.style_config, message.template_id)
 
+  const msgStickers = (message.style_config as any)?.stickers
+  const hasStickers = Array.isArray(msgStickers) && msgStickers.length > 0
+
   const contentLength = message.content?.length || 0
   const textSizeClass =
     contentLength > 200
@@ -409,6 +413,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
         {/* Message Presentation */}
         <div className={`${bg || 'bg-background-elevated'} border ${cardBorder || message.style_config?.cardBorder || borderColor} rounded-lg p-6 sm:p-10 md:p-12 text-center shadow-md relative overflow-hidden transition-colors ${getFrameClass(message.style_config?.frameId)}`}>
           <FrameDecorator frameId={message.style_config?.frameId} accentHex={getCategoryHex(categorySlug)} />
+          <StickerLayer stickers={msgStickers} />
 
           {message.status === 'ACTIVE' && (
             <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-600 text-[11px] font-bold uppercase tracking-wider rounded-full">
@@ -545,6 +550,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
             </div>
             <div className="flex items-center gap-3">
               <ShareMenu url={shareUrl} text={shareText} isVip={isVip} isDark={isDarkCard} />
+              {hasStickers && <StickerToggleButton />}
               <ReportButton messageId={message.id} isDark={isDarkCard} />
               <FullscreenMessage
                 message={{
@@ -556,7 +562,7 @@ export default async function MessageMemoryPage({ params, searchParams }: { para
                   brandUrl: (message as any).style_config?.brandUrl,
                   sponsorName: (message as any).style_config?.sponsorName,
                   sponsorNote: (message as any).style_config?.sponsorNote,
-                  stickers: undefined,
+                  stickers: (message as any).style_config?.stickers,
                   frameId: (message as any).style_config?.frameId,
                 }}
                 appearance={{

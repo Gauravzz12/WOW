@@ -14,6 +14,7 @@ import { InlineInteractions } from './InlineInteractions'
 import { FullscreenMessage } from './MessageFullscreen'
 import { FrameDecorator } from './FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
+import { StickerToggleButton, useStickersVisible } from './StickerToggle'
 import { sanitizeHtmlText } from '@/lib/sanitize'
 
 export interface VipSpecialViewProps {
@@ -60,6 +61,8 @@ type SlotStatus = 'LIVE NOW' | 'BOOKED' | 'OPEN' | 'PAST'
 const DAY_MS = 24 * 60 * 60 * 1000
 
 export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipSpecialViewProps) {
+  const stickersVisible = useStickersVisible()
+  const hasStickers = Array.isArray(activeSpecialMsg?.style_config?.stickers) && activeSpecialMsg.style_config.stickers.length > 0
   const [isMounted, setIsMounted] = useState(false)
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [nowUtcMs, setNowUtcMs] = useState<number>(() => Date.now())
@@ -301,9 +304,10 @@ export function VipSpecialView({ activeSpecialMsg, upcomingVipQueue = [] }: VipS
             className={`relative overflow-hidden rounded-none ${stageBg} px-5 py-9 sm:px-10 sm:py-12 ${getFrameClass(activeSpecialMsg.style_config?.frameId)}`}
           >
             <FrameDecorator frameId={activeSpecialMsg.style_config?.frameId} accentHex={getCategoryHex(activeSpecialMsg?.category?.slug || 'general')} />
+            {hasStickers && <StickerToggleButton className="absolute top-3 right-3 z-20" />}
 
             {/* Stickers as backdrop décor — always behind text */}
-            {Array.isArray(activeSpecialMsg?.style_config?.stickers) && activeSpecialMsg.style_config.stickers.map((sticker: any) => (
+            {stickersVisible && Array.isArray(activeSpecialMsg?.style_config?.stickers) && activeSpecialMsg.style_config.stickers.map((sticker: any) => (
               <span
                 key={sticker.id}
                 aria-hidden="true"

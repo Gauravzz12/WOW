@@ -11,10 +11,14 @@ import { InlineInteractions } from './InlineInteractions'
 import { FullscreenMessage } from './MessageFullscreen'
 import { FrameDecorator } from './FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
+import { StickerToggleButton, useStickersVisible } from './StickerToggle'
 import { sanitizeHtmlText } from '@/lib/sanitize'
 
 export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL' }: { initialMessage: any, compact?: boolean, activeTab?: 'NORMAL' | 'SPECIAL' | 'SPONSORED' }) {
   const message = initialMessage
+
+  const stickersVisible = useStickersVisible()
+  const hasStickers = Array.isArray(message?.style_config?.stickers) && message.style_config.stickers.length > 0
   
   // Realtime state
   const [activeComments, setActiveComments] = useState<{ id: string, content: string }[]>([])
@@ -218,7 +222,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
               <FrameDecorator frameId={message.style_config?.frameId} accentHex={getCategoryHex(categorySlug)} />
 
               {/* Custom placed stickers if present */}
-              {Array.isArray(message?.style_config?.stickers) && message.style_config.stickers.map((sticker: any) => (
+              {stickersVisible && Array.isArray(message?.style_config?.stickers) && message.style_config.stickers.map((sticker: any) => (
                 <span
                   key={sticker.id}
                   className="absolute pointer-events-none select-none z-20 leading-none"
@@ -254,6 +258,7 @@ export function LiveFeed({ initialMessage, compact = false, activeTab = 'NORMAL'
                 </div>
 
                 <div className="flex items-center gap-2">
+                {hasStickers && <StickerToggleButton />}
                 <div className={`flex items-center gap-2 px-3 py-1 rounded-full border shadow-sm ${timerStyle}`}>
                   <span className="relative flex h-2 w-2">
                     <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-red-400`}></span>

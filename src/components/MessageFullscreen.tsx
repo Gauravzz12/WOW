@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Maximize2, X, Sparkles } from 'lucide-react'
 import { FrameDecorator } from './FrameDecorator'
 import { getFrameClass } from '@/lib/constants/frames'
+import { StickerToggleButton, useStickersVisible } from './StickerToggle'
 import { getCategoryHex } from '@/lib/utils/colors'
 import { sanitizeHtmlText } from '@/lib/sanitize'
 
@@ -65,6 +66,8 @@ export function FullscreenMessage({
   triggerTitle?: string
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const stickersVisible = useStickersVisible()
+  const hasStickers = Array.isArray(message.stickers) && message.stickers.length > 0
 
   useEffect(() => {
     if (!isOpen) return
@@ -143,7 +146,7 @@ export function FullscreenMessage({
             >
               <FrameDecorator frameId={message.frameId} accentHex={message.categorySlug ? getCategoryHex(message.categorySlug) : undefined} />
 
-              {Array.isArray(message.stickers) && message.stickers.map((sticker: any) => (
+              {stickersVisible && Array.isArray(message.stickers) && message.stickers.map((sticker: any) => (
                 <span
                   key={sticker.id}
                   className="absolute pointer-events-none select-none z-20 leading-none"
@@ -168,6 +171,8 @@ export function FullscreenMessage({
                 ) : (
                   <span />
                 )}
+                <div className="flex items-center gap-2">
+                {hasStickers && <StickerToggleButton />}
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
@@ -177,6 +182,7 @@ export function FullscreenMessage({
                 >
                   <X size={15} />
                 </button>
+                </div>
               </div>
 
               <div className={bodyClassName}>
